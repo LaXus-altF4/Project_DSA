@@ -54,6 +54,11 @@ export async function handleRouteChange() {
   const container = document.getElementById('page-container');
   if (!container) return;
 
+  // Hiệu ứng chuyển trang: fade + trượt lên 8px (200ms)
+  container.classList.remove('page-enter');
+  void container.offsetWidth;
+  container.classList.add('page-enter');
+
   const pageModule = ROUTES[route];
   if (pageModule && typeof pageModule.render === 'function') {
     try {

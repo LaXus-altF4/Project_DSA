@@ -34,7 +34,21 @@ export function applyTheme(theme) {
 export function toggleTheme() {
   const current = document.documentElement.getAttribute('data-theme') || 'light';
   const next = current === 'dark' ? 'light' : 'dark';
+
+  // Thêm class chuyển màu mượt 250ms
+  document.documentElement.classList.add('theme-transitioning');
+
+  const btn = document.getElementById('btn-theme-toggle');
+  if (btn) {
+    btn.classList.add('theme-icon-spin');
+  }
+
   applyTheme(next);
+
+  setTimeout(() => {
+    document.documentElement.classList.remove('theme-transitioning');
+    if (btn) btn.classList.remove('theme-icon-spin');
+  }, 300);
 }
 
 function updateThemeButton(theme) {

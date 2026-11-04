@@ -101,7 +101,8 @@ Giao diện trực quan hóa 3 trạng thái danh mục thiết bị và hiển 
 └────────────────────────────────────────┴───────────────────────────────────────────────┘
 ```
 - **API sử dụng:** `GET /api/stats?within=6&top=5`.
-- **Cơ chế biểu đồ CSS thuần:** Mỗi thanh là một phần tử `div` có `width: calc(timesBorrowed / maxBorrowed * 100%)`, chuyển động `transition: width 0.5s ease-out`.
+- **Cơ chế biểu đồ CSS thuần:** Mỗi thanh là một phần tử `div` có `width: calc(timesBorrowed / maxBorrowed * 100%)`, chuyển động `transition: width 0.35s ease-out` kết hợp stagger animation theo thứ tự xuất hiện.
+- **Quy chuẩn hiển thị tiền phạt:** Số tiền phạt ở thẻ "Phiếu quá hạn" bắt buộc giữ trên cùng một dòng với đơn vị tiền tệ (`white-space: nowrap;` và khoảng trắng cứng `\u00A0đ`), không để chữ "đ" bị rớt xuống dòng riêng biệt.
 
 ---
 
@@ -249,21 +250,26 @@ Giao diện trực quan hóa 3 trạng thái danh mục thiết bị và hiển 
 
 ---
 
-## 4. DANH SÁCH ANIMATION VÀ VỊ TRÍ ÁP DỤNG
+## 4. DANH SÁCH 12 ANIMATION CHUẨN VÀ QUY CÁCH KỸ THUẬT
 
-| Tên Animation | Vị trí áp dụng | Quy cách hoạt ảnh | Mục đích Demo & UX |
-|---|---|---|---|
-| **Clock Spin** | Icon đồng hồ trên Top Bar khi tua giờ | Xoay 720 độ (`rotate(720deg)`) trong 500ms ease-out | Báo hiệu thời gian hệ thống đang được tua nhanh |
-| **Queue Reorder Slide** | Thẻ hàng đợi ở màn hình Hàng đợi | Trượt ngang xuống cuối hàng (`transform` + `opacity`) trong 350ms | **Điểm nhấn Demo:** Minh họa trực quan việc SV lỡ hạn 24h bị đẩy xuống cuối hàng |
-| **Queue Expired Drop** | Thẻ hàng đợi khi lỡ hạn lần 2 | Co nhỏ (`scale(0.85)`) và mờ biến mất trong 300ms | Thể hiện người chờ bị loại hẳn khỏi hàng đợi |
-| **Countdown Arc Update**| Vòng tròn SVG đếm ngược 24h | Chuyển dịch `stroke-dashoffset` mượt mà (400ms) | Biểu thị số giờ giữ chỗ còn lại của người đầu hàng |
-| **Drawer Slide-over** | Panel chi tiết thiết bị bên phải | Trượt từ mép phải (`translateX(100%) -> 0`) trong 250ms | Mở xem chi tiết mà không làm mất ngữ cảnh danh sách |
-| **Toast Slide-in** | Góc trên/dưới bên phải màn hình | Trượt vào từ cạnh và mờ dần sau 4s | Thông báo các sự kiện từ `/api/notifications` |
-| **Suggestion Pop-in** | Thẻ gợi ý mượn kèm ở màn hình Mượn | Nảy nhẹ từ dưới lên (`translateY(8px) -> 0`, zoom nhẹ 200ms) | Thu hút sự chú ý khi đồ thị đề xuất thiết bị đi kèm |
-| **CSS Bar Fill** | Biểu đồ mượn nhiều nhất & thanh tỷ lệ | Dài dần từ `0%` đến độ rộng thực tế trong 500ms | Giúp số liệu hiển thị sinh động mà không cần Chart.js |
-| **Row Flash Highlight** | Dòng bảng vừa trả hoặc vừa cập nhật | Nháy màu nền xanh/vàng pastel trong 800ms rồi trả về | Người dùng nhận biết ngay dòng vừa thao tác thành công |
+> **Ràng buộc hiệu năng:** Chỉ animate `transform` và `opacity` (đạt chuẩn 60fps mượt mà, không gây layout reflow giật lag), thời lượng mỗi hiệu ứng ≤ 400ms, tự động vô hiệu hoá khi người dùng bật `prefers-reduced-motion: reduce`. Toàn bộ hiệu ứng được tập trung tại `web/css/animations.css` và `web/js/ui/motion.js` để tái sử dụng xuyên suốt toàn web.
 
-*Tất cả animation đều bọc qua `@media (prefers-reduced-motion: reduce)` để tự động tắt hoặc giảm thiểu nếu người dùng kích hoạt cấu hình này trên máy.*
+| # | Tên Animation | Vị trí áp dụng | Quy cách kỹ thuật & Thời lượng | Mục đích Demo & Trải nghiệm |
+|---|---|---|---|---|
+| 1 | **Page Transition** | Toàn bộ các trang khi đổi route | Fade + `translateY(8px) -> 0` trong **200ms** | Chuyển trang mượt mà, tạo cảm giác ứng dụng nhẹ và tức thì |
+| 2 | **Entrance Staggering** | Thẻ số liệu & khối nội dung khi vào trang | Xuất hiện lần lượt (`stagger 60ms/phần tử`), tổng ≤ 350ms | Tránh tải đột ngột, dẫn mắt người nhìn vào từng khối số liệu |
+| 3 | **Metrics Count-up & Diff Floating** | Số liệu thống kê ở Dashboard | Đếm số `requestAnimationFrame` (350ms); khi đổi số nháy màu + hiện nhãn `+N` / `-N` bay lên | Trực quan hóa biến động số liệu sau mỗi thao tác mượn/trả/tua |
+| 4 | **Bar Chart Stagger Fill** | Biểu đồ thanh Top mượn | Thanh giãn từ `scaleX(0)` đến `scaleX(1)` trong **350ms**, stagger theo thứ tự | Hiển thị đồ thị sinh động mà không cần Chart.js |
+| 5 | **Clock Mechanical Roll & Spin** | Đồng hồ giả lập trên Topbar | Chữ số giờ lăn kiểu đồng hồ cơ (`clock-roll`, 300ms) + icon xoay (`rotate(720deg)`, 400ms) | Báo hiệu rõ ràng thời gian giả lập vừa được tua |
+| 6 | **Overdue Pulse Red** | Thẻ "Phiếu quá hạn" ở Dashboard | Viền đỏ nhấp nháy phát sáng 2 lần (`pulseRedBorder`, 400ms x 2) khi số phiếu tăng | Thu hút chú ý ngay lập tức tới các vi phạm trễ hạn |
+| 7 | **Sidebar Active & Hover** | Menu điều hướng bên trái | Chỉ báo trượt co giãn (`scaleY`, 200ms); hover dịch nhẹ `translateX(3px)` (150ms) | Phản hồi điều hướng xúc giác, xác định rõ vị trí màn hình |
+| 8 | **Card Lift & Button Press** | Các thẻ Card & Nút bấm | Card hover nhấc lên `translateY(-2px)` + bóng đậm hơn; Nút co nhẹ `scale(0.97)` khi nhấn | Tạo chiều sâu vật lý (tactile depth) cho giao diện |
+| 9 | **Theme Toggle Smooth Transition** | Nút đổi Theme Sáng / Tối | Toàn bộ màu nền/chữ chuyển mượt trong **250ms**; Icon xoay 360 độ (300ms) | Chuyển đổi theme êm dịu, không gây chớp mắt đột ngột |
+| 10 | **Refresh Button Spin** | Nút "Làm mới" trên trang | Icon xoay tròn liên tục (`spinInfinite`, 400ms) trong thời gian fetch API | Phản hồi trạng thái đang nạp dữ liệu cho người dùng |
+| 11 | **SVG Checkmark Stroke Draw** | Trạng thái rỗng (Empty state) | Đường viền nét vẽ tự vẽ bằng `stroke-dashoffset` từ 60 về 0 trong **400ms** | Mang lại cảm giác sạch sẽ, hoàn tất khi không có phát sinh lỗi |
+| 12 | **Toast Countdown Progress** | Thông báo nổi góc màn hình | Thanh tiến trình co dần từ `scaleX(1)` về `scaleX(0)` theo thời gian đếm ngược của toast | Báo hiệu chính xác cho người dùng khi nào thông báo sẽ tự đóng |
+
+*Tất cả animation đều được bao bọc kiểm tra `@media (prefers-reduced-motion: reduce)` trong `animations.css` và `motion.js` để tôn trọng cấu hình hỗ trợ tiếp cận của hệ điều hành.*
 
 ---
 

@@ -5,6 +5,7 @@
 import { api } from '../api.js';
 import { showToast } from './toast.js';
 import { openModal } from './modal.js';
+import { triggerRollDigit } from './motion.js';
 
 let isAdvancing = false;
 
@@ -13,7 +14,7 @@ export async function refreshClock() {
     const clock = await api.get('/clock');
     const clockEl = document.getElementById('clock-time');
     if (clockEl && clock && clock.text) {
-      clockEl.textContent = clock.text;
+      triggerRollDigit(clockEl, clock.text);
     }
     return clock;
   } catch (err) {
@@ -32,7 +33,7 @@ export async function advanceTime(hours) {
     const result = await api.post('/clock/advance', { hours: Number(hours) });
     if (result && result.clock) {
       const clockEl = document.getElementById('clock-time');
-      if (clockEl) clockEl.textContent = result.clock.text;
+      if (clockEl) triggerRollDigit(clockEl, result.clock.text);
     }
 
     // Lấy thông báo sự kiện phát sinh từ hàng đợi / quá hạn

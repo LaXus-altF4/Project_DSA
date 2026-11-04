@@ -1,0 +1,284 @@
+/* ==========================================================================
+   animations.css - Toàn bộ hiệu ứng chuyển động có mục đích cho Web Lab
+   Tối ưu 60fps (chỉ animate transform và opacity, thời lượng ≤ 400ms)
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. Chuyển trang (Page Transition: Fade + Slide Up 8px trong 200ms)
+   -------------------------------------------------------------------------- */
+.page-enter {
+  animation: pageSlideUpFade 200ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes pageSlideUpFade {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* --------------------------------------------------------------------------
+   2. Vào trang lần lượt (Entrance Staggering 60ms/phần tử)
+   -------------------------------------------------------------------------- */
+.stagger-item {
+  opacity: 0;
+  transform: translateY(8px);
+  animation: staggerFadeIn 250ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes staggerFadeIn {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.stagger-delay-1 { animation-delay: 0ms; }
+.stagger-delay-2 { animation-delay: 60ms; }
+.stagger-delay-3 { animation-delay: 120ms; }
+.stagger-delay-4 { animation-delay: 180ms; }
+.stagger-delay-5 { animation-delay: 240ms; }
+.stagger-delay-6 { animation-delay: 300ms; }
+
+/* --------------------------------------------------------------------------
+   3. Số liệu: Nháy màu & Nhãn "+1" / "-1" bay lên (Floating Delta)
+   -------------------------------------------------------------------------- */
+.metric-value-wrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: baseline;
+}
+
+.number-flash {
+  animation: numberFlash 300ms ease-out;
+}
+
+@keyframes numberFlash {
+  0% { transform: scale(1.12); color: var(--color-primary); }
+  100% { transform: scale(1); }
+}
+
+.floating-delta {
+  position: absolute;
+  top: -8px;
+  right: -24px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  padding: 2px 4px;
+  border-radius: var(--radius-sm);
+  pointer-events: none;
+  animation: floatUpFade 400ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.floating-delta.delta-plus {
+  background-color: var(--color-danger-bg);
+  color: var(--color-danger);
+  border: 1px solid var(--color-danger-border);
+}
+
+.floating-delta.delta-minus {
+  background-color: var(--color-success-bg);
+  color: var(--color-success);
+  border: 1px solid var(--color-success-border);
+}
+
+@keyframes floatUpFade {
+  0% {
+    opacity: 0;
+    transform: translateY(6px) scale(0.8);
+  }
+  25% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-14px) scale(0.85);
+  }
+}
+
+/* --------------------------------------------------------------------------
+   4. Biểu đồ thanh: Kéo dài từ 0 đến giá trị (Staggered Bar Fill)
+   -------------------------------------------------------------------------- */
+.css-bar-fill-animated {
+  transform-origin: left;
+  animation: barExpand 350ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes barExpand {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+/* --------------------------------------------------------------------------
+   5. Đồng hồ: Lăn chữ số (Roll) & Kim xoay
+   -------------------------------------------------------------------------- */
+.clock-roll {
+  display: inline-block;
+  animation: clockRollDigit 300ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes clockRollDigit {
+  0% {
+    opacity: 0.2;
+    transform: translateY(-6px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* --------------------------------------------------------------------------
+   6. Thẻ "Phiếu quá hạn": Viền đỏ Pulse 2 lần
+   -------------------------------------------------------------------------- */
+.pulse-border-red {
+  animation: pulseRedBorder 400ms ease-in-out 2;
+}
+
+@keyframes pulseRedBorder {
+  0% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.6);
+    border-color: var(--color-danger);
+  }
+  50% {
+    box-shadow: 0 0 0 5px rgba(239, 68, 68, 0.2);
+    border-color: var(--color-danger);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+  }
+}
+
+/* --------------------------------------------------------------------------
+   7. Sidebar: Hover dịch nhẹ (TranslateX 3px) & Active pill
+   -------------------------------------------------------------------------- */
+.sidebar-nav .nav-item {
+  transition: transform 150ms ease, background-color 150ms ease, color 150ms ease;
+}
+
+.sidebar-nav .nav-item:hover:not(.active) {
+  transform: translateX(3px);
+}
+
+/* --------------------------------------------------------------------------
+   8. Thẻ (Hover nhấc lên 2px) & Nút (Nhấn co nhẹ scale 0.97)
+   -------------------------------------------------------------------------- */
+.card, .metric-card {
+  transition: transform 200ms ease, box-shadow 200ms ease, background-color 250ms ease, border-color 250ms ease;
+}
+
+.card:hover, .metric-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.btn {
+  transition: transform 100ms ease, background-color 150ms ease, box-shadow 150ms ease;
+}
+
+.btn:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+/* --------------------------------------------------------------------------
+   9. Đổi Theme Sáng / Tối: Chuyển mượt 250ms & Icon xoay 360 độ
+   -------------------------------------------------------------------------- */
+html.theme-transitioning,
+html.theme-transitioning *,
+html.theme-transitioning *::before,
+html.theme-transitioning *::after {
+  transition: background-color 250ms ease, border-color 250ms ease, color 250ms ease, fill 250ms ease !important;
+}
+
+.theme-icon-spin {
+  animation: themeIconSpin 300ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes themeIconSpin {
+  0% { transform: rotate(0deg) scale(0.8); }
+  100% { transform: rotate(360deg) scale(1); }
+}
+
+/* --------------------------------------------------------------------------
+   10. Nút "Làm mới": Icon xoay tròn khi đang nạp
+   -------------------------------------------------------------------------- */
+.spin-loading {
+  animation: spinInfinite 400ms linear infinite;
+  display: inline-block;
+}
+
+@keyframes spinInfinite {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* --------------------------------------------------------------------------
+   11. Trạng thái rỗng: Dấu tích SVG tự vẽ nét (Stroke Draw)
+   -------------------------------------------------------------------------- */
+.svg-draw-check {
+  stroke-dasharray: 60;
+  stroke-dashoffset: 60;
+  animation: drawStroke 400ms ease-out 100ms forwards;
+}
+
+@keyframes drawStroke {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   12. Toast: Thanh tiến trình đếm ngược thời gian tự ẩn
+   -------------------------------------------------------------------------- */
+.toast {
+  position: relative;
+  overflow: hidden;
+}
+
+.toast-progress {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  width: 100%;
+  background-color: var(--color-border);
+}
+
+.toast-progress-bar {
+  height: 100%;
+  width: 100%;
+  background-color: var(--color-primary);
+  transform-origin: left;
+  animation: toastCountdown linear forwards;
+}
+
+.toast-success .toast-progress-bar { background-color: var(--color-success); }
+.toast-warning .toast-progress-bar { background-color: var(--color-warning); }
+.toast-error .toast-progress-bar { background-color: var(--color-danger); }
+
+@keyframes toastCountdown {
+  from { transform: scaleX(1); }
+  to { transform: scaleX(0); }
+}
+
+/* --------------------------------------------------------------------------
+   Ràng buộc: Tắt toàn bộ hiệu ứng khi prefers-reduced-motion
+   -------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    transform: none !important;
+  }
+}

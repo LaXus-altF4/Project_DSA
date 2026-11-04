@@ -43,6 +43,12 @@ export function showToast(message, type = 'info', title = '', duration = 4000) {
     titleHtml = `<div class="toast-title">${escapeHtml(title)}</div>`;
   }
 
+  const progressHtml = duration > 0 ? `
+    <div class="toast-progress">
+      <div class="toast-progress-bar" style="animation-duration: ${duration}ms;"></div>
+    </div>
+  ` : '';
+
   toast.innerHTML = `
     <div class="toast-icon">${iconHtml}</div>
     <div class="toast-content">
@@ -50,6 +56,7 @@ export function showToast(message, type = 'info', title = '', duration = 4000) {
       <div>${escapeHtml(message)}</div>
     </div>
     <button class="toast-close" aria-label="Đóng">&times;</button>
+    ${progressHtml}
   `;
 
   const closeBtn = toast.querySelector('.toast-close');
