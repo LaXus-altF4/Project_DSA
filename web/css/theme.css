@@ -1,0 +1,152 @@
+/* ==========================================================================
+   Theme CSS - Biến màu Sáng / Tối và Trạng thái Nghiệp vụ
+   ========================================================================== */
+
+:root, [data-theme="light"] {
+  /* Nền và Bề mặt */
+  --color-bg-canvas: #F8FAFC;       /* Slate 50 */
+  --color-bg-surface: #FFFFFF;      /* Trắng tuyệt đối */
+  --color-bg-muted: #F1F5F9;        /* Slate 100 */
+  --color-bg-hover: #F8FAFC;        /* Slate 50 */
+  --color-bg-active: #E2E8F0;       /* Slate 200 */
+
+  /* Đường viền */
+  --color-border: #E2E8F0;          /* Slate 200 */
+  --color-border-hover: #CBD5E1;    /* Slate 300 */
+  --color-border-subtle: #F1F5F9;   /* Slate 100 */
+
+  /* Chữ viết */
+  --color-text-primary: #0F172A;    /* Slate 900 */
+  --color-text-secondary: #475569;  /* Slate 600 */
+  --color-text-muted: #94A3B8;      /* Slate 400 */
+  --color-text-inverse: #FFFFFF;
+
+  /* Màu chủ đạo (Primary Accent) */
+  --color-primary: #3B82F6;         /* Blue 500 */
+  --color-primary-hover: #2563EB;   /* Blue 600 */
+  --color-primary-soft: #EFF6FF;    /* Blue 50 */
+  --color-primary-border: #BFDBFE;  /* Blue 200 */
+
+  /* 4 Trạng thái thiết bị & Kho (Quy tắc M1) */
+  /* 1. Sẵn sàng (Available - Xanh lá) */
+  --status-available-bg: #ECFDF5;
+  --status-available-border: #A7F3D0;
+  --status-available-text: #065F46;
+  --status-available-bar: #10B981;
+
+  /* 2. Đang mượn (Borrowed - Hổ phách) */
+  --status-borrowed-bg: #FFFBEB;
+  --status-borrowed-border: #FDE68A;
+  --status-borrowed-text: #92400E;
+  --status-borrowed-bar: #F59E0B;
+
+  /* 3. Đang giữ hàng 24h (On Hold - Xanh dương) */
+  --status-onhold-bg: #EFF6FF;
+  --status-onhold-border: #BFDBFE;
+  --status-onhold-text: #1E40AF;
+  --status-onhold-bar: #3B82F6;
+
+  /* 4. Bảo trì (Maintenance - Đỏ/Xám) */
+  --status-maintenance-bg: #FEF2F2;
+  --status-maintenance-border: #FECACA;
+  --status-maintenance-text: #991B1B;
+  --status-maintenance-bar: #EF4444;
+
+  /* Semantic Alerts */
+  --color-danger-bg: #FEF2F2;
+  --color-danger-border: #FCA5A5;
+  --color-danger-text: #B91C1C;
+  --color-danger: #EF4444;
+
+  --color-success-bg: #ECFDF5;
+  --color-success-border: #6EE7B7;
+  --color-success-text: #047857;
+  --color-success: #10B981;
+
+  --color-warning-bg: #FFFBEB;
+  --color-warning-border: #FCD34D;
+  --color-warning-text: #B45309;
+  --color-warning: #F59E0B;
+
+  /* Bóng đổ */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.08);
+  --shadow-modal: 0 20px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+
+  /* Bo góc */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-full: 9999px;
+}
+
+[data-theme="dark"] {
+  /* Nền và Bề mặt */
+  --color-bg-canvas: #0B0F17;       /* Dark canvas */
+  --color-bg-surface: #151D2A;      /* Slate 900 */
+  --color-bg-muted: #1E293B;        /* Slate 800 */
+  --color-bg-hover: #1E293B;        /* Slate 800 */
+  --color-bg-active: #334155;       /* Slate 700 */
+
+  /* Đường viền */
+  --color-border: #26354A;          /* Slate 700 */
+  --color-border-hover: #374A67;    /* Slate 600 */
+  --color-border-subtle: #1E293B;   /* Slate 800 */
+
+  /* Chữ viết */
+  --color-text-primary: #F8FAFC;    /* Slate 50 */
+  --color-text-secondary: #94A3B8;  /* Slate 400 */
+  --color-text-muted: #64748B;      /* Slate 500 */
+  --color-text-inverse: #0F172A;
+
+  /* Màu chủ đạo (Primary Accent) */
+  --color-primary: #60A5FA;         /* Blue 400 */
+  --color-primary-hover: #3B82F6;   /* Blue 500 */
+  --color-primary-soft: #1E3A8A;    /* Dark blue soft */
+  --color-primary-border: #2563EB;
+
+  /* 4 Trạng thái thiết bị & Kho */
+  --status-available-bg: #064E3B;
+  --status-available-border: #059669;
+  --status-available-text: #6EE7B7;
+  --status-available-bar: #10B981;
+
+  --status-borrowed-bg: #78350F;
+  --status-borrowed-border: #D97706;
+  --status-borrowed-text: #FCD34D;
+  --status-borrowed-bar: #F59E0B;
+
+  --status-onhold-bg: #1E3A8A;
+  --status-onhold-border: #3B82F6;
+  --status-onhold-text: #93C5FD;
+  --status-onhold-bar: #3B82F6;
+
+  --status-maintenance-bg: #450A0A;
+  --status-maintenance-border: #DC2626;
+  --status-maintenance-text: #FCA5A5;
+  --status-maintenance-bar: #EF4444;
+
+  /* Semantic Alerts */
+  --color-danger-bg: #450A0A;
+  --color-danger-border: #DC2626;
+  --color-danger-text: #FCA5A5;
+  --color-danger: #F87171;
+
+  --color-success-bg: #064E3B;
+  --color-success-border: #059669;
+  --color-success-text: #6EE7B7;
+  --color-success: #34D399;
+
+  --color-warning-bg: #78350F;
+  --color-warning-border: #D97706;
+  --color-warning-text: #FCD34D;
+  --color-warning: #FBBF24;
+
+  /* Bóng đổ */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.45), 0 2px 4px -2px rgba(0, 0, 0, 0.35);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -4px rgba(0, 0, 0, 0.4);
+  --shadow-modal: 0 20px 25px -5px rgba(0, 0, 0, 0.7), 0 8px 10px -6px rgba(0, 0, 0, 0.5);
+}

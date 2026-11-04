@@ -1,58 +1,123 @@
 <!DOCTYPE html>
-<html lang="vi">
+<html lang="vi" data-theme="light">
 <head>
-<meta charset="utf-8">
-<title>LabApp — kiểm tra server</title>
-<!-- Trang tạm (giai đoạn 6) chỉ để kiểm tra server chạy. Giao diện thật do giai đoạn 7 thay thế toàn bộ. -->
-<style>
-  body { font-family: system-ui, "Segoe UI", sans-serif; margin: 24px; color: #222; }
-  button { margin-right: 6px; }
-  table { border-collapse: collapse; margin-top: 12px; }
-  th, td { border: 1px solid #ccc; padding: 4px 8px; text-align: left; }
-  .available { color: #1a7f37; } .borrowed { color: #b26b00; } .maintenance { color: #c62828; }
-  #log { margin-top: 12px; padding: 8px; background: #f5f5f5; min-height: 2em; white-space: pre-wrap; }
-</style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lab Manager — Quản lý mượn trả thiết bị phòng Lab</title>
+
+  <!-- CSS hệ thống (100% Cục bộ) -->
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/theme.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/pages.css">
+
+  <!-- Thư viện Vendor cục bộ (100% Offline) -->
+  <script src="vendor/lucide.min.js"></script>
+  <script src="vendor/vis-network.min.js"></script>
 </head>
 <body>
-<h1>LabApp — server đang chạy</h1>
-<p>Đồng hồ giả lập: <strong id="clock">…</strong>
-  <button data-hours="1">+1 giờ</button><button data-hours="24">+24 giờ</button></p>
-<div id="log">Thông báo sẽ hiện ở đây.</div>
-<table>
-  <thead><tr><th>Mã</th><th>Tên</th><th>Trạng thái</th><th>Sẵn/Mượn/Giữ/Bảo trì</th><th>Hàng đợi</th></tr></thead>
-  <tbody id="devices"></tbody>
-</table>
-<script>
-const STATUS = { available: 'Sẵn sàng', borrowed: 'Đang mượn', maintenance: 'Bảo trì' };
-const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  <div id="app">
+    <!-- Sidebar điều hướng bên trái -->
+    <aside id="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-logo-icon">
+          <i data-lucide="cpu" style="width: 22px; height: 22px;"></i>
+        </div>
+        <div>
+          <div class="sidebar-title">Lab Manager</div>
+          <div class="sidebar-subtitle">HCMUS • Đồ án CTDL & GT</div>
+        </div>
+      </div>
 
-async function api(path, options) {
-  const res = await fetch('/api' + path, options);
-  const body = await res.json();
-  if (!res.ok) throw new Error(body.error ? body.error.message : res.statusText);
-  return body;
-}
+      <nav class="sidebar-nav">
+        <a href="#/dashboard" class="nav-item">
+          <i data-lucide="layout-dashboard"></i>
+          <span>Tổng quan</span>
+        </a>
+        <a href="#/devices" class="nav-item">
+          <i data-lucide="layers"></i>
+          <span>Thiết bị</span>
+        </a>
+        <a href="#/borrow" class="nav-item">
+          <i data-lucide="file-plus-2"></i>
+          <span>Mượn thiết bị</span>
+        </a>
+        <a href="#/return" class="nav-item">
+          <i data-lucide="rotate-ccw"></i>
+          <span>Trả thiết bị</span>
+        </a>
+        <a href="#/reservations" class="nav-item">
+          <i data-lucide="clock-4"></i>
+          <span>Hàng đợi đặt trước</span>
+        </a>
+        <a href="#/records" class="nav-item">
+          <i data-lucide="clipboard-list"></i>
+          <span>Quá hạn & Lịch sử</span>
+        </a>
+        <a href="#/graph" class="nav-item">
+          <i data-lucide="network"></i>
+          <span>Đồ thị mượn kèm</span>
+        </a>
+      </nav>
 
-async function refresh() {
-  const clock = await api('/clock');
-  document.getElementById('clock').textContent = clock.text;
-  const { devices } = await api('/devices');
-  document.getElementById('devices').innerHTML = devices.map(d =>
-    `<tr><td>${esc(d.id)}</td><td>${esc(d.name)}</td><td class="${d.status}">${STATUS[d.status]}</td>` +
-    `<td>${d.available}/${d.borrowed}/${d.onHold}/${d.maintenance}</td><td>${d.queueLength}</td></tr>`).join('');
-  const { notifications } = await api('/notifications');
-  if (notifications.length) document.getElementById('log').textContent = notifications.map(n => n.message).join('\n');
-}
+      <div class="sidebar-footer">
+        <div>SV: Lê Trường Khải</div>
+        <div>MSSV: 25300003</div>
+      </div>
+    </aside>
 
-document.querySelectorAll('button[data-hours]').forEach(b => b.addEventListener('click', async () => {
-  try {
-    await api('/clock/advance', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-                                  body: JSON.stringify({ hours: Number(b.dataset.hours) }) });
-    await refresh();
-  } catch (e) { document.getElementById('log').textContent = 'Lỗi: ' + e.message; }
-}));
+    <!-- Khu vực nội dung chính -->
+    <div id="main-wrapper">
+      <!-- Thanh đỉnh (Top Bar) -->
+      <header id="topbar">
+        <div class="topbar-left">
+          <!-- Đồng hồ giả lập -->
+          <div class="clock-widget">
+            <div id="clock-icon-wrapper" class="clock-icon-wrapper">
+              <i data-lucide="clock" style="width: 18px; height: 18px;"></i>
+            </div>
+            <div class="clock-display">
+              <span class="clock-label">Đồng hồ giả lập</span>
+              <span id="clock-time" class="clock-time tabular-nums">--/--/---- --:00</span>
+            </div>
+          </div>
 
-refresh().catch(e => { document.getElementById('log').textContent = 'Lỗi: ' + e.message; });
-</script>
+          <!-- Nhóm nút tua thời gian -->
+          <div class="clock-actions">
+            <button id="btn-advance-1h" class="btn btn-secondary btn-sm" title="Tua thời gian thêm 1 giờ">
+              <i data-lucide="fast-forward" style="width: 14px; height: 14px;"></i>
+              <span>+1h</span>
+            </button>
+            <button id="btn-advance-24h" class="btn btn-secondary btn-sm" title="Tua thời gian thêm 24 giờ (1 ngày)">
+              <i data-lucide="fast-forward" style="width: 14px; height: 14px;"></i>
+              <span>+24h</span>
+            </button>
+            <button id="btn-advance-nh" class="btn btn-outline btn-sm" title="Nhập số giờ tuỳ chọn">
+              <span>+Nh…</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="topbar-right">
+          <!-- Nút chuyển đổi Theme Sáng / Tối -->
+          <button id="btn-theme-toggle" class="btn-icon" title="Chuyển đổi giao diện Sáng / Tối" aria-label="Theme Toggle">
+            <i data-lucide="moon" style="width: 18px; height: 18px;"></i>
+          </button>
+        </div>
+      </header>
+
+      <!-- Vùng hiển thị nội dung từng màn hình -->
+      <main id="page-container" role="main"></main>
+    </div>
+  </div>
+
+  <!-- Vùng chứa Toast Notification -->
+  <div id="toast-container" aria-live="polite"></div>
+
+  <!-- Vùng chứa Hộp thoại Modal -->
+  <div id="modal-backdrop"></div>
+
+  <!-- Mã nguồn SPA chính (ES Modules) -->
+  <script type="module" src="js/main.js"></script>
 </body>
 </html>
