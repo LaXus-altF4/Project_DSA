@@ -1367,6 +1367,81 @@ static void testStorageBadInput() {
     CHECK(!Storage::save("build/test_tmp/khong_ton_tai/xyz", lab).ok());
 }
 
+// ============================ Giai đoạn 6: thống kê, giữ hàng, quá hạn ============================
+
+static void testStatsAndHolds() {
+    std::cout << "LabManager: getStats, topBorrowedDevices, expiringHolds, isOverdue, unavailableIds\n";
+    LabManager lab;
+    CHECK(lab.addDevice("A", "Thiết bị A", 1).ok());
+    CHECK(lab.addDevice("B", "Thiết bị B", 2).ok());
+    CHECK(lab.addDevice("C", "Thiết bị C", 1).ok());
+    CHECK(lab.topBorrowedDevices(3).empty()); // chưa ai mượn
+
+    BorrowResult r1 = lab.borrowDevices("S1", "SV Một", ids({"A", "B"}), 1); // hạn giờ 24
+    BorrowResult r2 = lab.borrowDevices("S2", "SV Hai", ids({"B"}), 2);      // hạn giờ 48
+    CHECK(r1.ok() && r2.ok());
+
+    // Xếp hạng: B (2 lần), A (1 lần); C chưa mượn bị bỏ. k nhỏ hơn số thiết bị thì cắt bớt.
+    DoublyLinkedList<DeviceRank> top = lab.topBorrowedDevices(5);
+    CHECK(top.size() == 2);
+    CHECK(top.front()->deviceId == "B" && top.front()->timesBorrowed == 2);
+    CHECK(top.back()->deviceId == "A" && top.back()->timesBorrowed == 1);
+    CHECK(lab.topBorrowedDevices(1).size() == 1 && lab.topBorrowedDevices(0).empty());
+
+    // Phiếu có món hết hàng: trả kèm danh sách mã hết hàng, không có C (còn hàng).
+    BorrowResult bad = lab.borrowDevices("S9", "SV Chín", ids({"C", "A"}), 3);
+    CHECK(bad.code == ErrorCode::OutOfStock);
+    CHECK(bad.unavailableIds.size() == 1 && *bad.unavailableIds.front() == "A");
+    CHECK(r1.unavailableIds.empty());
+
+    CHECK(lab.reserveDevice("S3", "SV Ba", "A").ok());
+    CHECK(lab.reserveDevice("S4", "SV Bốn", "A").ok());
+
+    LabStats s = lab.getStats();
+    CHECK(s.deviceCount == 3 && s.totalUnits == 4);
+    CHECK(s.available == 1 && s.borrowed == 3 && s.onHold == 0 && s.maintenance == 0);
+    CHECK(s.openRecords == 2 && s.overdueRecords == 0 && s.pendingFines == 0);
+    CHECK(s.waitingPeople == 2 && s.holdingPeople == 0);
+
+    // Tua tới giờ 24 = đúng hạn phiếu 1: chưa quá hạn. Giờ 25: quá hạn 1 ngày, 2 thiết bị.
+    CHECK(lab.advanceTime(24));
+    CHECK(!lab.isOverdue(*lab.findRecord(r1.recordId)));
+    CHECK(lab.advanceTime(1));
+    CHECK(lab.isOverdue(*lab.findRecord(r1.recordId)));
+    CHECK(!lab.isOverdue(*lab.findRecord(r2.recordId)));
+    s = lab.getStats();
+    CHECK(s.overdueRecords == 1 && s.pendingFines == 2 * FINE_PER_DAY);
+
+    // Chưa được giữ → -1. Trả phiếu 1 → S3 được giữ 24 giờ.
+    const Reservation* head = nullptr;
+    lab.forEachReservation("A", [&head](const Reservation& r) { if (head == nullptr) head = &r; });
+    CHECK(head != nullptr && lab.holdHoursLeft(*head) == -1);
+    CHECK(lab.returnRecord(r1.recordId).ok());
+    CHECK(!lab.isOverdue(*lab.findRecord(r1.recordId))); // đã trả thì không còn "đang quá hạn"
+    head = nullptr;
+    lab.forEachReservation("A", [&head](const Reservation& r) { if (head == nullptr) head = &r; });
+    CHECK(head != nullptr && head->studentId == "S3" && lab.holdHoursLeft(*head) == 24);
+
+    CHECK(lab.expiringHolds(6).empty());
+    DoublyLinkedList<HoldInfo> soon = lab.expiringHolds(25);
+    CHECK(soon.size() == 1 && soon.front()->studentId == "S3" && soon.front()->hoursLeft == 24);
+
+    CHECK(lab.advanceTime(20)); // còn 4 giờ
+    soon = lab.expiringHolds(6);
+    CHECK(soon.size() == 1 && soon.front()->hoursLeft == 4 && soon.front()->deviceId == "A");
+    s = lab.getStats();
+    CHECK(s.holdingPeople == 1 && s.onHold == 1 && s.waitingPeople == 2);
+
+    // Sắp xếp theo thời gian còn lại: thêm một lượt giữ ở C (24 giờ) → đứng sau A (4 giờ).
+    BorrowResult rc = lab.borrowDevices("S5", "SV Năm", ids({"C"}), 1);
+    CHECK(rc.ok());
+    CHECK(lab.reserveDevice("S6", "SV Sáu", "C").ok());
+    CHECK(lab.returnRecord(rc.recordId).ok());
+    soon = lab.expiringHolds(100);
+    CHECK(soon.size() == 2 && soon.front()->deviceId == "A" && soon.back()->deviceId == "C");
+    CHECK(lab.checkInvariants());
+}
+
 int main() {
 #ifdef _WIN32
     SetConsoleOutputCP(65001);
@@ -1416,6 +1491,8 @@ int main() {
     testSampleData();
     testStorageRoundTrip();
     testStorageBadInput();
+
+    testStatsAndHolds();
 
     std::cout << "\n" << (g_checks - g_failures) << "/" << g_checks << " kiểm tra đạt";
     if (g_failures == 0) {

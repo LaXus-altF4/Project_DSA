@@ -3,7 +3,7 @@
 Đồ án môn Thực hành Cấu trúc dữ liệu & Giải thuật — HCMUS.
 Sinh viên: Lê Trường Khải — MSSV 25300003.
 
-> README đang được viết dần theo từng giai đoạn (hiện có: lõi CTDL + bản console).
+> README đang được viết dần theo từng giai đoạn (hiện có: lõi CTDL, bản console, API server).
 
 ## Yêu cầu
 - Windows, `g++` (MinGW-W64 13.2.0 trở lên), hỗ trợ C++17.
@@ -23,6 +23,22 @@ Từ PowerShell (nếu đã cho phép chạy script) có thể gõ trực tiếp
 |---|---|
 | `build.ps1` | Build `build/app.exe` — chương trình console (bật `-Wall -Wextra -Werror`) |
 | `build_test.ps1` | Build `build/test.exe` và chạy unit test của lõi (CTDL, mượn/trả, hàng đợi, đồ thị, Storage, dữ liệu mẫu) |
+| `build_server.ps1` | Build `build/LabApp.exe` — API server + giao diện web (cpp-httplib, nlohmann/json trong `third_party/`) |
+| `tests\api_smoke.ps1` | Chạy LabApp trên bản sao dữ liệu mẫu (thư mục tạm) và gọi thử mọi endpoint theo kịch bản demo |
+
+### Chạy LabApp (API + web)
+
+```powershell
+.\build\LabApp.exe                  # mở trình duyệt vào http://127.0.0.1:8080
+.\build\LabApp.exe --no-browser     # không tự mở trình duyệt
+.\build\LabApp.exe --port 9000      # đổi cổng (bận thì tự thử tới 9009)
+.\build\LabApp.exe --seed           # sinh lại dữ liệu mẫu, GHI ĐÈ data/ (không hỏi lại)
+```
+
+- Tự tìm thư mục `web/` (và `data/` cạnh nó) ở thư mục hiện tại, cạnh exe hoặc thư mục cha của exe,
+  nên chạy được từ bất kỳ đâu. Chưa có dữ liệu thì tự sinh dữ liệu mẫu.
+- Chỉ lắng nghe `127.0.0.1` (Windows Firewall không hỏi). Nhấn Ctrl+C để dừng; dữ liệu đã tự lưu sau mỗi thao tác.
+- Hợp đồng API: `docs/api.md`. Không chạy đồng thời `app.exe` và `LabApp.exe` trên cùng `data/` (hai bên sẽ ghi đè nhau).
 
 ### Chạy chương trình console
 

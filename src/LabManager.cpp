@@ -179,6 +179,7 @@ BorrowResult LabManager::borrowDevices(const std::string& studentId, const std::
 
     // Lượt 1 (chỉ đọc): gom mọi món không mượn được, chưa đổi dữ liệu nào (M6).
     std::string notFound, duplicated, outOfStock;
+    DoublyLinkedList<std::string> unavailable; // mã các món hết hàng, trả kèm lỗi OutOfStock
     int seen = 0;
     for (const std::string& id : deviceIds) {
         int sameBefore = 0; // đã xuất hiện ở vị trí trước trong phiếu?
@@ -197,12 +198,16 @@ BorrowResult LabManager::borrowDevices(const std::string& studentId, const std::
             appendItem(notFound, id);
         } else if (d->available <= 0) {
             appendItem(outOfStock, id + (d->status() == DeviceStatus::Maintenance ? " (đang bảo trì)" : ""));
+            unavailable.pushBack(id);
         }
     }
     if (!notFound.empty()) return fail(ErrorCode::DeviceNotFound, "Không tìm thấy thiết bị: " + notFound);
     if (!duplicated.empty())
         return fail(ErrorCode::DuplicateDevice, "Thiết bị trùng trong phiếu (mỗi loại tối đa 1 đơn vị): " + duplicated);
-    if (!outOfStock.empty()) return fail(ErrorCode::OutOfStock, "Hết hàng: " + outOfStock);
+    if (!outOfStock.empty()) {
+        result.unavailableIds = unavailable;
+        return fail(ErrorCode::OutOfStock, "Hết hàng: " + outOfStock);
+    }
 
     // Lượt 2: mọi món đều mượn được — cập nhật số lượng và tạo phiếu.
     BorrowRecord rec;
@@ -284,6 +289,87 @@ OverdueInfo LabManager::previewOverdue(const BorrowRecord& record) const {
     info.lateDays = overdueDays(record.dueHour, clock_.now());
     info.fine = calcFine(info.lateDays, record.deviceIds.size());
     return info;
+}
+
+bool LabManager::isOverdue(const BorrowRecord& record) const {
+    return record.isOpen() && clock_.now() > record.dueHour;
+}
+
+// ============================ Thống kê / tổng quan ============================
+
+LabStats LabManager::getStats() const {
+    LabStats s;
+    s.deviceCount = devices_.size();
+    for (const Device& d : devices_) {
+        s.totalUnits += d.total;
+        s.available += d.available;
+        s.borrowed += d.borrowed;
+        s.onHold += d.onHold;
+        s.maintenance += d.maintenance;
+        if (d.status() == DeviceStatus::Maintenance) ++s.maintenanceDevices;
+        s.waitingPeople += d.queue.size();
+        d.queue.forEach([&s](const Reservation& r) {
+            if (r.isHolding()) ++s.holdingPeople;
+        });
+    }
+    for (const BorrowRecord& r : records_) {
+        if (!r.isOpen()) continue;
+        ++s.openRecords;
+        if (isOverdue(r)) {
+            ++s.overdueRecords;
+            s.pendingFines += previewOverdue(r).fine;
+        }
+    }
+    return s;
+}
+
+DoublyLinkedList<DeviceRank> LabManager::topBorrowedDevices(int k) const {
+    DoublyLinkedList<DeviceRank> result;
+    // a "đứng trước" b trong bảng xếp hạng: mượn nhiều hơn, hoà thì mã nhỏ hơn (mã không trùng → thứ tự toàn phần).
+    auto ranksBefore = [](const Device& a, const Device& b) {
+        return a.timesBorrowed > b.timesBorrowed || (a.timesBorrowed == b.timesBorrowed && a.id < b.id);
+    };
+    const Device* prev = nullptr; // thiết bị đã chọn ở lượt trước
+    for (int round = 0; round < k; ++round) {
+        const Device* best = nullptr;
+        for (const Device& d : devices_) {
+            if (d.timesBorrowed <= 0) continue;
+            if (prev != nullptr && !ranksBefore(*prev, d)) continue; // chỉ xét thiết bị đứng sau prev
+            if (best == nullptr || ranksBefore(d, *best)) best = &d;
+        }
+        if (best == nullptr) break;
+        result.pushBack(DeviceRank{best->id, best->name, best->timesBorrowed});
+        prev = best;
+    }
+    return result;
+}
+
+long long LabManager::holdHoursLeft(const Reservation& r) const {
+    if (!r.isHolding()) return -1;
+    long long left = r.holdUntil - clock_.now();
+    return left > 0 ? left : 0;
+}
+
+DoublyLinkedList<HoldInfo> LabManager::expiringHolds(long long withinHours) const {
+    DoublyLinkedList<HoldInfo> result;
+    for (const Device& d : devices_) {
+        d.queue.forEach([&](const Reservation& r) {
+            if (!r.isHolding()) return;
+            long long left = holdHoursLeft(r);
+            if (left >= withinHours) return;
+            HoldInfo h;
+            h.deviceId = d.id;
+            h.deviceName = d.name;
+            h.studentId = r.studentId;
+            h.studentName = r.studentName;
+            h.holdUntil = r.holdUntil;
+            h.hoursLeft = left;
+            h.missCount = r.missCount;
+            // Duyệt thiết bị theo mã tăng dần + chèn ổn định → hoà thời gian thì mã tăng.
+            result.insertSorted(h, [](const HoldInfo& a, const HoldInfo& b) { return a.hoursLeft < b.hoursLeft; });
+        });
+    }
+    return result;
 }
 
 bool LabManager::advanceTime(long long hours) {

@@ -102,6 +102,9 @@ struct OpResult {
 struct BorrowResult : OpResult {
     std::string recordId;
     long long dueHour = 0;
+    // Khi code == OutOfStock: mã các thiết bị không còn đơn vị sẵn sàng (hết hàng hoặc đang bảo trì),
+    // để giao diện mời đăng ký hàng đợi đúng món (M6).
+    DoublyLinkedList<std::string> unavailableIds;
 };
 
 struct ReturnResult : OpResult {
@@ -125,6 +128,40 @@ struct Companion {
 struct OverdueInfo {
     int lateDays = 0;
     long long fine = 0;
+};
+
+// Số liệu tổng quan (màn hình Tổng quan). Mọi con số tính theo đồng hồ giả lập hiện tại.
+struct LabStats {
+    int deviceCount = 0;        // số loại thiết bị
+    int totalUnits = 0;         // tổng số đơn vị
+    int available = 0;          // tổng đơn vị sẵn sàng
+    int borrowed = 0;           // tổng đơn vị đang mượn
+    int onHold = 0;             // tổng đơn vị đang giữ cho hàng đợi
+    int maintenance = 0;        // tổng đơn vị bảo trì
+    int maintenanceDevices = 0; // số thiết bị có trạng thái Bảo trì (M1)
+    int openRecords = 0;        // phiếu đang mở
+    int overdueRecords = 0;     // phiếu đang mở đã quá hạn (M19)
+    int waitingPeople = 0;      // tổng số người trong mọi hàng đợi
+    int holdingPeople = 0;      // số người đang được giữ hàng
+    long long pendingFines = 0; // tổng tiền phạt tạm tính của phiếu đang quá hạn (đồng)
+};
+
+// Một thiết bị trong bảng xếp hạng mượn nhiều nhất.
+struct DeviceRank {
+    std::string deviceId;
+    std::string name;
+    int timesBorrowed = 0;
+};
+
+// Một người đang được giữ hàng, kèm thời gian còn lại để đến nhận.
+struct HoldInfo {
+    std::string deviceId;
+    std::string deviceName;
+    std::string studentId;
+    std::string studentName;
+    long long holdUntil = 0;
+    long long hoursLeft = 0; // holdUntil - now (> 0 vì lượt giữ hết hạn đã được xử lý)
+    int missCount = 0;
 };
 
 #endif // MODELS_H

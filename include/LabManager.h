@@ -115,6 +115,25 @@ public:
     // Phiếu đã trả: giá trị đã chốt. Phiếu đang mở: tạm tính theo đồng hồ hiện tại (M19). O(k)
     OverdueInfo previewOverdue(const BorrowRecord& record) const;
 
+    // Phiếu đang mở và giờ hiện tại > hạn trả (đúng bằng hạn thì chưa quá hạn, M19). O(1)
+    bool isOverdue(const BorrowRecord& record) const;
+
+    // ---------------- Thống kê / tổng quan (giai đoạn 6) ----------------
+    // Số liệu tổng hợp cho màn hình Tổng quan. O(n·q + m·k), q = độ dài hàng đợi
+    LabStats getStats() const;
+
+    // k thiết bị được mượn nhiều nhất (timesBorrowed giảm, hoà thì mã tăng), bỏ thiết bị chưa mượn lần nào.
+    // Chọn k lần trên danh mục (mỗi lần lấy thiết bị tốt nhất đứng sau thiết bị đã chọn trước theo thứ tự trên).
+    // k <= 0 → rỗng. O(k·n)
+    DoublyLinkedList<DeviceRank> topBorrowedDevices(int k) const;
+
+    // Thời gian còn lại (giờ) để người đang giữ đến nhận: max(0, holdUntil - now); -1 nếu chưa được giữ. O(1)
+    long long holdHoursLeft(const Reservation& r) const;
+
+    // Mọi người đang giữ hàng còn < withinHours giờ để nhận, sắp theo thời gian còn lại tăng dần
+    // (hoà thì mã thiết bị tăng; chèn có thứ tự insertSorted). O(n·q + h²), h = số kết quả
+    DoublyLinkedList<HoldInfo> expiringHolds(long long withinHours) const;
+
     // ---------------- Thời gian ----------------
     long long now() const { return clock_.now(); } // O(1)
     bool advanceTime(long long hours);             // tua +hours giờ rồi expireReservations(); false nếu hours <= 0
