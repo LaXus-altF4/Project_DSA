@@ -1,6 +1,7 @@
 #ifndef GRAPH_H
 #define GRAPH_H
 
+#include <functional>
 #include <string>
 #include "DoublyLinkedList.h"
 
@@ -59,6 +60,14 @@ public:
     // Chọn k lần: lần thứ i lấy cạnh tốt nhất trong số các cạnh đứng sau cạnh đã chọn ở lần i-1.
     // Đỉnh không tồn tại hoặc k <= 0 → danh sách rỗng. O(V + k·d), bộ nhớ phụ O(1) ngoài kết quả
     DoublyLinkedList<Neighbor> topNeighbors(const std::string& id, int k = 3) const;
+
+    // Như trên nhưng chỉ xét láng giềng u có accept(u) == true (VD bỏ thiết bị đang bảo trì).
+    // Cạnh bị lọc không bao giờ được chọn nên thứ tự còn lại không đổi. O(V + k·d·A), A = chi phí accept
+    DoublyLinkedList<Neighbor> topNeighbors(const std::string& id, int k,
+                                            const std::function<bool(const std::string&)>& accept) const;
+
+    // Toàn bộ láng giềng của id theo thứ tự gợi ý (trọng số giảm, hoà thì mã tăng). O(V + d²)
+    DoublyLinkedList<Neighbor> sortedNeighbors(const std::string& id) const;
 
     // Gọi fn(id) cho từng đỉnh. O(V)
     template <class Fn>

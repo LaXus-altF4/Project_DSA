@@ -58,7 +58,7 @@
 - **M16.** Có thao tác huỷ đăng ký hàng đợi; nếu người huỷ đang giữ thì chuyển quyền cho người kế.
 
 *Đồ thị & khác*
-- **M17. Top 3:** trọng số giảm dần, hoà thì mã thiết bị tăng dần; ít hơn 3 láng giềng thì trả ít hơn. Vẫn gợi ý thiết bị đang bảo trì/hết hàng nhưng kèm trạng thái.
+- **M17. Top 3:** trọng số giảm dần, hoà thì mã thiết bị tăng dần; ít hơn 3 láng giềng thì trả ít hơn. Top 3 bỏ qua thiết bị đang Bảo trì (lấy láng giềng kế tiếp); thiết bị hết hàng vẫn gợi ý kèm cờ hết hàng. Chức năng xem toàn bộ láng giềng thì hiện cả thiết bị bảo trì kèm trạng thái.
 - **M18. Đồng hồ:** `Clock` đếm giờ kể từ 01/01/2026 00:00. Giờ hiện tại và bộ đếm mã phiếu lưu trong `data/meta.csv`.
 - **M19.** Phiếu đang mở đã quá hạn: hiển thị số ngày quá hạn và tiền phạt tạm tính theo đồng hồ hiện tại; tiền phạt chốt lúc trả.
 

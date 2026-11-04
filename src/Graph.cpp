@@ -83,6 +83,17 @@ void Graph::addCoBorrow(const DoublyLinkedList<std::string>& ids) {
 }
 
 DoublyLinkedList<Neighbor> Graph::topNeighbors(const std::string& id, int k) const {
+    return topNeighbors(id, k, nullptr);
+}
+
+DoublyLinkedList<Neighbor> Graph::sortedNeighbors(const std::string& id) const {
+    const Vertex* v = findVertex(id);
+    if (v == nullptr) return DoublyLinkedList<Neighbor>();
+    return topNeighbors(id, v->adj.size(), nullptr);
+}
+
+DoublyLinkedList<Neighbor> Graph::topNeighbors(const std::string& id, int k,
+                                               const std::function<bool(const std::string&)>& accept) const {
     DoublyLinkedList<Neighbor> result;
     const Vertex* v = findVertex(id);
     if (v == nullptr || k <= 0) return result;
@@ -91,6 +102,7 @@ DoublyLinkedList<Neighbor> Graph::topNeighbors(const std::string& id, int k) con
     for (int round = 0; round < k; ++round) {
         const Edge* best = nullptr;
         for (const Edge& e : v->adj) {
+            if (accept && !accept(e.to)) continue; // bị lọc: không bao giờ được chọn
             // Chỉ xét cạnh đứng sau cạnh đã chọn (tức là chưa được chọn).
             if (last != nullptr && !ranksBefore(*last, e)) continue;
             if (best == nullptr || ranksBefore(e, *best)) best = &e;

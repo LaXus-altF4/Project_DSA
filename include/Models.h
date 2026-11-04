@@ -108,6 +108,18 @@ struct ReturnResult : OpResult {
     long long fine = 0;
 };
 
+// Một thiết bị gợi ý mượn kèm (kết quả của suggestCompanions / allCompanions).
+struct Companion {
+    std::string deviceId;
+    std::string name;
+    int weight = 0; // số lần mượn cùng phiếu
+    DeviceStatus status = DeviceStatus::Available;
+    int available = 0;
+
+    // Hết hàng: không còn đơn vị sẵn sàng nhưng không phải đang bảo trì toàn bộ.
+    bool outOfStock() const { return status == DeviceStatus::Borrowed; }
+};
+
 // Số ngày quá hạn và tiền phạt tạm tính của một phiếu (M19).
 struct OverdueInfo {
     int lateDays = 0;

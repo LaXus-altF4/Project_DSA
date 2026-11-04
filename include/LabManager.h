@@ -4,6 +4,7 @@
 #include <string>
 #include "Clock.h"
 #include "DoublyLinkedList.h"
+#include "Graph.h"
 #include "LinkedQueue.h"
 #include "Models.h"
 
@@ -17,6 +18,7 @@ private:
     DoublyLinkedList<BorrowRecord> records_; // theo thứ tự tạo phiếu
     int nextRecordNo_;                     // bộ đếm mã phiếu (PM0001, PM0002, ...)
     LinkedQueue<Notification> notifications_; // sự kiện chờ giao diện lấy ra
+    Graph graph_;                          // đồ thị mượn kèm: đỉnh = thiết bị, trọng số = số phiếu chứa cả hai
 
     Device* findDeviceMutable(const std::string& id); // O(n)
     static bool isValidText(const std::string& s);    // không rỗng, không có , | \n \r (M5). O(len)
@@ -107,6 +109,20 @@ public:
     // ---------------- Thời gian ----------------
     long long now() const { return clock_.now(); } // O(1)
     bool advanceTime(long long hours);             // tua +hours giờ rồi expireReservations(); false nếu hours <= 0
+
+    // ---------------- Gợi ý mượn kèm (giai đoạn 4) ----------------
+    // Top k thiết bị thường mượn kèm id (M17): trọng số giảm, hoà thì mã tăng; bỏ qua thiết bị đang
+    // Bảo trì (lấy láng giềng kế tiếp), thiết bị hết hàng vẫn hiện (Companion::outOfStock). Mã lạ → rỗng.
+    // O(V + k·d·n)
+    DoublyLinkedList<Companion> suggestCompanions(const std::string& id, int k = 3) const;
+
+    // Toàn bộ láng giềng của id theo thứ tự trên, gồm cả thiết bị bảo trì (kèm trạng thái). O(V + d² + d·n)
+    DoublyLinkedList<Companion> allCompanions(const std::string& id) const;
+
+    // Số lần hai thiết bị được mượn cùng phiếu; 0 nếu chưa bao giờ. O(V + d)
+    int coBorrowCount(const std::string& a, const std::string& b) const { return graph_.weight(a, b); }
+
+    const Graph& graph() const { return graph_; } // chỉ đọc, để giao diện duyệt đồ thị
 
     // ---------------- Bất biến ----------------
     // Kiểm tra: cấu trúc DSLK, mã thiết bị không trùng và tăng dần, available+borrowed+onHold+maintenance==total,

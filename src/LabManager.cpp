@@ -88,6 +88,7 @@ OpResult LabManager::addDevice(const std::string& id, const std::string& name, i
     d.total = total;
     d.available = total;
     devices_.insertSorted(d, [](const Device& a, const Device& b) { return a.id < b.id; });
+    graph_.addVertex(id);
     debugCheck();
     return OpResult();
 }
@@ -197,6 +198,7 @@ BorrowResult LabManager::borrowDevices(const std::string& studentId, const std::
         ++d->timesBorrowed;
         rec.deviceIds.pushBack(id);
     }
+    graph_.addCoBorrow(rec.deviceIds); // +1 cho mọi cặp trong phiếu: k(k-1)/2 cạnh (phiếu 1 món: không có cặp)
     records_.pushBack(rec);
 
     result.recordId = rec.recordId;
@@ -377,10 +379,52 @@ void LabManager::expireReservations() {
     }
 }
 
+// ============================ Gợi ý mượn kèm ============================
+
+namespace {
+
+Companion makeCompanion(const Neighbor& n, const Device& d) {
+    Companion c;
+    c.deviceId = d.id;
+    c.name = d.name;
+    c.weight = n.weight;
+    c.status = d.status();
+    c.available = d.available;
+    return c;
+}
+
+} // namespace
+
+DoublyLinkedList<Companion> LabManager::suggestCompanions(const std::string& id, int k) const {
+    DoublyLinkedList<Companion> result;
+    auto notInMaintenance = [this](const std::string& otherId) {
+        const Device* d = findDevice(otherId);
+        return d != nullptr && d->status() != DeviceStatus::Maintenance;
+    };
+    for (const Neighbor& n : graph_.topNeighbors(id, k, notInMaintenance)) {
+        const Device* d = findDevice(n.deviceId);
+        if (d != nullptr) result.pushBack(makeCompanion(n, *d));
+    }
+    return result;
+}
+
+DoublyLinkedList<Companion> LabManager::allCompanions(const std::string& id) const {
+    DoublyLinkedList<Companion> result;
+    for (const Neighbor& n : graph_.sortedNeighbors(id)) {
+        const Device* d = findDevice(n.deviceId);
+        if (d != nullptr) result.pushBack(makeCompanion(n, *d));
+    }
+    return result;
+}
+
 // ============================ Bất biến ============================
 
 bool LabManager::checkInvariants() const {
     if (!devices_.checkIntegrity() || !records_.checkIntegrity()) return false;
+    // Đồ thị: cấu trúc hợp lệ, mỗi thiết bị đúng một đỉnh.
+    if (!graph_.checkIntegrity() || graph_.vertexCount() != devices_.size()) return false;
+    for (const Device& d : devices_)
+        if (!graph_.hasVertex(d.id)) return false;
 
     const Device* prev = nullptr;
     for (const Device& d : devices_) {

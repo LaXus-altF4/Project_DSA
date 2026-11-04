@@ -1,4 +1,4 @@
-// Unit test cho lõi: giai đoạn 1 (DoublyLinkedList, LinkedQueue, Graph), 2 (mượn/trả), 3 (Reservation Queue).
+// Unit test cho lõi: giai đoạn 1 (DoublyLinkedList, LinkedQueue, Graph), 2 (mượn/trả), 3 (Reservation Queue), 4 (gợi ý mượn kèm).
 // Không dùng framework: macro CHECK ghi lại lỗi và chạy tiếp; cuối chương trình trả mã thoát != 0 nếu có lỗi.
 // File test được dùng iostream (lõi thì không).
 #include <initializer_list>
@@ -872,6 +872,120 @@ static void testUpdateDevice() {
     CHECK(lab.checkInvariants());
 }
 
+// ============================ Gợi ý mượn kèm (giai đoạn 4) ============================
+
+// "CTL:5,LAP:2" — thêm hậu tố "!" nếu hết hàng, "#" nếu đang bảo trì.
+static std::string joinCompanions(const DoublyLinkedList<Companion>& list) {
+    std::string s;
+    for (const Companion& c : list) {
+        if (!s.empty()) s += ",";
+        s += c.deviceId + ":" + std::to_string(c.weight);
+        if (c.status == DeviceStatus::Maintenance) s += "#";
+        else if (c.outOfStock()) s += "!";
+    }
+    return s;
+}
+
+static void testGraphFilteredNeighbors() {
+    std::cout << "Graph: topNeighbors có bộ lọc, sortedNeighbors\n";
+    Graph g;
+    for (const char* v : {"VR", "CTL", "CAM", "MIC", "LAP"}) g.addVertex(v);
+    for (int i = 0; i < 5; ++i) g.addCoBorrow(ids({"VR", "CTL"}));
+    for (int i = 0; i < 3; ++i) g.addCoBorrow(ids({"VR", "LAP"}));
+    g.addCoBorrow(ids({"VR", "MIC"}));
+    g.addCoBorrow(ids({"VR", "CAM"}));
+
+    auto notLap = [](const std::string& id) { return id != "LAP"; };
+    CHECK(joinNeighbors(g.topNeighbors("VR", 3, notLap)) == "CTL:5,CAM:1,MIC:1"); // LAP bị bỏ, lấp bằng CAM
+    CHECK(joinNeighbors(g.topNeighbors("VR", 3, nullptr)) == "CTL:5,LAP:3,CAM:1"); // không lọc
+    CHECK(joinNeighbors(g.topNeighbors("VR", 10, notLap)) == "CTL:5,CAM:1,MIC:1");
+    CHECK(g.topNeighbors("VR", 3, [](const std::string&) { return false; }).empty());
+    CHECK(joinNeighbors(g.sortedNeighbors("VR")) == "CTL:5,LAP:3,CAM:1,MIC:1");
+    CHECK(g.sortedNeighbors("NONE").empty() && g.sortedNeighbors("CTL").size() == 1);
+}
+
+static void testCompanionSuggestions() {
+    std::cout << "Gợi ý: cập nhật đồ thị theo phiếu, top 3, bỏ bảo trì, đánh dấu hết hàng\n";
+    LabManager lab;
+    CHECK(lab.addDevice("VR", "Kinh VR", 10).ok());
+    CHECK(lab.addDevice("CTL", "Tay cam", 5).ok());
+    CHECK(lab.addDevice("LAP", "Laptop", 2).ok());
+    CHECK(lab.addDevice("CAM", "Camera", 1).ok());
+    CHECK(lab.addDevice("MIC", "Micro", 2).ok());
+    CHECK(lab.addDevice("TRI", "Chan may", 1).ok());
+    CHECK(lab.graph().vertexCount() == 6 && lab.graph().edgeCount() == 0);
+    CHECK(lab.suggestCompanions("VR").empty()); // chưa có lịch sử
+
+    // PM0001–PM0008.
+    for (int i = 0; i < 3; ++i) CHECK(lab.borrowDevices("S1", "An", ids({"VR", "CTL"}), 7).ok());
+    for (int i = 0; i < 2; ++i) CHECK(lab.borrowDevices("S1", "An", ids({"VR", "CTL", "LAP"}), 7).ok()); // k=3 → 3 cặp
+    CHECK(lab.borrowDevices("S2", "Binh", ids({"VR", "CAM"}), 7).ok());
+    CHECK(lab.borrowDevices("S2", "Binh", ids({"VR", "MIC"}), 7).ok());
+    CHECK(lab.borrowDevices("S2", "Binh", ids({"VR", "MIC", "TRI"}), 7).ok());
+
+    CHECK(lab.coBorrowCount("VR", "CTL") == 5 && lab.coBorrowCount("CTL", "VR") == 5);
+    CHECK(lab.coBorrowCount("VR", "LAP") == 2 && lab.coBorrowCount("CTL", "LAP") == 2);
+    CHECK(lab.coBorrowCount("VR", "MIC") == 2 && lab.coBorrowCount("VR", "CAM") == 1);
+    CHECK(lab.coBorrowCount("VR", "TRI") == 1 && lab.coBorrowCount("MIC", "TRI") == 1);
+    CHECK(lab.coBorrowCount("CAM", "TRI") == 0 && lab.coBorrowCount("VR", "NONE") == 0);
+    CHECK(lab.graph().edgeCount() == 7);
+
+    // Phiếu thất bại (CAM hết hàng) không đổi đồ thị (M6).
+    CHECK(lab.borrowDevices("S3", "Chi", ids({"VR", "CAM"}), 7).code == ErrorCode::OutOfStock);
+    CHECK(lab.coBorrowCount("VR", "CAM") == 1 && lab.graph().edgeCount() == 7);
+
+    // Top 3: hoà 2-2 thì LAP < MIC theo mã. TRI (1) bị loại.
+    CHECK(joinCompanions(lab.suggestCompanions("VR")) == "CTL:5!,LAP:2!,MIC:2!"); // cả ba đang mượn hết nên đều hết hàng
+    CHECK(joinCompanions(lab.suggestCompanions("VR", 10)) == "CTL:5!,LAP:2!,MIC:2!,CAM:1!,TRI:1!");
+    CHECK(joinCompanions(lab.suggestCompanions("CAM")) == "VR:1");
+    CHECK(lab.suggestCompanions("NONE").empty());
+    DoublyLinkedList<Companion> top = lab.suggestCompanions("VR"); // giữ danh sách sống lâu hơn tham chiếu
+    const Companion& first = *top.begin();
+    CHECK(first.deviceId == "CTL" && first.name == "Tay cam" && first.status == DeviceStatus::Borrowed);
+
+    // Trả phiếu không đổi trọng số (lịch sử đã tính).
+    CHECK(lab.returnRecord("PM0004").ok() && lab.returnRecord("PM0005").ok());
+    CHECK(lab.coBorrowCount("VR", "CTL") == 5);
+
+    // LAP về hết bảo trì → bị bỏ khỏi top 3, CAM (hết hàng) lấp chỗ; "xem tất cả" vẫn có LAP kèm cờ bảo trì.
+    CHECK(lab.sendToMaintenance("LAP", 2).ok() && lab.findDevice("LAP")->status() == DeviceStatus::Maintenance);
+    CHECK(joinCompanions(lab.suggestCompanions("VR")) == "CTL:5,MIC:2!,CAM:1!"); // CTL còn 2 cái sau khi trả
+    CHECK(joinCompanions(lab.allCompanions("VR")) == "CTL:5,LAP:2#,MIC:2!,CAM:1!,TRI:1!");
+    CHECK(joinCompanions(lab.allCompanions("CTL")) == "VR:5,LAP:2#");
+    CHECK(lab.allCompanions("NONE").empty());
+
+    // Phiếu 1 món (mượn thẳng) không cộng cạnh; hết hàng CTL thì CTL vẫn đứng đầu, kèm cờ hết hàng.
+    CHECK(lab.borrowDevices("S4", "Dung", ids({"CTL"}), 7).ok() && lab.borrowDevices("S4", "Dung", ids({"CTL"}), 7).ok());
+    CHECK(lab.findDevice("CTL")->available == 0 && lab.graph().edgeCount() == 7);
+    CHECK(joinCompanions(lab.suggestCompanions("VR")) == "CTL:5!,MIC:2!,CAM:1!");
+
+    // Nhận hàng đặt trước tạo phiếu 1 món: không cộng cạnh (M13).
+    CHECK(lab.reserveDevice("S5", "Em", "CTL").ok());
+    CHECK(lab.returnRecord("PM0001").ok()); // trả 1 CTL (cùng VR) → S5 được giữ
+    CHECK(lab.claimReservation("S5", "CTL", 7).ok());
+    CHECK(lab.coBorrowCount("VR", "CTL") == 5 && lab.graph().edgeCount() == 7);
+
+    // Kiểm chéo: đếm lại từ lịch sử phiếu, mọi cặp thiết bị phải khớp đồ thị.
+    bool allMatch = true;
+    lab.forEachDevice([&](const Device& a) {
+        lab.forEachDevice([&](const Device& b) {
+            if (!(a.id < b.id)) return;
+            int count = 0;
+            lab.forEachRecord([&](const BorrowRecord& r) {
+                bool hasA = false, hasB = false;
+                for (const std::string& id : r.deviceIds) {
+                    if (id == a.id) hasA = true;
+                    if (id == b.id) hasB = true;
+                }
+                if (hasA && hasB) ++count;
+            });
+            if (count != lab.coBorrowCount(a.id, b.id)) allMatch = false;
+        });
+    });
+    CHECK(allMatch);
+    CHECK(lab.checkInvariants());
+}
+
 int main() {
 #ifdef _WIN32
     SetConsoleOutputCP(65001);
@@ -909,6 +1023,9 @@ int main() {
     testMultiHold();
     testFinishMaintenanceServesQueue();
     testUpdateDevice();
+
+    testGraphFilteredNeighbors();
+    testCompanionSuggestions();
 
     std::cout << "\n" << (g_checks - g_failures) << "/" << g_checks << " kiểm tra đạt";
     if (g_failures == 0) {

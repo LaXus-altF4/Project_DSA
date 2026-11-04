@@ -40,3 +40,14 @@ Tệp: `include/Models.h` (`Reservation`, `Notification`), `include/LabManager.h
 - **`expireReservations()`** chạy sau mỗi lần tua đồng hồ. Chỉ cần nhìn đầu hàng vì hạn giữ không giảm dọc theo đoạn đầu (bất biến được kiểm tra). Lỡ hạn thì `missCount++`; đạt 2 thì `dequeue` (loại hẳn), chưa đạt thì `moveFrontToBack()` (O(1), nối lại con trỏ). Sau đó `serveQueue` tính hạn từ `holdUntil` cũ (M15), nên tua nhiều giờ vẫn đúng dây chuyền. Hàng chỉ còn một người thì tự được giữ lại 24h mới (M14); hàng rỗng thì đơn vị ở lại `available`. Điều kiện hết hạn là `holdUntil <= now`.
 - **`claimReservation`** gỡ người giữ khỏi hàng bằng `removeFirst` (O(q), kể cả khi không đứng đầu), tạo phiếu 1 thiết bị, không cộng cạnh đồ thị (M13). **`updateDevice`** (M3) đặt `available = newTotal - borrowed - onHold - maintenance`, báo lỗi nếu âm.
 - **Bất biến mới:** `onHold` bằng số người đang giữ; người giữ là đoạn đầu hàng; `missCount < 2`; không trùng sinh viên trong một hàng; còn người chờ chưa giữ thì `available == 0`.
+
+## Giai đoạn 4 — Graph gợi ý mượn kèm
+
+Tệp: `include/Graph.h`, `src/Graph.cpp` (thêm bộ lọc), `include/Models.h` (`Companion`), `include/LabManager.h`, `src/LabManager.cpp`; test thêm 51 kiểm tra (tổng 389, đạt hết).
+
+- **Cập nhật đồ thị:** `LabManager` sở hữu một `Graph`. `addDevice` thêm đỉnh. `borrowDevices` gọi `addCoBorrow(rec.deviceIds)` ở lượt 2, sau khi chắc chắn phiếu hợp lệ, nên phiếu thất bại (M6) không chạm đồ thị. Phiếu k thiết bị cộng +1 cho k(k−1)/2 cặp; phiếu 1 món (kể cả `claimReservation`, M13) không có cặp nào. Trả phiếu không đổi trọng số vì đồ thị ghi lịch sử mượn.
+- **Top 3 (`suggestCompanions`):** dùng lại `Graph::topNeighbors` kèm bộ lọc `accept` để bỏ thiết bị Bảo trì (`maintenance == total`). Cạnh bị lọc không bao giờ được chọn nên thứ tự (trọng số giảm, hoà thì mã tăng) giữ nguyên và láng giềng kế tiếp tự lấp chỗ. Độ phức tạp O(V + k·d·n): mỗi lần xét một cạnh phải tra thiết bị trong DSLK, O(n). Thiết bị hết hàng (`status == Borrowed`) vẫn hiện, kèm `Companion::outOfStock()`.
+- **Xem toàn bộ láng giềng (`allCompanions`):** `Graph::sortedNeighbors` chọn k = bậc lần, O(V + d²), không lọc; thiết bị bảo trì hiện kèm trạng thái để demo đồ thị.
+- **Đổi quy ước M17:** trước đây top 3 vẫn gồm thiết bị bảo trì; nay bỏ qua theo yêu cầu giai đoạn 4 (đã cập nhật AGENTS.md).
+- **Bất biến mới:** `checkInvariants()` kiểm tra `graph_.checkIntegrity()`, số đỉnh bằng số thiết bị và mỗi thiết bị có đúng một đỉnh. Trọng số cạnh được kiểm chéo trong test bằng cách đếm lại từ lịch sử phiếu.
+- **Chưa làm:** xoá thiết bị (M4, gỡ đỉnh) và dựng lại đồ thị khi nạp CSV — để giai đoạn 5.
