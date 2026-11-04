@@ -33,6 +33,35 @@
 - **Tiền phạt quá hạn:** 36.000 đồng/ngày quá hạn, mỗi thiết bị tính riêng (phiếu 2 thiết bị trễ 3 ngày = 2 × 3 × 36.000 = 216.000đ). Trễ chưa tròn ngày vẫn tính 1 ngày. Lưu tiền bằng `long long` (đơn vị đồng), không dùng `double`.
 - **Không xoá cứng** thiết bị còn phiếu mượn hoặc còn người trong hàng đợi; chỉ được chuyển sang trạng thái Bảo trì.
 
+**Bổ sung (chốt ngày 04/11/2026, mã M1–M19):**
+
+*Thiết bị & trạng thái*
+- **M1. Trạng thái suy ra từ số lượng:** `maintenance == total` → Bảo trì; `available > 0` → Sẵn sàng; còn lại → Đang mượn. `onHold` là con số (hiển thị trên thanh tỷ lệ), không phải trạng thái.
+- **M2. Bảo trì theo số đơn vị:** `sendToMaintenance(id, qty)` chỉ lấy từ `available`; `finishMaintenance(id, qty)` trả về `available` rồi phục vụ hàng đợi.
+- **M3. Sửa `total`:** chỉ cho phép `newTotal ≥ borrowed + onHold + maintenance`; tăng `total` thì phục vụ hàng đợi.
+- **M4. Xoá thiết bị** (khi đủ điều kiện): xoá cả đỉnh và các cạnh trong Graph; phiếu lịch sử giữ nguyên mã thiết bị, hiển thị "đã xoá".
+- **M5. Mã và tên** không được chứa `,`, `|` hay xuống dòng (lõi kiểm tra), để CSV không cần quoting.
+
+*Mượn / trả*
+- **M6. Phiếu nguyên tử:** phiếu nhiều thiết bị mà có món hết hàng → thất bại cả phiếu, thông điệp liệt kê món hết; không cập nhật đồ thị.
+- **M7.** Mỗi thiết bị tối đa 1 đơn vị trong một phiếu; không trùng mã trong phiếu.
+- **M8. Trả cả phiếu** một lần (không trả từng món).
+- **M9.** Số ngày mượn hợp lệ: 1–30. Không giới hạn số phiếu của một sinh viên.
+- **M10.** Không có bảng sinh viên riêng; thông tin sinh viên (MSSV, họ tên) nằm trong phiếu và trong hàng đợi.
+
+*Hàng đợi*
+- **M11. Giữ hàng nhiều người:** mỗi đơn vị rảnh được giữ cho người *chưa được giữ* đứng đầu tiếp theo, nên có thể nhiều người cùng đang giữ; những người đang giữ luôn là một đoạn đầu của hàng.
+- **M12.** Không cho đặt trước khi `available > 0` (phải mượn trực tiếp). Một sinh viên không được đứng 2 lần trong cùng một hàng.
+- **M13. Nhận thiết bị (claim):** tạo phiếu 1 thiết bị; số ngày mượn nhập lúc nhận, mặc định 7, hợp lệ 1–30 như M9. Phiếu 1 món không cộng cạnh đồ thị.
+- **M14.** Người bị đẩy xuống cuối mà hàng chỉ còn mình họ thì được giữ lại 24h mới; lỡ lần thứ 2 thì bị loại, đơn vị trở về `available`.
+- **M15. Hết hạn dây chuyền:** khi tua nhiều giờ, người kế nhận quyền giữ tính từ thời điểm người trước hết hạn (`holdUntil` cũ), không phải từ "bây giờ"; lặp đến khi không còn ai hết hạn ≤ thời điểm hiện tại.
+- **M16.** Có thao tác huỷ đăng ký hàng đợi; nếu người huỷ đang giữ thì chuyển quyền cho người kế.
+
+*Đồ thị & khác*
+- **M17. Top 3:** trọng số giảm dần, hoà thì mã thiết bị tăng dần; ít hơn 3 láng giềng thì trả ít hơn. Vẫn gợi ý thiết bị đang bảo trì/hết hàng nhưng kèm trạng thái.
+- **M18. Đồng hồ:** `Clock` đếm giờ kể từ 01/01/2026 00:00. Giờ hiện tại và bộ đếm mã phiếu lưu trong `data/meta.csv`.
+- **M19.** Phiếu đang mở đã quá hạn: hiển thị số ngày quá hạn và tiền phạt tạm tính theo đồng hồ hiện tại; tiền phạt chốt lúc trả.
+
 ## 4. Kiến trúc & ràng buộc kỹ thuật
 ```
  ┌─────────────────────────────┐        ┌──────────────────────────────┐
@@ -63,7 +92,10 @@
 - **Tầng server** (`server/`): `cpp-httplib` + `nlohmann/json` (đều header-only, đặt trong `third_party/`). Tầng này được dùng STL thoải mái vì chỉ là lớp chuyển đổi, không chứa logic nghiệp vụ. Phục vụ luôn file tĩnh trong `web/`, nên chạy `LabApp.exe` là tự mở trình duyệt vào `http://localhost:8080`.
 - **Hợp đồng API** `docs/api.md`: mọi endpoint, request/response JSON mẫu, mã lỗi. Đây là ranh giới duy nhất giữa backend và web — đổi API thì phải cập nhật file này trước, rồi mới sửa server và web.
 - Web chạy **offline hoàn toàn** (lúc demo có thể không có mạng): không dùng CDN, mọi thư viện JS/CSS/font tải về để trong `web/vendor/`.
-- Lưu dữ liệu bằng CSV trong `data/`: đọc khi khởi động, ghi sau mỗi thao tác thay đổi.
+- Lưu dữ liệu bằng CSV trong `data/`: đọc khi khởi động, ghi sau mỗi thao tác thay đổi. Gồm 4 file: `devices.csv`, `borrow_records.csv`, `reservations.csv`, `meta.csv`.
+  Chỉ lưu dữ liệu gốc; những gì suy ra được thì tính lại khi nạp:
+  `available/borrowed/onHold` (từ phiếu đang mở và hàng đợi), **đồ thị mượn kèm và `timesBorrowed`** (không có `graph.csv`).
+  `Storage::load`: tạo đỉnh cho mọi thiết bị trong `devices.csv`, duyệt các phiếu để dựng lại cạnh (`addCoBorrow`) và đếm `timesBorrowed`; mã thiết bị đã xoá thì bỏ qua; cuối cùng gọi `checkInvariants()`.
 - Comment và chuỗi giao diện bằng tiếng Việt. **Tên class/hàm/biến/file bằng tiếng Anh, rõ nghĩa** (camelCase cho hàm/biến, PascalCase cho class), VD `borrowDevice()`, `returnDevice()`, `suggestCompanions()`, `dueDate`, `overdueDays`. Trạng thái: `enum class DeviceStatus { Available, Borrowed, Maintenance }`; JSON dùng chuỗi `"available" | "borrowed" | "maintenance"`, giao diện hiển thị tiếng Việt.
 - Mỗi hàm thao tác CTDL ghi Big-O trong comment.
 
@@ -85,7 +117,7 @@ server/       server_main.cpp  JsonMapper.{h,cpp}  Routes.{h,cpp}
 third_party/  httplib.h  json.hpp
 web/          index.html  css/  js/  assets/  vendor/
 tests/        test_main.cpp  (assert thuần)  +  api_smoke.ps1 (gọi thử API)
-data/         devices.csv  borrow_records.csv  reservations.csv  graph.csv
+data/         devices.csv  borrow_records.csv  reservations.csv  meta.csv
 docs/         requirements.png  api.md  web-ui-spec.md  demo-script.md
 report/       LaTeX báo cáo
 AGENTS.md  README.md  build*.ps1
