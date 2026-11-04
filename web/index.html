@@ -116,7 +116,20 @@
   <div id="toast-container" aria-live="polite"></div>
 
   <!-- Vùng chứa Hộp thoại Modal -->
-  <div id="modal-backdrop"></div>
+  <div id="modal-backdrop">
+    <div class="modal-dialog" role="dialog" aria-modal="true">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modal-title">Tiêu đề</h3>
+        <button class="btn-icon" id="modal-btn-close" aria-label="Đóng">&times;</button>
+      </div>
+      <div class="modal-body" id="modal-body"></div>
+      <div class="modal-footer" id="modal-footer"></div>
+    </div>
+  </div>
+
+  <!-- Vùng chứa Panel trượt bên phải (Slide-over Drawer) -->
+  <div id="side-panel-backdrop"></div>
+  <aside id="side-panel" role="dialog" aria-modal="true" aria-hidden="true"></aside>
 
   <!-- Mã nguồn SPA chính (ES Modules) -->
   <script type="module" src="js/main.js"></script>

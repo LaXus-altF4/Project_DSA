@@ -1,42 +1,54 @@
 /**
  * modal.js - Hộp thoại bật lên (Reusable Modal System)
+ * Tự động kiểm tra và tái tạo cấu trúc nếu thiếu, tuyệt đối không crash.
  */
 
 let modalBackdrop = null;
 
 function ensureModal() {
+  modalBackdrop = document.getElementById('modal-backdrop');
   if (!modalBackdrop) {
-    modalBackdrop = document.getElementById('modal-backdrop');
-    if (!modalBackdrop) {
-      modalBackdrop = document.createElement('div');
-      modalBackdrop.id = 'modal-backdrop';
-      modalBackdrop.innerHTML = `
-        <div class="modal-dialog" role="dialog" aria-modal="true">
-          <div class="modal-header">
-            <h3 class="modal-title" id="modal-title">Tiêu đề</h3>
-            <button class="btn-icon" id="modal-btn-close" aria-label="Đóng">&times;</button>
-          </div>
-          <div class="modal-body" id="modal-body"></div>
-          <div class="modal-footer" id="modal-footer"></div>
+    modalBackdrop = document.createElement('div');
+    modalBackdrop.id = 'modal-backdrop';
+    document.body.appendChild(modalBackdrop);
+  }
+
+  // Đảm bảo cấu trúc bên trong modal luôn hiện diện đầy đủ
+  if (!modalBackdrop.querySelector('#modal-title') || 
+      !modalBackdrop.querySelector('#modal-body') || 
+      !modalBackdrop.querySelector('#modal-footer')) {
+    modalBackdrop.innerHTML = `
+      <div class="modal-dialog" role="dialog" aria-modal="true">
+        <div class="modal-header">
+          <h3 class="modal-title" id="modal-title">Tiêu đề</h3>
+          <button class="btn-icon" id="modal-btn-close" aria-label="Đóng">&times;</button>
         </div>
-      `;
-      document.body.appendChild(modalBackdrop);
+        <div class="modal-body" id="modal-body"></div>
+        <div class="modal-footer" id="modal-footer"></div>
+      </div>
+    `;
+  }
 
-      // Đóng khi click ngoài backdrop
-      modalBackdrop.addEventListener('click', (e) => {
-        if (e.target === modalBackdrop) closeModal();
-      });
+  // Gắn sự kiện đóng an toàn (chỉ gắn 1 lần)
+  if (!modalBackdrop._hasListeners) {
+    modalBackdrop._hasListeners = true;
 
-      // Đóng khi nhấn Escape
-      document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && modalBackdrop.classList.contains('active')) {
-          closeModal();
-        }
-      });
+    modalBackdrop.addEventListener('click', (e) => {
+      if (e.target === modalBackdrop) closeModal();
+    });
 
-      modalBackdrop.querySelector('#modal-btn-close').addEventListener('click', closeModal);
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && modalBackdrop.classList.contains('active')) {
+        closeModal();
+      }
+    });
+
+    const closeBtn = modalBackdrop.querySelector('#modal-btn-close');
+    if (closeBtn) {
+      closeBtn.addEventListener('click', closeModal);
     }
   }
+
   return modalBackdrop;
 }
 
@@ -55,7 +67,13 @@ export function openModal({ title, content, confirmText = '', cancelText = 'Đó
   const bodyEl = backdrop.querySelector('#modal-body');
   const footerEl = backdrop.querySelector('#modal-footer');
 
-  titleEl.textContent = title;
+  if (!titleEl || !bodyEl || !footerEl) {
+    console.error('Không thể tìm thấy cấu trúc dialog trong #modal-backdrop.');
+    alert(title ? `${title}\n\n${typeof content === 'string' ? content : ''}` : 'Thông báo');
+    return;
+  }
+
+  titleEl.textContent = title || 'Thông báo';
 
   if (typeof content === 'string') {
     bodyEl.innerHTML = content;
