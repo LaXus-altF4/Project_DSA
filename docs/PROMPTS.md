@@ -1,13 +1,16 @@
-# Bộ prompt cho đồ án — dùng trong Google Antigravity
+# Bộ prompt cho đồ án — Claude Code làm lõi, Antigravity làm giao diện
+
+| Prompt | Dán vào |
+|---|---|
+| 0 → 6, 8, 9, review | **Claude Code** (mở terminal tại thư mục dự án, gõ `claude`) |
+| 7A → 7E | **Antigravity** |
 
 ## Chuẩn bị
-1. Tạo thư mục repo, `git init`.
-2. Đặt `AGENTS.md` ở thư mục gốc (điền các chỗ `[...]`); đặt `docs/web-ui-spec.md`; bỏ ảnh đề vào `docs/requirements.png`.
-3. Mở thư mục bằng Antigravity, dùng **Editor view** (agent ở thanh bên) — đồ án một người không cần Manager view nhiều agent.
-4. Bật **Planning mode** và để agent **xin duyệt kế hoạch trước khi chạy lệnh/sửa file** — đọc kỹ implementation plan mỗi lần, đó là lúc bạn hiểu code.
-5. Mỗi giai đoạn mở **một hội thoại mới** để agent không mang theo ngữ cảnh cũ lộn xộn; `AGENTS.md` giữ phần bối cảnh chung.
-6. Chọn model: Gemini Pro cho mọi giai đoạn; nếu một chỗ trong lõi C++ làm mãi không đúng, thử đổi sang model khác trong danh sách để có góc nhìn thứ hai.
-7. Commit Git sau mỗi giai đoạn đã duyệt — agent sửa sai thì `git checkout .` để quay lại.
+1. Thư mục dự án có `AGENTS.md`, `CLAUDE.md` (một dòng `@AGENTS.md`), `docs/web-ui-spec.md`, `docs/requirements.png`.
+2. **Claude Code:** mỗi giai đoạn mở phiên mới (`/clear` hoặc chạy lại `claude`). Dùng plan mode (Shift+Tab) để nó trình kế hoạch trước khi sửa file.
+3. **Antigravity:** Editor view, chế độ Planning, model Gemini Pro. Mỗi màn hình một hội thoại mới.
+4. Không mở cả hai công cụ sửa code cùng lúc. Xong việc ở công cụ này → commit → mới sang công cụ kia.
+5. Commit Git sau mỗi giai đoạn đã duyệt; làm hỏng thì `git checkout .` để quay lại.
 
 ---
 
@@ -92,7 +95,7 @@ Bản console đã ổn. Làm giai đoạn 6 trong AGENTS.md.
 
 ---
 
-# Giai đoạn 7 — Giao diện web
+# Giai đoạn 7 — Giao diện web (Antigravity)
 Mỗi prompt mở đầu bằng "Đọc docs/web-ui-spec.md và docs/api.md trước." Agent tự mở trình duyệt tích hợp để chụp màn hình kiểm tra — hãy xem ảnh/video nó đính kèm trong walkthrough, đừng chỉ đọc chữ.
 
 ## Prompt 7A — Lên thiết kế (chưa code)

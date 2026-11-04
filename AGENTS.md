@@ -1,6 +1,7 @@
 # AGENTS.md — Đồ án CTDL & GT: Phần mềm quản lý mượn trả thiết bị và gợi ý đồ dùng thực hành
 
-> Quy tắc dự án cho agent trong Google Antigravity. Đặt ở thư mục gốc repo — Antigravity tự đọc `AGENTS.md` đầu mỗi phiên.
+> Quy tắc dự án dùng chung cho **Claude Code** (đọc qua `CLAUDE.md`) và **Google Antigravity** (tự đọc `AGENTS.md`). Đặt ở thư mục gốc repo.
+> Phân công: **Claude Code** làm lõi, console, server, đóng gói, báo cáo. **Antigravity** chỉ làm giao diện `web/`.
 > Đặc tả giao diện web nằm ở `docs/web-ui-spec.md`; hợp đồng giữa backend và web là `docs/api.md`.
 
 ## 1. Bối cảnh
@@ -95,6 +96,7 @@ AGENTS.md  README.md  build*.ps1
 - Mọi thay đổi build được không warning (`-Wall -Wextra`).
 - Sau mỗi thao tác mượn/trả/hàng đợi, gọi `checkInvariants()` ở chế độ debug.
 - Không tự ý đổi quy ước ở mục 3. Gặp chỗ chưa rõ thì hỏi.
+- **Ranh giới công cụ:** Claude Code không sửa `web/`; Antigravity chỉ sửa `web/`. Hai bên giao tiếp qua `docs/api.md` và `web/API_REQUESTS.md`.
 - **Mỗi phiên chỉ làm một tầng.** Khi làm web (giai đoạn 7) **không sửa** `include/`, `src/`, `server/`; thiếu API thì ghi vào `web/API_REQUESTS.md` và dừng lại. Khi làm lõi/server **không sửa** `web/`.
 - Không tự tính nghiệp vụ ở frontend (quá hạn, gợi ý, hàng đợi) — mọi số liệu lấy từ API.
 - Trước khi sửa code: tạo kế hoạch (implementation plan) để tôi duyệt. Sau khi xong: walkthrough ngắn + kết quả build/test.
@@ -102,17 +104,17 @@ AGENTS.md  README.md  build*.ps1
 - Không viết thêm tính năng ngoài đề (đăng nhập, mã hoá...) trừ khi được yêu cầu.
 
 ## 8. Lộ trình (làm một mình, hạn cuối 01/2027)
-| # | Thời gian | Giai đoạn | Ghi chú |
+| # | Thời gian | Giai đoạn | Công cụ |
 |---|---|---|---|
-| 1 | 05–18/11 | **CTDL lõi:** `DoublyLinkedList<T>`, `LinkedQueue<T>`, `Graph` + unit test | |
-| 2 | 19–25/11 | **Mượn/trả cơ bản:** `Device`, `BorrowRecord`, `Clock`, quá hạn, bất biến | |
-| 3 | 26/11–02/12 | **Reservation Queue:** giữ hàng, `expireReservations()`, lỡ hạn 2 lần | |
-| 4 | 03–09/12 | **Graph gợi ý:** cập nhật theo phiếu, top 3 | |
-| 5 | 10–16/12 | **Storage CSV + console** hoàn chỉnh + dữ liệu mẫu (≥ 15 thiết bị, ≥ 30 phiếu) | |
-| 6 | 17–23/12 | **API server + `docs/api.md`** + `api_smoke.ps1` | |
-| 7 | 24/12–13/01 | **Web UI** theo `docs/web-ui-spec.md` (dùng trình duyệt tích hợp để tự kiểm tra) | |
-| 8 | 14–20/01 | **Ghép nối & hoàn thiện:** xử lý `API_REQUESTS.md`, sửa lỗi tích hợp, đóng gói thư mục chạy được | |
-| 9 | 21–27/01 | **Demo + README + báo cáo LaTeX** | |
+| 1 | 05–18/11 | **CTDL lõi:** `DoublyLinkedList<T>`, `LinkedQueue<T>`, `Graph` + unit test | Claude Code |
+| 2 | 19–25/11 | **Mượn/trả cơ bản:** `Device`, `BorrowRecord`, `Clock`, quá hạn, bất biến | Claude Code |
+| 3 | 26/11–02/12 | **Reservation Queue:** giữ hàng, `expireReservations()`, lỡ hạn 2 lần | Claude Code |
+| 4 | 03–09/12 | **Graph gợi ý:** cập nhật theo phiếu, top 3 | Claude Code |
+| 5 | 10–16/12 | **Storage CSV + console** hoàn chỉnh + dữ liệu mẫu (≥ 15 thiết bị, ≥ 30 phiếu) | Claude Code |
+| 6 | 17–23/12 | **API server + `docs/api.md`** + `api_smoke.ps1` | Claude Code |
+| 7 | 24/12–13/01 | **Web UI** theo `docs/web-ui-spec.md` (dùng trình duyệt tích hợp để tự kiểm tra) | Antigravity |
+| 8 | 14–20/01 | **Ghép nối & hoàn thiện:** xử lý `API_REQUESTS.md`, sửa lỗi tích hợp, đóng gói thư mục chạy được | Claude Code (+ Antigravity sửa web) |
+| 9 | 21–27/01 | **Demo + README + báo cáo LaTeX** | Claude Code |
 | — | 28–31/01 | Dự phòng | |
 
 - Báo cáo viết dần: xong giai đoạn nào ghi phần CTDL đó luôn.
