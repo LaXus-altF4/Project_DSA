@@ -1,7 +1,9 @@
 #ifndef LAB_MANAGER_H
 #define LAB_MANAGER_H
 
+#include <functional>
 #include <string>
+#include <utility>
 #include "Clock.h"
 #include "DoublyLinkedList.h"
 #include "Graph.h"
@@ -28,6 +30,8 @@ private:
     // Hạn nhận = atHour + 24 (atHour là thời điểm đơn vị rảnh, M15). O(q)
     void serveQueue(Device& d, long long atHour);
     void debugCheck() const;                         // assert(checkInvariants()) ở chế độ debug
+    void commit();                                   // debugCheck() rồi gọi onChange_ (cuối mỗi thao tác thành công)
+    std::function<void()> onChange_;                 // listener tự lưu, có thể rỗng
 
 public:
     LabManager();
@@ -45,6 +49,11 @@ public:
     // M3: đổi tên và/hoặc tổng số. Chỉ cho newTotal >= borrowed + onHold + maintenance;
     // phần chênh lệch cộng/trừ vào available, tăng total thì phục vụ hàng đợi. O(n + q)
     OpResult updateDevice(const std::string& id, const std::string& newName, int newTotal);
+
+    // M4: xoá thiết bị cùng đỉnh và các cạnh trong đồ thị. Bị chặn (DeviceInUse) nếu còn phiếu đang mở
+    // chứa thiết bị hoặc còn người trong hàng đợi — khi đó chỉ được chuyển sang Bảo trì.
+    // Phiếu lịch sử giữ nguyên mã thiết bị. O(n + m·k + V·d)
+    OpResult removeDevice(const std::string& id);
 
     const Device* findDevice(const std::string& id) const; // nullptr nếu không có. O(n)
     int deviceCount() const { return devices_.size(); }     // O(1)
@@ -119,10 +128,47 @@ public:
     // Toàn bộ láng giềng của id theo thứ tự trên, gồm cả thiết bị bảo trì (kèm trạng thái). O(V + d² + d·n)
     DoublyLinkedList<Companion> allCompanions(const std::string& id) const;
 
+    // Gợi ý cho cả giỏ (lúc đang lập phiếu, chưa tạo phiếu nên đồ thị chưa bị cộng): với mọi thiết bị trong
+    // selected, gộp láng giềng trong đồ thị, CỘNG trọng số của cùng một thiết bị qua các món trong giỏ.
+    // Bỏ thiết bị đã có trong giỏ (mã trùng trong giỏ chỉ tính một lần, mã lạ bị bỏ qua) và thiết bị đang
+    // Bảo trì; thiết bị hết hàng vẫn hiện (Companion::outOfStock, M17). Mỗi thiết bị xuất hiện đúng một lần.
+    // Lấy tối đa k, điểm giảm dần, hoà thì mã tăng. Companion::weight = tổng điểm.
+    // Không đổi đồ thị. O(s² + s·(V + d·(n + c + s)) + k·c), s = số món trong giỏ, d = bậc, c = số ứng viên
+    DoublyLinkedList<Companion> suggestForBasket(const DoublyLinkedList<std::string>& selected, int k = 3) const;
+
     // Số lần hai thiết bị được mượn cùng phiếu; 0 nếu chưa bao giờ. O(V + d)
     int coBorrowCount(const std::string& a, const std::string& b) const { return graph_.weight(a, b); }
 
     const Graph& graph() const { return graph_; } // chỉ đọc, để giao diện duyệt đồ thị
+
+    // ---------------- Tự lưu ----------------
+    // Đăng ký hàm được gọi sau mỗi thao tác làm thay đổi dữ liệu và thành công (console dùng để tự lưu CSV).
+    // Các hàm restore* bên dưới không gọi listener. O(1)
+    void setChangeListener(std::function<void()> listener) { onChange_ = std::move(listener); }
+
+    // ---------------- Khôi phục dữ liệu (chỉ Storage dùng khi nạp dữ liệu) ----------------
+    // Mỗi hàm tự kiểm tra tính hợp lệ, trả lỗi (không đổi dữ liệu) nếu dòng CSV mâu thuẫn.
+    // Chỉ Storage dùng khi nạp dữ liệu: thứ tự gọi restoreMeta → restoreDevice → restoreRecord →
+    // restoreReservation → finishRestore. Không gọi ở chỗ khác.
+
+    // Chỉ Storage dùng khi nạp dữ liệu. 0 <= maintenance <= total. O(n)
+    OpResult restoreDevice(const std::string& id, const std::string& name, int total, int maintenance);
+
+    // Chỉ Storage dùng khi nạp dữ liệu. Phiếu mở cần còn đơn vị available cho từng thiết bị còn tồn tại;
+    // mã thiết bị đã xoá thì bỏ qua khi cập nhật số lượng/đồ thị (M4). O(m + k·n + k²·(V + d))
+    OpResult restoreRecord(const BorrowRecord& record);
+
+    // Chỉ Storage dùng khi nạp dữ liệu. Người đang giữ phải đứng liền ở đầu hàng. O(n + q)
+    OpResult restoreReservation(const std::string& deviceId, const Reservation& r);
+
+    // Chỉ Storage dùng khi nạp dữ liệu. Đặt giờ hiện tại và bộ đếm mã phiếu. O(1)
+    void restoreMeta(long long nowHour, int nextRecordNo);
+
+    // Chỉ Storage dùng khi nạp dữ liệu. Phục vụ hàng đợi còn đơn vị rảnh, xử lý lượt giữ đã hết hạn,
+    // rồi trả về checkInvariants(). O(n·q)
+    bool finishRestore();
+
+    int nextRecordNo() const { return nextRecordNo_; } // để Storage ghi meta.csv. O(1)
 
     // ---------------- Bất biến ----------------
     // Kiểm tra: cấu trúc DSLK, mã thiết bị không trùng và tăng dần, available+borrowed+onHold+maintenance==total,

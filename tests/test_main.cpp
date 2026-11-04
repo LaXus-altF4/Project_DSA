@@ -1,6 +1,8 @@
 // Unit test cho lõi: giai đoạn 1 (DoublyLinkedList, LinkedQueue, Graph), 2 (mượn/trả), 3 (Reservation Queue), 4 (gợi ý mượn kèm).
 // Không dùng framework: macro CHECK ghi lại lỗi và chạy tiếp; cuối chương trình trả mã thoát != 0 nếu có lỗi.
 // File test được dùng iostream (lõi thì không).
+#include <filesystem>
+#include <fstream>
 #include <initializer_list>
 #include <iostream>
 #include <string>
@@ -14,6 +16,8 @@
 #include "Graph.h"
 #include "LabManager.h"
 #include "LinkedQueue.h"
+#include "SampleData.h"
+#include "Storage.h"
 
 static int g_checks = 0;
 static int g_failures = 0;
@@ -986,6 +990,383 @@ static void testCompanionSuggestions() {
     CHECK(lab.checkInvariants());
 }
 
+static void testBasketSuggestions() {
+    std::cout << "Gợi ý theo giỏ: loại món đã chọn, cộng điểm, không đổi đồ thị\n";
+    LabManager lab;
+    CHECK(lab.addDevice("A", "Arduino", 20).ok() && lab.addDevice("B", "Breadboard", 20).ok());
+    CHECK(lab.addDevice("C", "Cap", 10).ok() && lab.addDevice("D", "Den", 10).ok());
+    CHECK(lab.addDevice("E", "Sach hiem", 1).ok() && lab.addDevice("M", "May han", 1).ok());
+    for (int i = 0; i < 3; ++i) CHECK(lab.borrowDevices("S1", "An", ids({"A", "B"}), 7).ok());
+    for (int i = 0; i < 2; ++i) CHECK(lab.borrowDevices("S1", "An", ids({"A", "B", "C"}), 7).ok());
+    for (int i = 0; i < 4; ++i) CHECK(lab.borrowDevices("S2", "Binh", ids({"B", "D"}), 7).ok());
+    CHECK(lab.borrowDevices("S2", "Binh", ids({"C", "D"}), 7).ok());
+    CHECK(lab.borrowDevices("S3", "Chi", ids({"A", "E"}), 7).ok()); // E hết hàng (chỉ có 1)
+    BorrowResult withM = lab.borrowDevices("S3", "Chi", ids({"A", "M"}), 7);
+    CHECK(withM.ok());
+    // Trọng số: A–B 5, A–C 2, B–C 2, B–D 4, C–D 1, A–E 1, A–M 1.
+    int edgesBefore = lab.graph().edgeCount();
+    CHECK(edgesBefore == 7 && lab.coBorrowCount("A", "B") == 5);
+
+    // Một món: giống suggestCompanions nhưng qua giỏ.
+    CHECK(joinCompanions(lab.suggestForBasket(ids({"A"}))) == "B:5,C:2,E:1!");
+    CHECK(joinCompanions(lab.suggestForBasket(ids({"A"}))) == joinCompanions(lab.suggestCompanions("A")));
+    // Hai món: C = 2 (từ A) + 2 (từ B) = 4, D = 4 (từ B) → hoà 4–4 thì mã tăng; A, B không được gợi ý lại.
+    CHECK(joinCompanions(lab.suggestForBasket(ids({"A", "B"}))) == "C:4,D:4,E:1!");
+    // Ba món: D = 4 (B) + 1 (C) = 5; E, M còn 1 (M hết hàng nên có cờ).
+    CHECK(joinCompanions(lab.suggestForBasket(ids({"A", "B", "C"}))) == "D:5,E:1!,M:1!");
+    CHECK(joinCompanions(lab.suggestForBasket(ids({"A", "B"}), 1)) == "C:4");
+    CHECK(joinCompanions(lab.suggestForBasket(ids({"A", "B"}), 10)) == "C:4,D:4,E:1!,M:1!");
+    CHECK(lab.suggestForBasket(ids({"A", "B"}), 0).empty());
+
+    // Giỏ lạ / rỗng / trùng mã.
+    CHECK(lab.suggestForBasket(ids({})).empty() && lab.suggestForBasket(ids({"NONE"})).empty());
+    CHECK(joinCompanions(lab.suggestForBasket(ids({"NONE", "A", "A"}))) == "B:5,C:2,E:1!"); // trùng chỉ tính một lần
+    // Chọn đủ mọi láng giềng thì không còn gì để gợi ý.
+    CHECK(lab.suggestForBasket(ids({"A", "B", "C", "D", "E", "M"})).empty());
+    // Món đã có trong giỏ không bao giờ xuất hiện trong gợi ý.
+    DoublyLinkedList<Companion> sug = lab.suggestForBasket(ids({"A", "C"}), 10);
+    bool leaked = false;
+    for (const Companion& c : sug)
+        if (c.deviceId == "A" || c.deviceId == "C") leaked = true;
+    CHECK(!leaked && !sug.empty());
+
+    // Không đổi đồ thị (phiếu chưa được tạo).
+    CHECK(lab.graph().edgeCount() == edgesBefore && lab.coBorrowCount("A", "B") == 5 && lab.coBorrowCount("A", "C") == 2);
+
+    // Thiết bị bảo trì bị bỏ qua (lấy món kế tiếp), thiết bị hết hàng thì vẫn hiện.
+    CHECK(lab.returnRecord(withM.recordId).ok());
+    CHECK(lab.sendToMaintenance("M", 1).ok() && lab.findDevice("M")->status() == DeviceStatus::Maintenance);
+    CHECK(joinCompanions(lab.suggestForBasket(ids({"A", "B", "C"}))) == "D:5,E:1!");
+    CHECK(joinCompanions(lab.suggestForBasket(ids({"A"}), 10)) == "B:5,C:2,E:1!");
+
+    // Sau khi tạo phiếu thật, điểm mới mới được cộng vào đồ thị và ảnh hưởng gợi ý.
+    CHECK(lab.borrowDevices("S4", "Dung", ids({"A", "C"}), 7).ok());
+    CHECK(lab.coBorrowCount("A", "C") == 3);
+    CHECK(joinCompanions(lab.suggestForBasket(ids({"A"}))) == "B:5,C:3,E:1!");
+    CHECK(lab.checkInvariants());
+}
+
+// ============================ Giai đoạn 5: xoá thiết bị, tự lưu, khôi phục, Storage, dữ liệu mẫu ============================
+
+static std::string tmpDir(const std::string& name) {
+    std::string dir = "build/test_tmp/" + name;
+    std::error_code ec;
+    std::filesystem::remove_all(dir, ec);
+    std::filesystem::create_directories(dir, ec);
+    return dir;
+}
+
+static void writeFile(const std::string& path, const std::string& content) {
+    std::ofstream out(path, std::ios::binary | std::ios::trunc);
+    out << content;
+}
+
+static void testRemoveDevice() {
+    std::cout << "LabManager: xoá thiết bị (M4)\n";
+    LabManager lab;
+    CHECK(lab.addDevice("A", "Kinh", 2).ok() && lab.addDevice("B", "Tay cam", 2).ok() && lab.addDevice("C", "Camera", 1).ok());
+    CHECK(lab.borrowDevices("S1", "An", ids({"A", "B"}), 7).ok());   // PM0001
+    CHECK(lab.borrowDevices("S2", "Binh", ids({"A", "C"}), 7).ok()); // PM0002
+    CHECK(lab.graph().edgeCount() == 2);
+
+    CHECK(lab.removeDevice("Z").code == ErrorCode::DeviceNotFound);
+    CHECK(lab.removeDevice("A").code == ErrorCode::DeviceInUse);     // còn phiếu mở
+    CHECK(lab.removeDevice("B").code == ErrorCode::DeviceInUse);
+    CHECK(lab.deviceCount() == 3 && lab.graph().hasVertex("A") && lab.checkInvariants());
+
+    // Hàng đợi chặn xoá.
+    CHECK(lab.reserveDevice("S9", "Hoa", "C").ok());
+    CHECK(lab.returnRecord("PM0002").ok()); // C được giữ cho S9
+    CHECK(lab.removeDevice("C").code == ErrorCode::DeviceInUse);
+    CHECK(lab.cancelReservation("S9", "C").ok());
+
+    // B hết phiếu mở → xoá được; đỉnh và cạnh biến mất, phiếu lịch sử giữ nguyên mã.
+    CHECK(lab.returnRecord("PM0001").ok());
+    CHECK(lab.removeDevice("B").ok());
+    CHECK(lab.findDevice("B") == nullptr && !lab.graph().hasVertex("B") && lab.deviceCount() == 2);
+    CHECK(lab.coBorrowCount("A", "B") == 0 && lab.graph().edgeCount() == 1); // còn cạnh A–C
+    CHECK(joinCompanions(lab.suggestCompanions("A")) == "C:1");
+    const BorrowRecord* rec = lab.findRecord("PM0001");
+    CHECK(rec != nullptr && rec->deviceIds.size() == 2 && *rec->deviceIds.begin() == "A");
+    CHECK(lab.checkInvariants());
+    CHECK(lab.removeDevice("C").ok() && lab.removeDevice("A").ok() && lab.deviceCount() == 0);
+    CHECK(lab.graph().vertexCount() == 0 && lab.checkInvariants());
+}
+
+static void testChangeListener() {
+    std::cout << "LabManager: change listener (tự lưu)\n";
+    LabManager lab;
+    int calls = 0;
+    lab.setChangeListener([&calls]() { ++calls; });
+    CHECK(lab.addDevice("A", "Kinh", 1).ok() && calls == 1);
+    CHECK(!lab.addDevice("A", "Kinh", 1).ok() && calls == 1);          // thất bại: không gọi
+    CHECK(lab.borrowDevices("S1", "An", ids({"A"}), 3).ok() && calls == 2);
+    CHECK(!lab.borrowDevices("S2", "Binh", ids({"A"}), 3).ok() && calls == 2);
+    CHECK(lab.reserveDevice("S2", "Binh", "A").ok() && calls == 3);
+    CHECK(lab.advanceTime(5) && calls == 4);
+    CHECK(!lab.advanceTime(0) && calls == 4);
+    CHECK(lab.returnRecord("PM0001").ok() && calls == 5);
+    CHECK(lab.claimReservation("S2", "A", 2).ok() && calls == 6);
+    CHECK(lab.sendToMaintenance("A", 1).code == ErrorCode::OutOfStock && calls == 6);
+    CHECK(lab.returnRecord("PM0002").ok() && calls == 7);
+    CHECK(lab.sendToMaintenance("A", 1).ok() && lab.finishMaintenance("A", 1).ok() && calls == 9);
+    CHECK(lab.updateDevice("A", "Kinh 2", 2).ok() && calls == 10);
+    CHECK(lab.removeDevice("A").ok() && calls == 11);
+    // restore* không gọi listener.
+    LabManager other;
+    int calls2 = 0;
+    other.setChangeListener([&calls2]() { ++calls2; });
+    CHECK(other.restoreDevice("A", "Kinh", 2, 0).ok() && other.finishRestore() && calls2 == 0);
+}
+
+static BorrowRecord makeRec(const char* id, const char* sid, std::initializer_list<const char*> devs, long long borrow,
+                            long long due, long long ret = -1, int late = 0, long long fine = 0) {
+    BorrowRecord r;
+    r.recordId = id;
+    r.studentId = sid;
+    r.studentName = "SV";
+    for (const char* d : devs) r.deviceIds.pushBack(d);
+    r.borrowHour = borrow;
+    r.dueHour = due;
+    r.returnHour = ret;
+    r.lateDays = late;
+    r.fine = fine;
+    return r;
+}
+
+static Reservation makeRes(const char* sid, long long enqueue, long long hold, int miss = 0) {
+    Reservation r;
+    r.studentId = sid;
+    r.studentName = "SV";
+    r.enqueueHour = enqueue;
+    r.holdUntil = hold;
+    r.missCount = miss;
+    return r;
+}
+
+static void testRestoreApi() {
+    std::cout << "LabManager: restore* kiểm tra dữ liệu, dựng lại số liệu suy ra\n";
+    LabManager lab;
+    lab.restoreMeta(50, 3);
+    CHECK(lab.now() == 50 && lab.nextRecordNo() == 3);
+    CHECK(lab.restoreDevice("A", "Kinh VR", 2, 0).ok() && lab.restoreDevice("B", "Tay cam", 1, 0).ok());
+    CHECK(lab.restoreDevice("C", "Camera", 1, 0).ok());
+    CHECK(lab.restoreDevice("A", "Trung", 1, 0).code == ErrorCode::DuplicateDevice);
+    CHECK(lab.restoreDevice("", "X", 1, 0).code == ErrorCode::InvalidInput);
+    CHECK(lab.restoreDevice("D", "a,b", 1, 0).code == ErrorCode::InvalidInput);
+    CHECK(lab.restoreDevice("D", "X", 1, 2).code == ErrorCode::InvalidInput);  // bảo trì > tổng
+    CHECK(lab.restoreDevice("D", "X", 0, 0).code == ErrorCode::InvalidInput);
+    CHECK(lab.deviceCount() == 3);
+
+    CHECK(lab.restoreRecord(makeRec("PM0001", "S1", {"A", "B"}, 0, 72)).ok());
+    CHECK(lab.restoreRecord(makeRec("PM0002", "S2", {"A"}, 10, 100)).ok());
+    CHECK(lab.findDevice("A")->available == 0 && lab.findDevice("A")->borrowed == 2 && lab.findDevice("A")->timesBorrowed == 2);
+    CHECK(lab.coBorrowCount("A", "B") == 1);
+    CHECK(lab.restoreRecord(makeRec("PM0003", "S3", {"A"}, 20, 100)).code == ErrorCode::OutOfStock); // vượt tồn kho
+    CHECK(lab.restoreRecord(makeRec("PM0001", "S3", {"C"}, 0, 72)).code == ErrorCode::InvalidInput);  // trùng mã phiếu
+    CHECK(lab.restoreRecord(makeRec("PM0009", "S3", {"C", "C"}, 0, 72)).code == ErrorCode::DuplicateDevice);
+    CHECK(lab.restoreRecord(makeRec("PM0009", "S3", {"C"}, 72, 72)).code == ErrorCode::InvalidInput); // hạn <= giờ mượn
+    CHECK(lab.restoreRecord(makeRec("PM0009", "S3", {}, 0, 72)).code == ErrorCode::InvalidInput);     // không có thiết bị
+    CHECK(lab.restoreRecord(makeRec("PM0009", "S3", {"C"}, 0, 72, 5, -1, 0)).code == ErrorCode::InvalidInput);
+    CHECK(lab.recordCount() == 2 && lab.findDevice("C")->borrowed == 0); // phiếu lỗi không để lại dấu vết
+
+    // Phiếu đã đóng, có cả thiết bị đã xoá (Z): chỉ cộng cho thiết bị còn tồn tại, không đổi tồn kho.
+    CHECK(lab.restoreRecord(makeRec("PM0007", "S4", {"C", "Z"}, 0, 48, 60, 1, 36000)).ok());
+    CHECK(lab.findDevice("C")->available == 1 && lab.findDevice("C")->timesBorrowed == 1);
+    CHECK(lab.nextRecordNo() == 8); // luôn lớn hơn mã phiếu lớn nhất (PM0007)
+
+    // Hàng đợi: A đang hết hàng.
+    CHECK(lab.restoreReservation("A", makeRes("S5", 20, -1)).ok());
+    CHECK(lab.restoreReservation("A", makeRes("S6", 21, -1)).ok());
+    CHECK(lab.restoreReservation("A", makeRes("S5", 22, -1)).code == ErrorCode::AlreadyQueued);
+    CHECK(lab.restoreReservation("A", makeRes("S7", 22, 90)).code == ErrorCode::InvalidInput); // giữ sau người chờ
+    CHECK(lab.restoreReservation("A", makeRes("S7", 22, -1, 2)).code == ErrorCode::InvalidInput); // missCount = 2
+    CHECK(lab.restoreReservation("Q", makeRes("S7", 22, -1)).code == ErrorCode::DeviceNotFound);
+    CHECK(lab.restoreReservation("A", makeRes("S7", -5, -1)).code == ErrorCode::InvalidInput);
+    CHECK(lab.restoreReservation("B", makeRes("S8", 20, 60)).code == ErrorCode::OutOfStock); // không còn đơn vị để giữ
+    // C còn 1 đơn vị: giữ cho S8, rồi người chờ; người giữ thứ hai phải đứng đầu hàng.
+    CHECK(lab.restoreReservation("C", makeRes("S8", 20, 60)).ok());
+    CHECK(lab.findDevice("C")->onHold == 1 && lab.findDevice("C")->available == 0);
+    CHECK(lab.restoreReservation("C", makeRes("S9", 21, -1)).ok());
+    CHECK(lab.finishRestore() && lab.checkInvariants());
+    CHECK(lab.now() == 50 && lab.findDevice("A")->queue.size() == 2);
+}
+
+static void testRestoreServesAndExpires() {
+    std::cout << "LabManager: finishRestore phục vụ hàng đợi và xử lý hết hạn\n";
+    // Còn đơn vị rảnh mà có người chờ → giữ hộ (hạn = now + 24).
+    LabManager a;
+    a.restoreMeta(100, 1);
+    CHECK(a.restoreDevice("D", "Dev", 1, 0).ok());
+    CHECK(a.restoreReservation("D", makeRes("S1", 5, -1)).ok());
+    CHECK(a.finishRestore());
+    CHECK(a.findDevice("D")->onHold == 1 && a.findDevice("D")->available == 0);
+    CHECK(a.findDevice("D")->queue.front()->holdUntil == 124);
+
+    // Lượt giữ đã hết hạn lúc nạp: lỡ 2 lần thì bị loại, đơn vị về available.
+    LabManager b;
+    b.restoreMeta(100, 1);
+    CHECK(b.restoreDevice("D", "Dev", 1, 0).ok());
+    CHECK(b.restoreReservation("D", makeRes("S1", 5, 10)).ok());
+    CHECK(b.finishRestore());
+    CHECK(b.findDevice("D")->queue.empty() && b.findDevice("D")->available == 1 && b.findDevice("D")->onHold == 0);
+    CHECK(b.notificationCount() > 0);
+}
+
+// Ghép trạng thái đủ để so sánh hai LabManager (thiết bị, hàng đợi, phiếu theo thứ tự).
+static std::string stateText(const LabManager& lab) {
+    std::string s = "now=" + std::to_string(lab.now()) + " next=" + std::to_string(lab.nextRecordNo()) + "\n";
+    lab.forEachDevice([&](const Device& d) {
+        s += d.id + "|" + d.name + "|" + std::to_string(d.total) + "|" + std::to_string(d.available) + "|" +
+             std::to_string(d.borrowed) + "|" + std::to_string(d.onHold) + "|" + std::to_string(d.maintenance) + "|" +
+             std::to_string(d.timesBorrowed) + "|Q:";
+        lab.forEachReservation(d.id, [&](const Reservation& r) {
+            s += r.studentId + "/" + r.studentName + "/" + std::to_string(r.enqueueHour) + "/" +
+                 std::to_string(r.holdUntil) + "/" + std::to_string(r.missCount) + ";";
+        });
+        s += "\n";
+    });
+    lab.forEachRecord([&](const BorrowRecord& r) {
+        s += r.recordId + "|" + r.studentId + "|" + r.studentName + "|";
+        for (const std::string& id : r.deviceIds) s += id + ",";
+        s += "|" + std::to_string(r.borrowHour) + "|" + std::to_string(r.dueHour) + "|" + std::to_string(r.returnHour) +
+             "|" + std::to_string(r.lateDays) + "|" + std::to_string(r.fine) + "\n";
+    });
+    return s;
+}
+
+static bool sameGraph(const LabManager& a, const LabManager& b) {
+    if (a.graph().edgeCount() != b.graph().edgeCount() || a.graph().vertexCount() != b.graph().vertexCount()) return false;
+    bool same = true;
+    a.graph().forEachEdge([&](const std::string& x, const std::string& y, int w) {
+        if (b.coBorrowCount(x, y) != w) same = false;
+    });
+    return same;
+}
+
+static void testSampleData() {
+    std::cout << "SampleData: ≥15 thiết bị, ≥30 phiếu, cặp nổi bật, hàng đợi để demo\n";
+    LabManager lab;
+    SampleData::build(lab);
+    CHECK(lab.checkInvariants());
+    CHECK(lab.deviceCount() >= 15 && lab.recordCount() >= 30);
+    CHECK(lab.coBorrowCount("VR01", "TC01") >= 9);
+    CHECK(lab.coBorrowCount("ARD01", "BRD01") >= 7 && lab.coBorrowCount("BRD01", "JMP01") >= 7 &&
+          lab.coBorrowCount("ARD01", "JMP01") >= 7);
+    DoublyLinkedList<Companion> vr = lab.suggestCompanions("VR01", 3);
+    CHECK(!vr.empty() && vr.begin()->deviceId == "TC01");
+    DoublyLinkedList<Companion> ard = lab.suggestCompanions("ARD01", 2);
+    CHECK(joinCompanions(ard).find("BRD01") != std::string::npos && joinCompanions(ard).find("JMP01") != std::string::npos);
+
+    // Trạng thái demo: hàng đợi Kính VR (1 người đang giữ, 1 người chờ), bảo trì, phiếu quá hạn.
+    const Device* vrDev = lab.findDevice("VR01");
+    CHECK(vrDev != nullptr && vrDev->queue.size() == 2 && vrDev->onHold == 1 && vrDev->available == 0);
+    CHECK(lab.findDevice("SLD01")->status() == DeviceStatus::Maintenance);
+    CHECK(lab.findDevice("OSC01")->maintenance == 1);
+    int overdue = 0, open = 0, lateReturned = 0;
+    lab.forEachRecord([&](const BorrowRecord& r) {
+        if (r.isOpen()) {
+            ++open;
+            if (lab.previewOverdue(r).lateDays > 0) ++overdue;
+        } else if (r.lateDays > 0) {
+            ++lateReturned;
+        }
+    });
+    CHECK(overdue == 2 && open >= 5 && lateReturned == 5); // đúng 5 phiếu cố ý trả trễ: PM0011, PM0019, PM0027, PM0034, PM0051 (trả đúng hạn thì không phạt)
+}
+
+static void testStorageRoundTrip() {
+    std::cout << "Storage: lưu rồi nạp lại giữ nguyên dữ liệu (dữ liệu mẫu)\n";
+    std::string dir = tmpDir("roundtrip");
+    LabManager a;
+    SampleData::build(a);
+    CHECK(Storage::save(dir, a).ok());
+    CHECK(std::filesystem::exists(dir + "/devices.csv") && std::filesystem::exists(dir + "/borrow_records.csv") &&
+          std::filesystem::exists(dir + "/reservations.csv") && std::filesystem::exists(dir + "/meta.csv"));
+    CHECK(!std::filesystem::exists(dir + "/devices.csv.tmp") && !std::filesystem::exists(dir + "/meta.csv.tmp"));
+
+    LabManager b;
+    LoadReport rep = Storage::load(dir, b);
+    CHECK(rep.warnings.empty() && rep.skippedLines == 0 && rep.missingFiles == 0 && rep.invariantsOk);
+    CHECK(rep.devices == a.deviceCount() && rep.records == a.recordCount() && rep.reservations == 2);
+    CHECK(stateText(a) == stateText(b));
+    CHECK(sameGraph(a, b) && sameGraph(b, a));
+    CHECK(b.checkInvariants());
+
+    // Chạy tiếp sau khi nạp: tua 30 giờ ở cả hai bản phải cho cùng kết quả (lượt giữ hết hạn → đẩy xuống cuối).
+    CHECK(a.advanceTime(30) && b.advanceTime(30));
+    CHECK(stateText(a) == stateText(b));
+
+    // Lưu lần nữa (ghi đè file có sẵn) vẫn đúng.
+    CHECK(Storage::save(dir, b).ok());
+    LabManager c;
+    CHECK(Storage::load(dir, c).warnings.empty() && stateText(c) == stateText(b));
+
+    // Thiết bị đã xoá: phiếu lịch sử vẫn nạp được, đồ thị không có đỉnh của nó.
+    CHECK(c.removeDevice("BK01").ok()); // sách hiếm: chưa có phiếu mở, không có hàng đợi
+    CHECK(Storage::save(dir, c).ok());
+    LabManager d;
+    LoadReport rep2 = Storage::load(dir, d);
+    CHECK(rep2.warnings.empty() && d.findDevice("BK01") == nullptr && !d.graph().hasVertex("BK01"));
+    CHECK(d.recordCount() == c.recordCount() && stateText(c) == stateText(d) && d.checkInvariants());
+}
+
+static void testStorageBadInput() {
+    std::cout << "Storage: file thiếu, dòng lỗi, CRLF, chữ thay số — báo và bỏ qua, không crash\n";
+    // Thư mục rỗng: cả 4 file thiếu.
+    std::string empty = tmpDir("empty");
+    LabManager e;
+    LoadReport r0 = Storage::load(empty, e);
+    CHECK(r0.missingFiles == 4 && r0.warnings.size() == 4 && e.deviceCount() == 0 && r0.invariantsOk);
+    CHECK(!Storage::hasAnyData(empty));
+
+    std::string dir = tmpDir("bad");
+    writeFile(dir + "/devices.csv",
+              "id,name,total,maintenance\r\n"
+              "A,Kinh VR,3,0\r\n"
+              "B,Tay cam,abc,0\r\n"        // chữ thay số
+              "C,Camera,2\r\n"             // thiếu cột
+              "\r\n"                       // dòng trống: bỏ qua, không cảnh báo
+              "D,Dev,2,0\r\n"
+              "D,Dev trung,2,0\r\n"        // trùng mã
+              "E,Thua cot,2,0,9\r\n"       // thừa cột
+              "F,,2,0\r\n"                 // tên rỗng
+              "G,Qua lon,99999999999,0\r\n"); // số quá lớn
+    writeFile(dir + "/borrow_records.csv",
+              "recordId,studentId,studentName,deviceIds,borrowHour,dueHour,returnHour,lateDays,fine\n"
+              "PM0001,S1,An,A|D,0,72,-1,0,0\n"
+              "PM0003,S3,Chi,A,x,72,-1,0,0\n"      // giờ mượn là chữ
+              "PM0004,S4,Dung,A|A,0,72,-1,0,0\n"   // trùng mã trong phiếu
+              "PM0005,S5,Em,D,0,72,-1,0,0\n"
+              "PM0006,S6,Phi,D,0,72,-1,0,0\n");    // D chỉ có 2: phiếu mở thứ ba vượt tồn kho
+    writeFile(dir + "/reservations.csv",
+              "deviceId,studentId,studentName,enqueueHour,holdUntil,missCount\n"
+              "A,S8,Hoa,5,-1,0\n"
+              "Q,S9,X,5,-1,0\n"                    // thiết bị không tồn tại
+              "A,S10\n");                          // thiếu cột
+    writeFile(dir + "/meta.csv", "key,value\nnow,100\nnextRecordNo,abc\nfoo,1\n");
+
+    LabManager lab;
+    LoadReport rep = Storage::load(dir, lab); // không được crash/treo
+    CHECK(rep.missingFiles == 0 && rep.devices == 2 && rep.records == 2 && rep.reservations == 1);
+        // devices: B, C, D trung, E, F, G = 6; phieu: PM0003, PM0004, PM0006 = 3; hang doi: Q, dong thieu cot = 2; meta: 2.
+    CHECK(rep.skippedLines == 6 + 3 + 2 + 2);
+    CHECK(rep.invariantsOk && lab.now() == 100 && lab.checkInvariants());
+    CHECK(lab.findDevice("A") != nullptr && lab.findDevice("B") == nullptr && lab.findDevice("D") != nullptr);
+    CHECK(lab.findDevice("A")->borrowed == 1 && lab.findDevice("D")->borrowed == 2 && lab.findDevice("D")->available == 0);
+    // S8 đứng chờ A còn đơn vị rảnh → được giữ hộ lúc nạp.
+    CHECK(lab.findDevice("A")->onHold == 1 && lab.findDevice("A")->queue.size() == 1);
+    int shown = 0;
+    for (const std::string& w : rep.warnings) {
+        (void)w;
+        ++shown;
+    }
+    CHECK(shown == rep.skippedLines);
+
+    // Ghi vào thư mục không tồn tại: báo lỗi, không crash.
+    CHECK(!Storage::save("build/test_tmp/khong_ton_tai/xyz", lab).ok());
+}
+
 int main() {
 #ifdef _WIN32
     SetConsoleOutputCP(65001);
@@ -1026,6 +1407,15 @@ int main() {
 
     testGraphFilteredNeighbors();
     testCompanionSuggestions();
+
+    testBasketSuggestions();
+    testRemoveDevice();
+    testChangeListener();
+    testRestoreApi();
+    testRestoreServesAndExpires();
+    testSampleData();
+    testStorageRoundTrip();
+    testStorageBadInput();
 
     std::cout << "\n" << (g_checks - g_failures) << "/" << g_checks << " kiểm tra đạt";
     if (g_failures == 0) {

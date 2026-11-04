@@ -46,6 +46,11 @@ void LabManager::debugCheck() const {
     assert(checkInvariants());
 }
 
+void LabManager::commit() {
+    debugCheck();
+    if (onChange_) onChange_();
+}
+
 void LabManager::notify(NotificationType type, const Reservation& r, const std::string& deviceId,
                         long long hour, const std::string& message) {
     Notification n;
@@ -89,7 +94,7 @@ OpResult LabManager::addDevice(const std::string& id, const std::string& name, i
     d.available = total;
     devices_.insertSorted(d, [](const Device& a, const Device& b) { return a.id < b.id; });
     graph_.addVertex(id);
-    debugCheck();
+    commit();
     return OpResult();
 }
 
@@ -102,7 +107,7 @@ OpResult LabManager::sendToMaintenance(const std::string& id, int qty) {
                                                    std::to_string(d->available) + " đơn vị đang sẵn sàng");
     d->available -= qty;
     d->maintenance += qty;
-    debugCheck();
+    commit();
     return OpResult();
 }
 
@@ -116,7 +121,7 @@ OpResult LabManager::finishMaintenance(const std::string& id, int qty) {
     d->maintenance -= qty;
     d->available += qty;
     serveQueue(*d, clock_.now());
-    debugCheck();
+    commit();
     return OpResult();
 }
 
@@ -134,7 +139,22 @@ OpResult LabManager::updateDevice(const std::string& id, const std::string& newN
     d->total = newTotal;
     d->available = newTotal - minTotal;
     if (grew) serveQueue(*d, clock_.now());
-    debugCheck();
+    commit();
+    return OpResult();
+}
+
+OpResult LabManager::removeDevice(const std::string& id) {
+    const Device* d = findDevice(id);
+    if (d == nullptr) return makeError(ErrorCode::DeviceNotFound, "Không tìm thấy thiết bị: " + id);
+    if (!d->queue.empty())
+        return makeError(ErrorCode::DeviceInUse, "Không xoá được " + id + ": còn " + std::to_string(d->queue.size()) +
+                                                     " người trong hàng đợi (hãy chuyển sang Bảo trì)");
+    if (d->borrowed > 0)
+        return makeError(ErrorCode::DeviceInUse, "Không xoá được " + id + ": còn " + std::to_string(d->borrowed) +
+                                                     " phiếu mượn đang mở (hãy chuyển sang Bảo trì)");
+    devices_.removeFirst([&id](const Device& x) { return x.id == id; });
+    graph_.removeVertex(id); // xoá luôn các cạnh nối với đỉnh này (M4)
+    commit();
     return OpResult();
 }
 
@@ -203,7 +223,7 @@ BorrowResult LabManager::borrowDevices(const std::string& studentId, const std::
 
     result.recordId = rec.recordId;
     result.dueHour = rec.dueHour;
-    debugCheck();
+    commit();
     return result;
 }
 
@@ -234,7 +254,7 @@ ReturnResult LabManager::returnRecord(const std::string& recordId) {
 
     result.lateDays = rec->lateDays;
     result.fine = rec->fine;
-    debugCheck();
+    commit();
     return result;
 }
 
@@ -270,7 +290,7 @@ bool LabManager::advanceTime(long long hours) {
     bool ok = clock_.advance(hours);
     if (ok) {
         expireReservations();
-        debugCheck();
+        commit();
     }
     return ok;
 }
@@ -293,7 +313,7 @@ OpResult LabManager::reserveDevice(const std::string& studentId, const std::stri
     r.studentName = studentName;
     r.enqueueHour = clock_.now();
     d->queue.enqueue(r);
-    debugCheck();
+    commit();
     return OpResult();
 }
 
@@ -330,7 +350,7 @@ BorrowResult LabManager::claimReservation(const std::string& studentId, const st
 
     result.recordId = rec.recordId;
     result.dueHour = rec.dueHour;
-    debugCheck();
+    commit();
     return result;
 }
 
@@ -347,7 +367,7 @@ OpResult LabManager::cancelReservation(const std::string& studentId, const std::
         ++d->available;
         serveQueue(*d, clock_.now());
     }
-    debugCheck();
+    commit();
     return OpResult();
 }
 
@@ -401,7 +421,8 @@ DoublyLinkedList<Companion> LabManager::suggestCompanions(const std::string& id,
         const Device* d = findDevice(otherId);
         return d != nullptr && d->status() != DeviceStatus::Maintenance;
     };
-    for (const Neighbor& n : graph_.topNeighbors(id, k, notInMaintenance)) {
+    DoublyLinkedList<Neighbor> top = graph_.topNeighbors(id, k, notInMaintenance); // lưu vào biến, không duyệt tạm
+    for (const Neighbor& n : top) {
         const Device* d = findDevice(n.deviceId);
         if (d != nullptr) result.pushBack(makeCompanion(n, *d));
     }
@@ -410,11 +431,170 @@ DoublyLinkedList<Companion> LabManager::suggestCompanions(const std::string& id,
 
 DoublyLinkedList<Companion> LabManager::allCompanions(const std::string& id) const {
     DoublyLinkedList<Companion> result;
-    for (const Neighbor& n : graph_.sortedNeighbors(id)) {
+    DoublyLinkedList<Neighbor> all = graph_.sortedNeighbors(id); // lưu vào biến, không duyệt tạm
+    for (const Neighbor& n : all) {
         const Device* d = findDevice(n.deviceId);
         if (d != nullptr) result.pushBack(makeCompanion(n, *d));
     }
     return result;
+}
+
+namespace {
+
+// Ứng viên gợi ý cho giỏ: thiết bị và tổng điểm (cộng trọng số qua các món trong giỏ).
+struct Candidate {
+    std::string id;
+    int score;
+};
+
+} // namespace
+
+DoublyLinkedList<Companion> LabManager::suggestForBasket(const DoublyLinkedList<std::string>& selected, int k) const {
+    DoublyLinkedList<Companion> result;
+    if (k <= 0) return result;
+
+    // Giỏ đã khử trùng và chỉ giữ thiết bị có tồn tại. O(s·(s + n))
+    DoublyLinkedList<std::string> basket;
+    for (const std::string& id : selected) {
+        if (findDevice(id) == nullptr) continue;
+        if (basket.findFirst([&id](const std::string& b) { return b == id; }) != nullptr) continue;
+        basket.pushBack(id);
+    }
+
+    // Gom ứng viên: mỗi láng giềng (không nằm trong giỏ, không bảo trì) cộng dồn trọng số.
+    DoublyLinkedList<Candidate> cands;
+    for (const std::string& sel : basket) {
+        graph_.forEachNeighbor(sel, [&](const std::string& other, int weight) {
+            if (basket.findFirst([&other](const std::string& b) { return b == other; }) != nullptr) return;
+            const Device* d = findDevice(other);
+            if (d == nullptr || d->status() == DeviceStatus::Maintenance) return;
+            Candidate* c = cands.findFirst([&other](const Candidate& x) { return x.id == other; });
+            if (c != nullptr) c->score += weight;
+            else cands.pushBack(Candidate{other, weight});
+        });
+    }
+
+    // Chọn k lần: mỗi lần lấy ứng viên điểm cao nhất (hoà thì mã nhỏ hơn), chuyển sang kết quả. O(k·c)
+    for (int round = 0; round < k && !cands.empty(); ++round) {
+        const Candidate* best = nullptr;
+        for (const Candidate& c : cands)
+            if (best == nullptr || c.score > best->score || (c.score == best->score && c.id < best->id)) best = &c;
+        Neighbor n{best->id, best->score};
+        const Device* d = findDevice(n.deviceId);
+        if (d != nullptr) result.pushBack(makeCompanion(n, *d));
+        std::string bestId = best->id; // sao chép trước khi xoá (best sẽ không còn hợp lệ)
+        cands.removeFirst([&bestId](const Candidate& x) { return x.id == bestId; });
+    }
+    return result;
+}
+
+// ============================ Khôi phục dữ liệu (chỉ Storage dùng) ============================
+
+OpResult LabManager::restoreDevice(const std::string& id, const std::string& name, int total, int maintenance) {
+    if (!isValidText(id) || !isValidText(name))
+        return makeError(ErrorCode::InvalidInput, "Mã/tên thiết bị rỗng hoặc chứa ký tự cấm");
+    if (total < 1 || maintenance < 0 || maintenance > total)
+        return makeError(ErrorCode::InvalidInput, "Số lượng không hợp lệ (total=" + std::to_string(total) +
+                                                      ", maintenance=" + std::to_string(maintenance) + ")");
+    if (findDevice(id) != nullptr) return makeError(ErrorCode::DuplicateDevice, "Mã thiết bị trùng: " + id);
+
+    Device d;
+    d.id = id;
+    d.name = name;
+    d.total = total;
+    d.maintenance = maintenance;
+    d.available = total - maintenance;
+    devices_.insertSorted(d, [](const Device& a, const Device& b) { return a.id < b.id; });
+    graph_.addVertex(id);
+    return OpResult();
+}
+
+OpResult LabManager::restoreRecord(const BorrowRecord& rec) {
+    if (!isValidText(rec.recordId) || !isValidText(rec.studentId) || !isValidText(rec.studentName))
+        return makeError(ErrorCode::InvalidInput, "Mã phiếu/MSSV/họ tên rỗng hoặc chứa ký tự cấm");
+    if (findRecord(rec.recordId) != nullptr)
+        return makeError(ErrorCode::InvalidInput, "Mã phiếu trùng: " + rec.recordId);
+    if (rec.deviceIds.empty()) return makeError(ErrorCode::InvalidInput, "Phiếu không có thiết bị");
+    if (rec.borrowHour < 0 || rec.dueHour <= rec.borrowHour)
+        return makeError(ErrorCode::InvalidInput, "Giờ mượn/hẹn trả không hợp lệ");
+    if (rec.isOpen() ? rec.returnHour != -1
+                     : (rec.returnHour < rec.borrowHour || rec.lateDays < 0 || rec.fine < 0))
+        return makeError(ErrorCode::InvalidInput, "Giờ trả/số ngày trễ/tiền phạt không hợp lệ");
+
+    // Kiểm tra trước, chưa đổi dữ liệu: mã hợp lệ, không trùng, phiếu mở thì còn đơn vị available.
+    int i = 0;
+    for (const std::string& a : rec.deviceIds) {
+        if (!isValidText(a)) return makeError(ErrorCode::InvalidInput, "Mã thiết bị trong phiếu không hợp lệ");
+        int j = 0;
+        for (const std::string& b : rec.deviceIds)
+            if (j++ > i && a == b) return makeError(ErrorCode::DuplicateDevice, "Thiết bị trùng trong phiếu: " + a);
+        ++i;
+        const Device* d = findDevice(a);
+        if (d != nullptr && rec.isOpen() && d->available <= 0)
+            return makeError(ErrorCode::OutOfStock, "Phiếu đang mở vượt số lượng tồn của " + a);
+    }
+
+    for (const std::string& a : rec.deviceIds) {
+        Device* d = findDeviceMutable(a); // nullptr: thiết bị đã xoá (M4), bỏ qua
+        if (d == nullptr) continue;
+        ++d->timesBorrowed;
+        if (rec.isOpen()) {
+            --d->available;
+            ++d->borrowed;
+        }
+    }
+    graph_.addCoBorrow(rec.deviceIds); // mã đã xoá tự bị bỏ qua
+    records_.pushBack(rec);
+
+    // Giữ bộ đếm mã phiếu luôn lớn hơn mọi mã đã có (PMxxxx).
+    if (rec.recordId.size() > 2 && rec.recordId.compare(0, 2, "PM") == 0) {
+        int no = 0;
+        bool digits = rec.recordId.size() <= 9;
+        for (size_t p = 2; digits && p < rec.recordId.size(); ++p) {
+            char c = rec.recordId[p];
+            if (c < '0' || c > '9') digits = false; else no = no * 10 + (c - '0');
+        }
+        if (digits && no >= nextRecordNo_) nextRecordNo_ = no + 1;
+    }
+    return OpResult();
+}
+
+OpResult LabManager::restoreReservation(const std::string& deviceId, const Reservation& r) {
+    Device* d = findDeviceMutable(deviceId);
+    if (d == nullptr) return makeError(ErrorCode::DeviceNotFound, "Không tìm thấy thiết bị: " + deviceId);
+    if (!isValidText(r.studentId) || !isValidText(r.studentName))
+        return makeError(ErrorCode::InvalidInput, "MSSV/họ tên rỗng hoặc chứa ký tự cấm");
+    if (r.enqueueHour < 0 || r.missCount < 0 || r.missCount >= MAX_MISSES || r.holdUntil < -1)
+        return makeError(ErrorCode::InvalidInput, "Giờ đăng ký/hạn giữ/số lần lỡ không hợp lệ");
+    if (d->queue.findFirst([&](const Reservation& x) { return x.studentId == r.studentId; }) != nullptr)
+        return makeError(ErrorCode::AlreadyQueued, "Sinh viên " + r.studentId + " trùng trong hàng đợi " + deviceId);
+
+    if (r.isHolding()) {
+        bool waitingBefore = false;
+        long long lastHold = -1;
+        d->queue.forEach([&](const Reservation& x) {
+            if (!x.isHolding()) waitingBefore = true;
+            else lastHold = x.holdUntil;
+        });
+        if (waitingBefore) return makeError(ErrorCode::InvalidInput, "Người đang giữ phải đứng đầu hàng " + deviceId);
+        if (r.holdUntil < lastHold) return makeError(ErrorCode::InvalidInput, "Hạn giữ giảm dần trong hàng " + deviceId);
+        if (d->available <= 0) return makeError(ErrorCode::OutOfStock, "Không còn đơn vị để giữ cho " + deviceId);
+        --d->available;
+        ++d->onHold;
+    }
+    d->queue.enqueue(r);
+    return OpResult();
+}
+
+void LabManager::restoreMeta(long long nowHour, int nextRecordNo) {
+    clock_.setNow(nowHour);
+    if (nextRecordNo > nextRecordNo_) nextRecordNo_ = nextRecordNo;
+}
+
+bool LabManager::finishRestore() {
+    for (Device& d : devices_) serveQueue(d, clock_.now()); // còn người chờ mà đơn vị rảnh thì giữ hộ
+    expireReservations();
+    return checkInvariants();
 }
 
 // ============================ Bất biến ============================

@@ -72,7 +72,8 @@ enum class ErrorCode {
     AlreadyQueued,    // sinh viên đã đứng trong hàng đợi của thiết bị này (M12)
     NotInQueue,       // sinh viên không có trong hàng đợi
     NotHolding,       // đang trong hàng nhưng chưa được giữ hàng nên chưa nhận được
-    CanBorrowDirectly // còn hàng sẵn sàng: phải mượn trực tiếp, không đặt trước (M12)
+    CanBorrowDirectly, // còn hàng sẵn sàng: phải mượn trực tiếp, không đặt trước (M12)
+    DeviceInUse        // không xoá được: còn phiếu đang mở hoặc còn người trong hàng đợi (M4)
 };
 
 // Sự kiện lõi đẩy ra cho console/web tự hiển thị.

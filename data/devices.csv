@@ -1,0 +1,19 @@
+id,name,total,maintenance
+ARD01,Arduino Uno R3,6,0
+BK01,Sách hiếm: The Art of Computer Programming,1,0
+BRD01,Breadboard 830 lỗ,8,0
+CAM01,Camera module Pi,3,0
+DMM01,Đồng hồ vạn năng,6,0
+ESP01,ESP32 DevKit,5,0
+JMP01,Bộ dây cắm jumper,8,0
+LAP01,Laptop Lab,4,0
+OSC01,Máy hiện sóng,3,1
+PRB01,Đầu dò máy hiện sóng,6,0
+PRJ01,Máy chiếu mini,2,0
+PSU01,Nguồn DC điều chỉnh,3,0
+RPI01,Raspberry Pi 4,4,0
+SDC01,Thẻ microSD 32GB,6,0
+SEN01,Bộ cảm biến 37 món,4,0
+SLD01,Máy hàn thiếc,2,2
+TC01,Tay cầm điều khiển VR,4,0
+VR01,Kính thực tế ảo,2,0
