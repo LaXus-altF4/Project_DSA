@@ -1,0 +1,46 @@
+\chapter{Giới thiệu và phân tích yêu cầu}
+
+\section{Bối cảnh và mục tiêu}
+Các phòng Lab của trường cho sinh viên mượn thiết bị thực hành (kính thực tế ảo, tay cầm điều khiển, Arduino, máy hàn \ldots) và sách hiếm. Số lượng mỗi loại có hạn, nên cần theo dõi ai đang mượn gì, khi nào phải trả, ai đang chờ, và gợi ý những thiết bị thường được mượn cùng nhau.
+
+Đồ án thực hiện \textbf{đề số 3}: một phần mềm quản lý mượn trả có hàng đợi đặt trước và gợi ý thông minh dựa trên lịch sử mượn. Mục tiêu chính của môn học là \textbf{tự cài đặt đúng cấu trúc dữ liệu} và giải thích được độ phức tạp, nên toàn bộ lõi nghiệp vụ dùng ba cấu trúc tự viết:
+\begin{itemize}
+  \item \textbf{Danh sách liên kết kép} (\code{DoublyLinkedList}) lưu danh mục thiết bị, phiếu mượn và các danh sách kề;
+  \item \textbf{Hàng đợi} liên kết đơn (\code{LinkedQueue}) làm hàng đợi đặt trước và hàng thông báo;
+  \item \textbf{Đồ thị vô hướng có trọng số} (\code{Graph}) cài bằng danh sách kề, lưu quan hệ mượn kèm.
+\end{itemize}
+Phần mềm có hai giao diện dùng chung một lõi: chương trình console \code{app.exe} và ứng dụng web \code{LabApp.exe} (máy chủ API và giao diện trình duyệt, chạy offline).
+
+\section{Yêu cầu của đề}
+Đề yêu cầu bốn nhóm chức năng:
+\begin{enumerate}
+  \item \textbf{Quản lý thiết bị và người mượn:} lưu mã, tên, số lượng, trạng thái (Sẵn sàng / Đang mượn / Bảo trì); lưu người mượn và ngày hẹn trả.
+  \item \textbf{Hàng đợi đặt trước có thời hạn:} thiết bị hết số lượng thì người mượn tiếp theo vào hàng đợi; khi có thiết bị được trả, hệ thống báo cho người đầu hàng và người này có 24 giờ để đến nhận; quá 24 giờ thì bị đưa xuống cuối hàng và quyền chuyển cho người kế.
+  \item \textbf{Gợi ý thiết bị đi kèm:} đồ thị có đỉnh là thiết bị, trọng số cạnh tăng 1 mỗi lần một sinh viên mượn cả hai cùng lúc; khi chọn thiết bị A hiện 3 thiết bị thường mượn kèm A nhiều nhất.
+  \item \textbf{Giao diện} hiển thị rõ trạng thái thiết bị.
+\end{enumerate}
+Đề chia hai mức: \emph{cơ bản} (danh sách liên kết kép, mượn/trả, tính ngày quá hạn, giao diện trạng thái) và \emph{nâng cao} (hàng đợi tự loại người chờ quá 24 giờ, đồ thị gợi ý).
+
+\section{Đối chiếu yêu cầu và chức năng}
+\begin{table}[H]
+\centering
+\caption{Đối chiếu yêu cầu của đề với chức năng đã cài đặt}
+\label{tab:mapping}
+\small
+\begin{tabularx}{\textwidth}{@{}l>{\raggedright\arraybackslash}p{3.6cm}>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}p{3.2cm}@{}}
+\toprule
+Mức & Yêu cầu & Cách thực hiện & Nơi thể hiện \\
+\midrule
+Cơ bản & Danh mục thiết bị bằng danh sách liên kết kép & \code{DoublyLinkedList<Device>} chèn có thứ tự theo mã (\code{insertSorted}) & Menu 1--5; màn Thiết bị \\
+Cơ bản & Mượn/trả, ngày hẹn trả & \code{borrowDevices}, \code{returnRecord}; hạn trả $=$ giờ mượn $+$ số ngày $\times 24$ & Menu 6, 7; màn Mượn, Trả \\
+Cơ bản & Tính ngày quá hạn & \code{overdueDays} làm tròn lên; phạt 36.000\,đ/ngày/thiết bị (\code{long long}) & Menu 11; màn Quá hạn \& Lịch sử \\
+Cơ bản & Hiển thị trạng thái & Trạng thái suy ra từ số lượng (M1), thanh tỷ lệ \code{available/borrowed/onHold/maintenance} & Menu 1; màn Tổng quan, Thiết bị \\
+Nâng cao & Hàng đợi đặt trước, giữ 24 giờ & \code{LinkedQueue<Reservation>} mỗi thiết bị; \code{serveQueue}, \code{claimReservation} & Menu 8; màn Hàng đợi \\
+Nâng cao & Quá 24 giờ thì đẩy xuống cuối, chuyển quyền & \code{expireReservations}, \code{moveFrontToBack}, \code{missCount}, dây chuyền M15 & Menu 12 (tua giờ); thanh đồng hồ \\
+Nâng cao & Gợi ý 3 thiết bị mượn kèm & \code{Graph::addCoBorrow}, \code{topNeighbors}, \code{suggestCompanions}, \code{suggestForBasket} & Menu 10; màn Mượn, Đồ thị \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Phạm vi và những gì không làm}
+Đồ án làm một mình, không có đăng nhập, phân quyền hay mã hoá (ngoài đề). Giao diện web là phần nâng điểm; bản console đã đầy đủ chức năng và là bản nộp an toàn.

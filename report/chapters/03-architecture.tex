@@ -1,0 +1,38 @@
+\chapter{Kiến trúc hệ thống}
+
+\section{Ba tầng}
+Hệ thống chia thành ba tầng (Hình~\ref{fig:arch}). Lõi là phần được chấm điểm; hai tầng còn lại chỉ là lớp chuyển đổi và giao diện.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[node distance=0.9cm and 1.2cm]
+  \node[layer,minimum width=5.6cm] (web) {\textbf{Web UI}\\HTML + CSS + JavaScript\\\scriptsize thư mục \code{web/}};
+  \node[layer,minimum width=5.6cm,right=1.4cm of web] (con) {\textbf{Console}\\C++: \code{main.cpp}, \code{UI.cpp}\\\scriptsize menu, bảng, màu ANSI};
+  \node[layer,minimum width=5.6cm,below=1.3cm of web] (api) {\textbf{API server}\\C++ + cpp-httplib + nlohmann/json\\\scriptsize thư mục \code{server/}};
+  \node[layer,minimum width=12.6cm,minimum height=1.5cm,below=1.3cm of api,xshift=3.5cm,fill=black!10] (core) {};
+  \node[font=\small,align=center] at (core.center) {\textbf{Lõi (C++, cấu trúc dữ liệu tự cài)}\\\code{DoublyLinkedList}\quad\code{LinkedQueue}\quad\code{Graph}\quad\code{LabManager}\quad\code{Storage}};
+  \node[layer,minimum width=5cm,below=1cm of core] (csv) {\code{data/*.csv}\\\scriptsize 4 tệp: devices, borrow\_records, reservations, meta};
+  \draw[ptr,<->] (web) -- node[right,note]{HTTP + JSON} (api);
+  \draw[ptr] (api.south) -- ++(0,-0.45) -| ([xshift=-2cm]core.north);
+  \draw[ptr] (con.south) -- ++(0,-0.45) -| ([xshift=2cm]core.north);
+  \draw[ptr,<->] (core.south) -- node[right,note]{đọc/ghi} (csv.north);
+\end{tikzpicture}
+\caption{Kiến trúc ba tầng}
+\label{fig:arch}
+\end{figure}
+
+\begin{itemize}
+  \item \textbf{Lõi} (\code{include/}, \code{src/}) tự cài \code{DoublyLinkedList}, \code{LinkedQueue}, \code{Graph}. Lõi \emph{không} dùng \code{std::list}, \code{std::queue}, \code{std::map}, \code{std::priority_queue}, \code{std::vector}, \code{std::sort}; chỉ dùng \code{std::string}, các luồng tệp và \code{std::function} (cho callback). Lõi không có \code{cout}/\code{cin} và không biết gì về HTTP hay JSON.
+  \item \textbf{Console} (\code{app.exe}) gọi trực tiếp API công khai của \code{LabManager}.
+  \item \textbf{API server} (\code{LabApp.exe}) dùng cpp-httplib và nlohmann/json (header-only) để đổi JSON $\leftrightarrow$ lời gọi lõi, đồng thời phục vụ tệp tĩnh trong \code{web/}. Tầng này được dùng STL thoải mái vì không chứa nghiệp vụ.
+  \item \textbf{Web} chạy hoàn toàn offline (không CDN); không tự tính nghiệp vụ, mọi số liệu lấy từ API. Hợp đồng giữa web và server là \code{docs/api.md}.
+\end{itemize}
+
+\section{Lõi tách khỏi giao diện}
+Hàm lõi nhận tham số và trả kết quả có cấu trúc, ví dụ \code{BorrowResult} gồm \code{ErrorCode} (\code{enum class}), thông điệp và danh sách món hết hàng. Danh sách trả ra dưới dạng cấu trúc tự cài hoặc qua \code{forEachDevice(callback)}. Sự kiện (``đến lượt SV X nhận thiết bị Y'', ``SV X lỡ hạn, bị đẩy xuống cuối'') được lõi đẩy vào \code{LinkedQueue<Notification>}; console và web tự lấy ra hiển thị. Nhờ vậy cùng một lõi phục vụ hai giao diện và cho ra số liệu giống hệt nhau.
+
+\section{Lưu trữ CSV}
+Dữ liệu lưu trong \code{data/} gồm \code{devices.csv}, \code{borrow_records.csv}, \code{reservations.csv}, \code{meta.csv}; đọc khi khởi động, ghi sau mỗi thao tác thay đổi (ghi ra tệp \code{.tmp} rồi đổi tên). Chỉ lưu \textbf{dữ liệu gốc}; những gì suy ra được thì tính lại khi nạp: \code{available}, \code{borrowed}, \code{onHold}, \code{timesBorrowed} và toàn bộ đồ thị mượn kèm (không có \code{graph.csv}). Cách dựng lại nằm ở mục~\ref{sec:load}.
+
+\section{Công cụ và môi trường}
+Windows 11, g++ (MinGW-w64) 13.2.0 với C++17, không dùng \code{make}; các tập lệnh PowerShell \code{build.ps1}, \code{build_server.ps1}, \code{build_test.ps1}. Bản phát hành biên dịch với \code{-O2 -DNDEBUG -static} nên chạy được trên máy không cài MinGW.

@@ -1,0 +1,55 @@
+\chapter{Kiểm thử}\label{chap:testing}
+
+\section{Chiến lược}
+Có ba lớp kiểm thử:
+\begin{enumerate}
+  \item \textbf{Unit test của lõi} (\code{tests/test_main.cpp}): viết bằng macro \code{CHECK} thuần (không dùng thư viện ngoài), chạy bằng \code{build_test.ps1}, biên dịch với \code{-Wall -Wextra -Werror}. Hiện có \textbf{596 kiểm tra}, tất cả đạt.
+  \item \textbf{Bất biến} \code{checkInvariants()}: được gọi sau mỗi thao tác thay đổi dữ liệu ở chế độ debug và trong test (mục~\ref{sec:invariants}).
+  \item \textbf{Smoke test API} (\code{tests/api_smoke.ps1}): chạy \code{LabApp.exe} trên bản sao dữ liệu mẫu ở thư mục tạm, gọi mọi endpoint theo kịch bản demo, kiểm mã lỗi và nội dung JSON. Hiện có \textbf{83 kiểm tra}, tất cả đạt.
+\end{enumerate}
+
+\section{Phạm vi unit test lõi}
+\begin{table}[H]
+\centering
+\caption{Các nhóm kiểm thử của lõi}
+\label{tab:tests}
+\small
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.4cm}>{\raggedright\arraybackslash}p{11.4cm}@{}}
+\toprule
+Nhóm & Nội dung chính \\
+\midrule
+\code{DoublyLinkedList} & thêm/xoá hai đầu, \code{erase} và iterator, \code{insertSorted} ổn định, sao chép/di chuyển/tự gán, \code{checkIntegrity}, không rò rỉ bộ nhớ \\
+\code{LinkedQueue} & FIFO, \code{moveFrontToBack} (hàng 0, 1, nhiều phần tử), \code{removeFirst} ở đầu/giữa/cuối (nút cuối làm \code{tail_} lùi lại), sao chép/di chuyển, không rò rỉ \\
+\code{Graph} & thêm đỉnh/cạnh, khuyên và trọng số $\le 0$ bị từ chối, cạnh hai chiều, \code{topNeighbors} (thứ tự, hoà theo mã, ít hơn $k$ láng giềng, bộ lọc), \code{removeVertex} \\
+Thiết bị, bảo trì & danh mục có thứ tự, M1--M3, hết hàng, kiểm tra đầu vào (M5, M9) \\
+Mượn/trả/quá hạn & mượn nguyên tử (M6), trùng mã (M7), trả cả phiếu (M8), quá hạn đúng bằng hạn, trễ chưa tròn ngày, phạt \code{long long}, năm nhuận của \code{Clock} \\
+Hàng đợi đặt trước & kịch bản hết hàng $\to$ trả $\to$ tua giờ; một người chờ (M14); hết hạn dây chuyền (M15); nhận/huỷ (M13, M16); giữ nhiều người (M11); không đặt trước khi còn hàng (M12) \\
+Gợi ý & top 3 bỏ thiết bị bảo trì, thiết bị hết hàng có cờ, \code{suggestForBasket} cộng dồn, trọng số đối chiếu bằng cách đếm lại từ lịch sử phiếu \\
+Xoá thiết bị (M4) & chặn khi còn phiếu hoặc người chờ; gỡ đỉnh và cạnh \\
+Lưu trữ CSV & lưu rồi nạp lại giữ nguyên dữ liệu mẫu; tệp thiếu, dòng sai số cột, chữ thay số, số quá lớn, mã trùng, tệp CRLF đều báo cảnh báo rồi bỏ qua, không crash; \code{restore*} từ chối dòng mâu thuẫn \\
+Thống kê & \code{getStats}, \code{countRecords}, \code{topBorrowedDevices}, danh sách sắp hết hạn giữ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Kiểm tra rò rỉ bộ nhớ}
+MinGW-w64 không hỗ trợ \code{-fsanitize=address}. Thay vào đó, test dùng kiểu \code{Tracked} có bộ đếm tĩnh các đối tượng còn sống (tăng khi tạo/sao chép, giảm khi huỷ). Sau mỗi khối test thao tác trên \code{DoublyLinkedList<Tracked>} hay \code{LinkedQueue<Tracked>}, bộ đếm phải về 0: điều đó chứng tỏ mọi nút được giải phóng đúng một lần (không rò rỉ, không huỷ hai lần) kể cả sau sao chép, di chuyển, gán và xoá giữa chừng.
+
+\section{Các ca biên đáng chú ý}
+\begin{itemize}
+  \item \textbf{Đúng bằng hạn}: $now = due$ thì chưa quá hạn; $now = due+1$ giờ thì quá hạn 1 ngày; trễ đúng 24 giờ là 1 ngày, 25 giờ là 2 ngày.
+  \item \textbf{Phiếu thất bại không đổi gì}: phiếu 3 món có 1 món hết hàng $\Rightarrow$ số lượng, đồ thị và mã phiếu tiếp theo không đổi.
+  \item \textbf{Tua nhiều giờ}: tua 72 giờ một lần cho kết quả giống tua từng giờ (dây chuyền M15, hạn người kế tính từ \code{holdUntil} cũ).
+  \item \textbf{Hàng chỉ còn một người} bị lỡ: được giữ lại 24 giờ mới; lỡ lần 2 thì bị loại và đơn vị về \code{available} (M14).
+  \item \textbf{Gỡ nút cuối của hàng đợi}: \code{tail_} phải lùi về nút trước; \code{moveFrontToBack} khi hàng có 0 hoặc 1 phần tử không làm gì.
+  \item \textbf{Tự gán} (\code{a = a}) và \textbf{di chuyển} của cả hai cấu trúc dữ liệu.
+  \item \textbf{Mã thiết bị đã xoá}: phiếu lịch sử vẫn nạp được, đồ thị không có đỉnh ma.
+  \item \textbf{CSV hỏng}: thư mục dữ liệu toàn dòng lỗi vẫn nạp được, in cảnh báo \code{tệp:dòng --- lý do}.
+  \item \textbf{Mã trùng, ký tự cấm} (dấu phẩy, \code{|}, xuống dòng) bị lõi từ chối (M5).
+\end{itemize}
+
+\section{Smoke test API}
+\code{api_smoke.ps1} khởi động \code{LabApp.exe --seed --no-browser} trên cổng tạm với dữ liệu ở thư mục tạm (không đụng \code{data/} thật) và chia thành các nhóm: tổng quan, thiết bị (thêm/sửa/bảo trì/xoá), mượn/trả, hàng đợi (đặt, nhận, huỷ, tua giờ), gợi ý và đồ thị, đồng hồ và thông báo, lỗi (JSON sai, endpoint lạ, phiếu lạ, tham số sai $\to$ 400/404 với mã lỗi đúng), tệp tĩnh (\code{GET /} trả \code{index.html} UTF-8), tự lưu CSV sau thao tác, và cổng bận $\to$ server tự chuyển sang cổng khác.
+
+\section{Bản phát hành}
+Bản phát hành biên dịch bằng \code{-O2 -DNDEBUG -static}. Kiểm tra bằng \code{objdump -p} cho thấy \code{app.exe} và \code{LabApp.exe} không phụ thuộc \code{libstdc++-6.dll}, \code{libgcc_s_seh-1.dll}, \code{libwinpthread-1.dll}; chạy \code{LabApp.exe} giải nén từ gói phát hành với \code{PATH} chỉ còn \texttt{C:\textbackslash Windows\textbackslash System32} vẫn trả lời \code{/api/stats} đúng (18 thiết bị, 52 phiếu), tức chạy được trên máy không cài MinGW.

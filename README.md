@@ -95,7 +95,8 @@ third_party/  httplib.h  json.hpp            (header-only, chỉ dùng ở tần
 web/          index.html  css/  js/  assets/  vendor/   (giao diện, chạy offline)
 tests/        test_main.cpp  api_smoke.ps1
 data/         devices.csv  borrow_records.csv  reservations.csv  meta.csv
-docs/         api.md  web-ui-spec.md  demo-checklist.md  README_RUN.txt  report-notes.md
+docs/         api.md  web-ui-spec.md  demo-checklist.md  demo-script.md  README_RUN.txt  report-notes.md  PROMPTS.md
+report/       báo cáo LaTeX (main.tex, chapters/, figures/, build_report.ps1)
 build.ps1  build_server.ps1  build_test.ps1  make_release.ps1
 ```
 
@@ -110,3 +111,25 @@ build.ps1  build_server.ps1  build_test.ps1  make_release.ps1
 
 Chỉ lưu dữ liệu gốc. Số lượng `available/borrowed/onHold`, `timesBorrowed` và đồ thị mượn kèm được tính lại khi nạp.
 File thiếu hoặc dòng lỗi thì chương trình báo cảnh báo rồi bỏ qua, không crash.
+
+## Demo
+- `docs/demo-script.md`: kịch bản trình bày ~7 phút (kiến trúc → 5 luồng demo → chuyển sang console).
+- `docs/demo-checklist.md`: checklist chi tiết từng thao tác và kết quả mong đợi trên dữ liệu mẫu.
+- Trước khi demo lại từ đầu: `git checkout -- data/` (hoặc `LabApp.exe --seed`), vì dữ liệu tự lưu sau mỗi thao tác.
+
+## Báo cáo
+Báo cáo LaTeX nằm trong `report/` (chương trong `report/chapters/`, ảnh chụp màn hình trong `report/figures/`).
+Cần MiKTeX (hoặc TeX Live) có XeLaTeX; font Times New Roman và Consolas có sẵn trên Windows.
+
+```powershell
+.\report\build_report.ps1      # ra report\main.pdf (file PDF không commit vào git)
+```
+
+## Phần có AI hỗ trợ
+Đồ án có dùng AI hỗ trợ lập trình, theo kế hoạch do sinh viên duyệt từng giai đoạn:
+- **Claude Code (Anthropic)**: lõi CTDL (`DoublyLinkedList`, `LinkedQueue`, `Graph`, `LabManager`), lưu CSV, console,
+  API server, unit test, script build/đóng gói, và bản nháp tài liệu/báo cáo.
+- **Google Antigravity (Gemini)**: giao diện web trong `web/`, theo đặc tả `docs/web-ui-spec.md`.
+- **Sinh viên (Lê Trường Khải)**: chọn đề, chốt quy ước nghiệp vụ M1–M19, duyệt kế hoạch và mã nguồn từng giai đoạn,
+  chạy kiểm thử, và chịu trách nhiệm giải thích cấu trúc dữ liệu, độ phức tạp của sản phẩm nộp.
+- Bộ prompt đã dùng: `docs/PROMPTS.md`.

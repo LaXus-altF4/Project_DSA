@@ -1,0 +1,161 @@
+\chapter{Thuật toán nghiệp vụ}
+
+Chương này mô tả các thuật toán trong \code{LabManager} và \code{Storage}, tức phần ghép ba cấu trúc dữ liệu thành nghiệp vụ của đề. Mỗi \code{Device} giữ các số lượng \code{total}, \code{available}, \code{borrowed}, \code{onHold}, \code{maintenance}, bộ đếm \code{timesBorrowed} và một \code{LinkedQueue<Reservation>}.
+
+\section{Mượn nguyên tử (M6)}
+Phiếu nhiều thiết bị phải ``được tất cả hoặc không được gì''. Thay vì mượn từng món rồi hoàn tác khi gặp lỗi, \code{borrowDevices} chạy \emph{hai lượt}: lượt 1 chỉ đọc để gom mọi món lỗi, lượt 2 mới đổi dữ liệu. Nhờ đó không cần hoàn tác, và đồ thị chỉ được cập nhật khi phiếu chắc chắn hợp lệ.
+
+\begin{algorithm}[H]
+\caption{\textsc{BorrowDevices}$(studentId, name, ids, days)$}
+\begin{algorithmic}[1]
+\State kiểm tra $studentId$, $name$ hợp lệ (M5), $1 \le days \le 30$ (M9), $ids$ không rỗng
+\Statex \textbf{Lượt 1 --- chỉ đọc:}
+\For{mỗi $id$ trong $ids$}
+  \If{$id$ đã xuất hiện trước đó trong $ids$} \State ghi vào danh sách \emph{trùng} (M7)
+  \ElsIf{không có thiết bị $id$} \State ghi vào danh sách \emph{không tồn tại}
+  \ElsIf{$available(id) \le 0$} \State ghi vào danh sách \emph{hết hàng}
+  \EndIf
+\EndFor
+\If{có món lỗi} \Return lỗi (liệt kê các món), \textbf{không đổi dữ liệu nào} \EndIf
+\Statex \textbf{Lượt 2 --- đổi dữ liệu:}
+\State tạo phiếu: mã mới, $borrowHour \gets now$, $dueHour \gets now + days\times 24$
+\For{mỗi $id$ trong $ids$}
+  \State $available \gets available-1$;\quad $borrowed \gets borrowed+1$;\quad $timesBorrowed \gets timesBorrowed+1$
+\EndFor
+\State \Call{AddCoBorrow}{$ids$}\Comment{$+1$ cho $k(k-1)/2$ cặp; phiếu 1 món không có cặp}
+\State thêm phiếu vào danh sách phiếu;\quad lưu CSV;\quad \Return mã phiếu
+\end{algorithmic}
+\end{algorithm}
+Độ phức tạp $O(k\cdot n + k^2)$ cho hai lượt (tra thiết bị trong danh sách là $O(n)$, kiểm tra trùng $O(k^2)$), cộng $O(k^2\cdot(V+d))$ cho đồ thị.
+
+\section{Trả phiếu, quá hạn và tiền phạt (M8, M19)}
+Trả cả phiếu một lần: ghi \code{returnHour}, chốt số ngày quá hạn và tiền phạt, rồi trả từng thiết bị về \code{available} và phục vụ hàng đợi của thiết bị đó. Trả sai mã hay trả lần thứ hai chỉ trả về lỗi, không đổi dữ liệu.
+
+Số ngày quá hạn làm tròn lên bằng số nguyên: với $h = at - due$,
+\[
+  overdueDays =
+  \begin{cases}
+    0 & h \le 0,\\
+    \lfloor (h + 23)/24 \rfloor & h > 0,
+  \end{cases}
+  \qquad
+  fine = overdueDays \times |ids| \times 36.000.
+\]
+Đúng bằng hạn ($h=0$) thì chưa quá hạn. Phiếu đang mở dùng giờ hiện tại làm $at$ (tạm tính); phiếu đã trả giữ giá trị đã chốt. Tiền phạt là \code{long long}, không dùng số thực để tránh sai số làm tròn. Độ phức tạp: $O(m + k\cdot n)$ (tìm phiếu $O(m)$, mỗi thiết bị $O(n)$).
+
+\section{Hàng đợi đặt trước và giữ 24 giờ (M11, M12, M14, M15)}
+\subsection{Giữ hàng nhiều người}
+Mỗi khi một đơn vị rảnh (do trả, hết bảo trì, tăng \code{total}, huỷ đăng ký hay người giữ hết hạn), \code{serveQueue} gán nó cho người \emph{chưa được giữ} đứng đầu tiên. Vì vậy những người đang giữ luôn là một đoạn đầu của hàng, và hạn nhận của họ không giảm dọc theo đoạn đó.
+
+\begin{algorithm}[H]
+\caption{\textsc{ServeQueue}$(d, at)$: $at$ là thời điểm đơn vị rảnh}
+\begin{algorithmic}[1]
+\For{mỗi người $r$ trong $d.queue$ theo thứ tự từ đầu hàng}
+  \If{$d.available \le 0$} \textbf{dừng} \EndIf
+  \If{$r$ chưa được giữ}
+    \State $r.holdUntil \gets at + 24$;\quad $d.available \gets d.available-1$;\quad $d.onHold \gets d.onHold+1$
+    \State đẩy thông báo ``đến lượt $r$ nhận $d$'' vào hàng thông báo
+  \EndIf
+\EndFor
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Hết hạn và dây chuyền}
+Sau mỗi lần tua đồng hồ, \code{expireReservations} xử lý các lượt giữ đã hết hạn. Vì người đang giữ là đoạn đầu hàng và hạn nhận không giảm, chỉ cần xét \emph{đầu hàng}.
+
+\begin{algorithm}[H]
+\caption{\textsc{ExpireReservations}$()$}
+\begin{algorithmic}[1]
+\For{mỗi thiết bị $d$}
+  \While{đầu hàng $h$ tồn tại, đang giữ và $h.holdUntil \le now$}
+    \State $expiredAt \gets h.holdUntil$
+    \State $d.onHold \gets d.onHold-1$;\quad $d.available \gets d.available+1$;\quad $h.missCount \gets h.missCount+1$
+    \If{$h.missCount \ge 2$}
+      \State \Call{Dequeue}{$d.queue$};\quad thông báo ``bị loại''
+    \Else
+      \State $h.holdUntil \gets -1$;\quad \Call{MoveFrontToBack}{$d.queue$};\quad thông báo ``bị đẩy xuống cuối''
+    \EndIf
+    \State \Call{ServeQueue}{$d, expiredAt$}\Comment{M15: tính từ mốc hết hạn cũ, không phải $now$}
+  \EndWhile
+\EndFor
+\end{algorithmic}
+\end{algorithm}
+
+Điểm then chốt là dòng cuối: người kế nhận quyền giữ với hạn $expiredAt + 24$ chứ không phải $now + 24$. Ví dụ: Khôi được giữ đến 04/11 16:00; tua $+25$ giờ lên 04/11 17:00. Khôi bị đẩy xuống cuối, Nhi được giữ với hạn $16{:}00 + 24 = 05/11\ 16{:}00$ (còn 23 giờ), đúng như khi tua từng giờ một. Vòng \code{while} lặp cho đến khi không còn ai hết hạn $\le now$, nên tua nhiều ngày một lần vẫn đúng (dây chuyền). Nếu hàng chỉ còn một người bị đẩy xuống ``cuối'' thì \code{ServeQueue} giữ lại cho chính người đó 24 giờ mới (M14); lỡ lần thứ 2 thì bị loại và đơn vị ở lại \code{available}. Độ phức tạp $O(n\cdot q)$ cho toàn hệ thống mỗi lần gọi (mỗi thiết bị xét đầu hàng, mỗi lần xử lý có $\texttt{ServeQueue}$ duyệt $O(q)$).
+
+\subsection{Nhận và huỷ}
+\code{claimReservation} gỡ người đang giữ khỏi hàng bằng \code{removeFirst} (có thể không đứng đầu), chuyển 1 đơn vị từ \code{onHold} sang \code{borrowed} và tạo phiếu 1 thiết bị (M13, không cộng cạnh). \code{cancelReservation} (M16) gỡ người khỏi hàng; nếu đang giữ thì trả đơn vị về \code{available} rồi gọi \code{ServeQueue} để chuyển quyền cho người kế.
+
+\section{Gợi ý thiết bị mượn kèm (M17)}
+\subsection{Top 3 theo một thiết bị}
+\code{suggestCompanions(A, 3)} gọi \code{Graph::topNeighbors} kèm bộ lọc ``không phải Bảo trì''. Thiết bị hết hàng nhưng không bảo trì vẫn được gợi ý (kèm cờ hết hàng để giao diện hiển thị). Độ phức tạp $O(V + k\cdot d\cdot n)$ vì mỗi cạnh xét phải tra thiết bị trong danh sách để biết trạng thái ($A = O(n)$).
+
+\subsection{Gợi ý theo cả giỏ}
+Khi lập phiếu nhiều món, người dùng cần gợi ý cho \emph{cả giỏ} chứ không riêng một món. \code{suggestForBasket} cộng trọng số của cùng một ứng viên qua các món đã chọn.
+
+\begin{algorithm}[H]
+\caption{\textsc{SuggestForBasket}$(basket, k)$}
+\begin{algorithmic}[1]
+\State $cand \gets$ danh sách ứng viên $(id, score)$ rỗng
+\For{mỗi món $s$ trong $basket$}
+  \For{mỗi láng giềng $(u, w)$ của $s$ trong đồ thị}
+    \If{$u \in basket$ \textbf{hoặc} $u$ đang Bảo trì} \textbf{bỏ qua} \EndIf
+    \State cộng $w$ vào $score$ của $u$ trong $cand$ (thêm mới nếu chưa có)
+  \EndFor
+\EndFor
+\State chọn $k$ lần ứng viên có $score$ lớn nhất (hoà thì mã nhỏ hơn) \Comment{như \textsc{TopNeighbors}, không sắp xếp}
+\end{algorithmic}
+\end{algorithm}
+Ví dụ giỏ $\{$ARD01, BRD01$\}$: JMP01 có $10 + 10 = 20$ nên vọt lên đầu. Phiếu đang lập \emph{chưa} được cộng vào đồ thị (đồ thị chỉ đổi khi \code{borrowDevices} thành công), nên gợi ý chỉ phản ánh lịch sử. Độ phức tạp $O(s^2 + s\cdot(V + d\cdot(n + c + s)) + k\cdot c)$ với $s$ = số món trong giỏ, $c$ = số ứng viên.
+
+\section{Dựng lại đồ thị khi nạp CSV}\label{sec:load}
+Đồ thị và \code{timesBorrowed} không có tệp riêng; \code{Storage::load} dựng lại theo thứ tự:
+\begin{enumerate}
+  \item \code{restoreMeta}: đặt đồng hồ và bộ đếm mã phiếu.
+  \item \code{restoreDevice}: với mỗi dòng \code{devices.csv} tạo thiết bị và \emph{đỉnh}; \code{available = total - maintenance}.
+  \item \code{restoreRecord}: với mỗi phiếu, nếu đang mở thì chuyển 1 đơn vị \code{available}$\to$\code{borrowed} cho từng thiết bị còn tồn tại; mọi phiếu cộng \code{timesBorrowed} và gọi \code{addCoBorrow} để dựng cạnh. Mã thiết bị đã xoá (M4) bị bỏ qua khi cập nhật số lượng và đồ thị nhưng phiếu vẫn giữ.
+  \item \code{restoreReservation}: dựng hàng đợi đúng thứ tự; người đang giữ phải đứng liền ở đầu hàng và lấy 1 đơn vị \code{available}$\to$\code{onHold}.
+  \item \code{finishRestore}: giữ hộ người chờ nếu còn đơn vị rảnh, chạy \code{expireReservations} (lượt giữ đã hết hạn lúc tắt máy được xử lý như khi tua giờ), rồi \code{checkInvariants}.
+\end{enumerate}
+Mỗi hàm \code{restore*} tự kiểm tra và từ chối dòng mâu thuẫn mà không đổi dữ liệu. Độ phức tạp $O(m\cdot(n + k^2\cdot(V+d)))$; với $n\approx 20$, $m\approx 50$ là tức thời. Lý do không lưu đồ thị: nó suy ra được từ lịch sử phiếu, lưu thêm chỉ tạo nguy cơ hai nguồn dữ liệu lệch nhau. Bộ đếm mã phiếu luôn lớn hơn mọi mã đã có nên không cấp trùng.
+
+\section{Bất biến số lượng}\label{sec:invariants}
+Sau mỗi thao tác thành công, \code{commit()} gọi \code{checkInvariants()} ở chế độ debug (\code{assert}) rồi gọi hàm lưu CSV. Hàm kiểm tra:
+\begin{itemize}
+  \item cấu trúc các danh sách liên kết và đồ thị (\code{checkIntegrity});
+  \item mã thiết bị không trùng và đúng thứ tự tăng;
+  \item $\code{available} + \code{borrowed} + \code{onHold} + \code{maintenance} = \code{total}$ cho mọi thiết bị;
+  \item \code{borrowed} khớp số phiếu đang mở chứa thiết bị đó; \code{onHold} bằng số người đang giữ;
+  \item người đang giữ là đoạn đầu hàng; $\code{missCount} < 2$; không trùng sinh viên trong một hàng; còn người chờ chưa giữ thì $\code{available} = 0$;
+  \item số đỉnh của đồ thị bằng số thiết bị, mỗi thiết bị đúng một đỉnh.
+\end{itemize}
+MinGW không có AddressSanitizer, nên kiểm tra bất biến cùng bộ test (chương~\ref{chap:testing}) là cách chính để bắt lỗi bộ nhớ và lỗi logic. Hàm này tốn $O(n\cdot(m\cdot k + q^2))$ nên chỉ chạy ở chế độ debug và trong test; bản phát hành (\code{-DNDEBUG}) bỏ qua.
+
+\section{Tổng hợp độ phức tạp các thao tác chính}
+\begin{table}[H]
+\centering
+\caption{Big-O các thao tác nghiệp vụ (chép từ \code{include/LabManager.h})}
+\label{tab:labmanager}
+\small
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{6.0cm}>{\raggedright\arraybackslash}p{4.3cm}>{\raggedright\arraybackslash}p{4.7cm}@{}}
+\toprule
+Thao tác & Độ phức tạp & Ghi chú \\
+\midrule
+\code{findDevice} & \bigO{n} & tìm trong danh sách kép \\
+\code{addDevice}, \code{sendToMaintenance}, \code{finishMaintenance} & \bigO{n}, \bigO{n}, \bigO{n} & \code{finishMaintenance} còn phục vụ hàng đợi \\
+\code{updateDevice} (M3) & \bigO{n + q} & \\
+\code{removeDevice} (M4) & $O(n + m\cdot k + V\cdot d)$ & gỡ đỉnh và cạnh \\
+\code{borrowDevices} & $O(k\cdot n + k^2)$ & hai lượt (M6) \\
+\code{returnRecord} & $O(m + k\cdot n)$ & \\
+\code{reserveDevice}, \code{claimReservation}, \code{cancelReservation} & \bigO{n + q} & \\
+\code{expireReservations} & \bigO{n\cdot q} & dây chuyền M15 \\
+\code{overdueDays}, \code{calcFine} & \bigO{1} & \\
+\code{suggestCompanions} & \bigO{V + k\cdot d\cdot n} & \\
+\code{allCompanions} & $O(V + d^2 + d\cdot n)$ & gồm cả thiết bị bảo trì \\
+\code{suggestForBasket} & $O(s^2 + s\cdot(V + d\cdot(n + c + s)) + k\cdot c)$ & \\
+\code{getStats} (Tổng quan) & $O(n\cdot q + m\cdot k)$ & \\
+\code{popNotification} & \bigO{1} & \\
+\code{Storage::load} & $O(m\cdot(n + k^2\cdot(V+d)))$ & \\
+\bottomrule
+\end{tabular}
+\end{table}

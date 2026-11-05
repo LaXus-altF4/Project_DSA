@@ -1,0 +1,290 @@
+\chapter{Thiết kế các cấu trúc dữ liệu}
+
+Ký hiệu độ phức tạp: $n$ = số thiết bị (độ dài danh sách), $m$ = số phiếu, $q$ = độ dài hàng đợi, $V$ = số đỉnh, $E$ = số cạnh, $d$ = bậc của đỉnh đang xét, $k$ = số phần tử cần lấy. Các bảng Big-O dưới đây chép từ chú thích trong mã nguồn (\code{include/*.h}).
+
+\section{Danh sách liên kết kép \code{DoublyLinkedList<T>}}
+\subsection{Cấu trúc}
+Mỗi nút có dữ liệu và hai con trỏ \code{prev}, \code{next}; danh sách giữ \code{head_}, \code{tail_} và \code{size_} (Hình~\ref{fig:dll}).
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[node distance=1.1cm]
+  \node[lnode] (a) {VR01};
+  \node[lnode,right=of a] (b) {TC01};
+  \node[lnode,right=of b] (c) {ARD01};
+  \node[lnode,right=of c] (d) {PRJ01};
+  \draw[ptr] ([yshift=3pt]a.east) -- ([yshift=3pt]b.west);
+  \draw[ptrback] ([yshift=-3pt]b.west) -- ([yshift=-3pt]a.east);
+  \draw[ptr] ([yshift=3pt]b.east) -- ([yshift=3pt]c.west);
+  \draw[ptrback] ([yshift=-3pt]c.west) -- ([yshift=-3pt]b.east);
+  \draw[ptr] ([yshift=3pt]c.east) -- ([yshift=3pt]d.west);
+  \draw[ptrback] ([yshift=-3pt]d.west) -- ([yshift=-3pt]c.east);
+  \node[above=0.5cm of a,font=\small\ttfamily] (h) {head\_};
+  \node[above=0.5cm of d,font=\small\ttfamily] (t) {tail\_};
+  \draw[ptr] (h) -- (a);
+  \draw[ptr] (t) -- (d);
+  \node[left=0.4cm of a,font=\small\ttfamily] (n1) {nullptr};
+  \node[right=0.4cm of d,font=\small\ttfamily] (n2) {nullptr};
+  \draw[ptrback] (a.west) -- (n1);
+  \draw[ptr] (d.east) -- (n2);
+\end{tikzpicture}
+\caption{Danh sách liên kết kép (mũi tên đen: \code{next}; mũi tên xanh: \code{prev})}
+\label{fig:dll}
+\end{figure}
+
+\textbf{Dùng ở đâu:} danh mục thiết bị (\code{DoublyLinkedList<Device>}, sắp theo mã), danh sách phiếu mượn, danh sách mã thiết bị trong một phiếu, danh sách đỉnh và danh sách kề của đồ thị, và các danh sách kết quả gợi ý. Chọn danh sách kép vì \emph{gỡ một nút khi đã có con trỏ tới nó là $O(1)$} (nút biết \code{prev}) và có thể thêm/xoá ở cả hai đầu $O(1)$.
+
+\subsection{Mã giả}
+Hai thao tác lõi là chèn trước một nút và gỡ một nút; mọi thao tác khác (\code{pushFront}, \code{pushBack}, \code{insertSorted}, \code{erase}) dựa trên chúng.
+
+\begin{algorithm}[H]
+\caption{\textsc{LinkBefore}$(pos, value)$: chèn trước nút $pos$ ($pos=\text{null}$: chèn cuối)}
+\begin{algorithmic}[1]
+\State $n \gets$ nút mới chứa $value$
+\If{$pos = \text{null}$}
+  \State $n.prev \gets tail$
+  \If{$tail \ne \text{null}$} \State $tail.next \gets n$ \Else \State $head \gets n$ \EndIf
+  \State $tail \gets n$
+\Else
+  \State $n.next \gets pos$;\quad $n.prev \gets pos.prev$
+  \If{$pos.prev \ne \text{null}$} \State $pos.prev.next \gets n$ \Else \State $head \gets n$ \EndIf
+  \State $pos.prev \gets n$
+\EndIf
+\State $size \gets size + 1$
+\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}[H]
+\caption{\textsc{Unlink}$(n)$: gỡ và giải phóng nút $n$}
+\begin{algorithmic}[1]
+\If{$n.prev \ne \text{null}$} \State $n.prev.next \gets n.next$ \Else \State $head \gets n.next$ \EndIf
+\If{$n.next \ne \text{null}$} \State $n.next.prev \gets n.prev$ \Else \State $tail \gets n.prev$ \EndIf
+\State giải phóng $n$;\quad $size \gets size - 1$
+\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}[H]
+\caption{\textsc{InsertSorted}$(value, less)$: chèn giữ thứ tự tăng, ổn định}
+\begin{algorithmic}[1]
+\State $p \gets head$
+\While{$p \ne \text{null}$ \textbf{và không} $less(value, p.data)$}
+  \State $p \gets p.next$
+\EndWhile
+\State \Call{LinkBefore}{$p, value$}
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Độ phức tạp}
+\begin{table}[H]
+\centering
+\caption{Big-O của \code{DoublyLinkedList}}
+\label{tab:dll}
+\small
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{6.0cm}>{\raggedright\arraybackslash}p{4.3cm}>{\raggedright\arraybackslash}p{4.7cm}@{}}
+\toprule
+Thao tác & Độ phức tạp & Ghi chú \\
+\midrule
+\code{pushFront}, \code{pushBack}, \code{popFront}, \code{popBack} & \bigO{1} & có cả \code{head_} lẫn \code{tail_} \\
+\code{erase(it)} (gỡ nút đã có iterator) & \bigO{1} & nút biết \code{prev} \\
+\code{insertSorted} & \bigO{n} & tìm vị trí, chèn \bigO{1} \\
+\code{findFirst}, \code{removeFirst(pred)} & \bigO{n} & tìm \bigO{n} $+$ gỡ \bigO{1} \\
+\code{forEach}, \code{removeAll(pred)}, \code{clear} & \bigO{n} & \\
+\code{size}, \code{empty}, \code{swap}, di chuyển & \bigO{1} & \\
+Sao chép sâu, gán (copy-and-swap) & \bigO{n} & an toàn khi tự gán \\
+\code{checkIntegrity} & \bigO{n} & duyệt xuôi rồi ngược, kiểm \code{prev}/\code{next}, \code{size_} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Hàng đợi \code{LinkedQueue<T>}}
+\subsection{Cấu trúc}
+Hàng đợi chỉ đi một chiều từ đầu đến cuối nên dùng danh sách liên kết \emph{đơn} với hai con trỏ \code{head_} (người được phục vụ trước) và \code{tail_} (Hình~\ref{fig:queue}).
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[node distance=1.1cm]
+  \node[lnode] (a) {Khôi \#1};
+  \node[lnode,right=of a] (b) {Nhi \#2};
+  \node[lnode,right=of b] (c) {Bảo \#3};
+  \draw[ptr] (a) -- (b);
+  \draw[ptr] (b) -- (c);
+  \node[above=0.5cm of a,font=\small\ttfamily] (h) {head\_};
+  \node[above=0.5cm of c,font=\small\ttfamily] (t) {tail\_};
+  \draw[ptr] (h) -- (a);
+  \draw[ptr] (t) -- (c);
+  \node[right=0.4cm of c,font=\small\ttfamily] (nn) {nullptr};
+  \draw[ptr] (c) -- (nn);
+  % sau moveFrontToBack
+  \node[lnode,below=1.9cm of a] (a2) {Nhi \#1};
+  \node[lnode,right=of a2] (b2) {Bảo \#2};
+  \node[lnode,right=of b2] (c2) {Khôi \#3};
+  \draw[ptr] (a2) -- (b2);
+  \draw[ptr] (b2) -- (c2);
+  \node[left=0.3cm of a2,font=\scriptsize\itshape,align=right] {sau\\\code{moveFrontToBack}};
+  \node[right=0.4cm of c2,font=\small\ttfamily] (nn2) {nullptr};
+  \draw[ptr] (c2) -- (nn2);
+  \node[below=0.5cm of a2,font=\small\ttfamily] (h2) {head\_};
+  \node[below=0.5cm of c2,font=\small\ttfamily] (t2) {tail\_};
+  \draw[ptr] (h2) -- (a2);
+  \draw[ptr] (t2) -- (c2);
+\end{tikzpicture}
+\caption{Hàng đợi liên kết đơn trước và sau \code{moveFrontToBack}: chỉ nối lại con trỏ, không cấp phát hay giải phóng}
+\label{fig:queue}
+\end{figure}
+
+\textbf{Dùng ở đâu:} hàng đợi đặt trước của từng thiết bị (\code{LinkedQueue<Reservation>}) và hàng thông báo của lõi (\code{LinkedQueue<Notification>}).
+
+\subsection{Mã giả}
+\begin{algorithm}[H]
+\caption{Các thao tác chính của \code{LinkedQueue}}
+\begin{algorithmic}[1]
+\Function{Enqueue}{$value$}
+  \State $n \gets$ nút mới; \Call{LinkBack}{$n$}; $size \gets size+1$
+\EndFunction
+\Function{Dequeue}{}
+  \If{$head = \text{null}$} \Return sai \EndIf
+  \State $n \gets head$;\quad $head \gets n.next$
+  \If{$head = \text{null}$} \State $tail \gets \text{null}$ \EndIf
+  \State giải phóng $n$;\quad $size \gets size-1$;\quad \Return đúng
+\EndFunction
+\Function{MoveFrontToBack}{}
+  \If{$head = \text{null}$ \textbf{hoặc} $head = tail$} \Return \EndIf
+  \State $n \gets head$;\quad $head \gets n.next$;\quad \Call{LinkBack}{$n$}
+\EndFunction
+\Function{RemoveFirst}{$pred$}\Comment{gỡ người ở vị trí bất kỳ}
+  \State $prev \gets \text{null}$
+  \For{$p$ từ $head$ đến cuối}
+    \If{$pred(p.data)$}
+      \If{$prev \ne \text{null}$} \State $prev.next \gets p.next$ \Else \State $head \gets p.next$ \EndIf
+      \If{$p = tail$} \State $tail \gets prev$ \EndIf
+      \State giải phóng $p$;\quad $size \gets size-1$;\quad \Return đúng
+    \EndIf
+    \State $prev \gets p$
+  \EndFor
+  \State \Return sai
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+\code{LinkBack}$(n)$ đặt $n.next \gets \text{null}$, nối vào sau $tail$ (hoặc đặt $head$ nếu hàng rỗng) rồi cập nhật $tail \gets n$.
+
+\subsection{Độ phức tạp}
+\begin{table}[H]
+\centering
+\caption{Big-O của \code{LinkedQueue}}
+\label{tab:queue}
+\small
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{6.0cm}>{\raggedright\arraybackslash}p{4.3cm}>{\raggedright\arraybackslash}p{4.7cm}@{}}
+\toprule
+Thao tác & Độ phức tạp & Ghi chú \\
+\midrule
+\code{enqueue}, \code{dequeue}, \code{front} & \bigO{1} & \\
+\code{moveFrontToBack} & \bigO{1} & thao tác ``đẩy xuống cuối'' của đề \\
+\code{findFirst}, \code{removeFirst(pred)} & \bigO{n} & giữ con trỏ nút trước; gỡ nút cuối thì \code{tail_} lùi lại \\
+\code{forEach}, \code{clear} & \bigO{n} & \\
+\code{size}, \code{empty}, \code{swap}, di chuyển & \bigO{1} & \\
+Sao chép sâu, gán (copy-and-swap) & \bigO{n} & giữ nguyên thứ tự \\
+\code{checkIntegrity} & \bigO{n} & số nút $=$ \code{size_}, \code{tail_} đúng là nút cuối \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Đồ thị \code{Graph} (danh sách kề)}
+\subsection{Cấu trúc}
+Đồ thị vô hướng có trọng số: đỉnh là mã thiết bị, trọng số cạnh $\{a,b\}$ là số phiếu có cả $a$ và $b$. Danh sách đỉnh là một \code{DoublyLinkedList<Vertex>}, mỗi đỉnh chứa một danh sách kề \code{DoublyLinkedList<Edge>} (cũng tự cài, không dùng \code{std::vector}). Mỗi cạnh vô hướng được lưu ở \emph{cả hai đầu} (Hình~\ref{fig:graph}).
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[node distance=0.55cm,
+  e/.style={draw,minimum height=0.7cm,minimum width=1.9cm,font=\scriptsize\ttfamily,fill=white},
+  v/.style={draw,circle,minimum size=0.95cm,font=\small\ttfamily,fill=black!6}]
+  \node[v] (v1) at (0,0) {VR01};
+  \node[v] (v2) at (0,-1.5) {TC01};
+  \node[v] (v3) at (0,-3) {ARD01};
+  \node[v] (v4) at (0,-4.5) {BRD01};
+  \draw[ptr] (v1) -- (v2);\draw[ptr] (v2) -- (v3);\draw[ptr] (v3) -- (v4);
+  \node[e,right=1.2cm of v1] (e11) {TC01,10};
+  \node[e,right=of v2.east,xshift=1.2cm] (e21) {VR01,10};
+  \node[e,right=of v3.east,xshift=1.2cm] (e31) {BRD01,11};
+  \node[e,right=of e31] (e32) {JMP01,11};
+  \node[e,right=of v4.east,xshift=1.2cm] (e41) {ARD01,11};
+  \node[e,right=of e41] (e42) {JMP01,11};
+  \draw[ptr] (v1) -- (e11);
+  \draw[ptr] (v2) -- (e21);
+  \draw[ptr] (v3) -- (e31);\draw[ptr] (e31) -- (e32);
+  \draw[ptr] (v4) -- (e41);\draw[ptr] (e41) -- (e42);
+  \node[note,above=0.25cm of v1,xshift=2.4cm] {đỉnh $\to$ danh sách kề (mỗi cạnh có hai bản: $a\to b$ và $b\to a$)};
+\end{tikzpicture}
+\caption{Danh sách kề của một phần đồ thị mẫu (rút gọn)}
+\label{fig:graph}
+\end{figure}
+
+\subsection{Mã giả}
+\begin{algorithm}[H]
+\caption{\textsc{AddCoBorrow}$(ids)$: cập nhật đồ thị theo một phiếu}
+\begin{algorithmic}[1]
+\For{mỗi cặp $(i, j)$ trong $ids$ với $i$ đứng trước $j$}
+  \State \Call{AddEdgeWeight}{$ids[i], ids[j], 1$}
+\EndFor
+\end{algorithmic}
+\end{algorithm}
+\begin{algorithm}[H]
+\caption{\textsc{AddEdgeWeight}$(a, b, \delta)$}
+\begin{algorithmic}[1]
+\If{$a = b$ \textbf{hoặc} $\delta \le 0$} \Return sai \EndIf\Comment{không cho khuyên}
+\State $va \gets$ \Call{FindVertex}{$a$};\quad $vb \gets$ \Call{FindVertex}{$b$}
+\If{$va = \text{null}$ \textbf{hoặc} $vb = \text{null}$} \Return sai \EndIf
+\State $ab \gets$ cạnh $(b)$ trong $va.adj$
+\If{$ab \ne \text{null}$}
+  \State tăng $\delta$ cho $ab.weight$ và cho cạnh $(a)$ trong $vb.adj$
+\Else
+  \State thêm $(b,\delta)$ vào cuối $va.adj$;\quad thêm $(a,\delta)$ vào cuối $vb.adj$;\quad $E \gets E+1$
+\EndIf
+\State \Return đúng
+\end{algorithmic}
+\end{algorithm}
+\begin{algorithm}[H]
+\caption{\textsc{TopNeighbors}$(id, k, accept)$: chọn $k$ lần, không sắp xếp, không mảng phụ}
+\begin{algorithmic}[1]
+\State $result \gets$ rỗng;\quad $last \gets \text{null}$
+\For{$round = 1$ \textbf{đến} $k$}
+  \State $best \gets \text{null}$
+  \For{mỗi cạnh $e$ trong $id.adj$}
+    \If{$accept$ có và $\lnot accept(e.to)$} \State \textbf{bỏ qua} \EndIf
+    \If{$last \ne \text{null}$ \textbf{và không} \Call{RanksBefore}{$last, e$}} \State \textbf{bỏ qua} \EndIf
+    \If{$best = \text{null}$ \textbf{hoặc} \Call{RanksBefore}{$e, best$}} \State $best \gets e$ \EndIf
+  \EndFor
+  \If{$best = \text{null}$} \textbf{thoát vòng lặp} \EndIf
+  \State thêm $(best.to, best.weight)$ vào cuối $result$;\quad $last \gets best$
+\EndFor
+\State \Return $result$
+\end{algorithmic}
+\end{algorithm}
+Quan hệ \textsc{RanksBefore}$(x,y)$ là đúng khi $x.weight > y.weight$, hoặc bằng nhau và $x.to < y.to$ (M17). Vì mã láng giềng của một đỉnh không trùng nhau nên đây là thứ tự toàn phần chặt; vòng $i$ chỉ xét các cạnh đứng \emph{sau} cạnh đã chọn ở vòng trước theo thứ tự này, nên không cần đánh dấu ``đã chọn''. Bộ lọc \code{accept} dùng để bỏ thiết bị đang Bảo trì; cạnh bị lọc không bao giờ được chọn nên láng giềng kế tiếp tự lấp chỗ.
+
+\subsection{Độ phức tạp}
+\begin{table}[H]
+\centering
+\caption{Big-O của \code{Graph}}
+\label{tab:graph}
+\small
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{6.0cm}>{\raggedright\arraybackslash}p{4.3cm}>{\raggedright\arraybackslash}p{4.7cm}@{}}
+\toprule
+Thao tác & Độ phức tạp & Ghi chú \\
+\midrule
+\code{findVertex}, \code{hasVertex} & \bigO{V} & tìm trong danh sách đỉnh \\
+\code{addVertex} & \bigO{V} & kiểm tra trùng mã \\
+\code{removeVertex} & $O(V + d\cdot(V + d_{\max}))\subseteq O(V\cdot d + E)$ & gỡ cạnh ngược ở từng láng giềng \\
+\code{addEdgeWeight} & \bigO{V + d} & tìm hai đỉnh, tìm cạnh \\
+\code{weight} & \bigO{V + d} & \\
+\code{addCoBorrow} (phiếu $k$ món) & $O(k^2\cdot(V + d))$ & $k(k-1)/2$ cặp \\
+\code{topNeighbors} & \bigO{V + k\cdot d} & bộ nhớ phụ \bigO{1} ngoài kết quả \\
+\code{topNeighbors} có lọc & $O(V + k\cdot d\cdot A)$ & $A$ = chi phí hàm \code{accept} \\
+\code{sortedNeighbors} (toàn bộ láng giềng) & \bigO{V + d^2} & chọn $d$ lần \\
+\code{forEachVertex}, \code{forEachEdge} & \bigO{V}, \bigO{V + E} & mỗi cạnh đúng một lần (khi $a<b$) \\
+\code{vertexCount}, \code{edgeCount} & \bigO{1} & \\
+\code{checkIntegrity} & $O(V^2 + E\cdot(V + d))$ & chỉ dùng trong test/debug \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Vì sao không dùng ma trận kề hay \code{std::sort}?} Đồ thị thưa (mỗi thiết bị chỉ đi kèm vài loại khác) nên danh sách kề tiết kiệm bộ nhớ và duyệt láng giềng chỉ tốn $O(d)$. Với $k=3$, chọn $k$ lần ($O(k\cdot d)$) nhanh hơn sắp xếp toàn bộ ($O(d\log d)$) và đúng yêu cầu ``tự cài, không dùng STL''.

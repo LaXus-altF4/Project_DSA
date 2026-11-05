@@ -1,0 +1,48 @@
+\chapter{Đánh giá, hạn chế và hướng phát triển}
+
+\section{Đánh giá}
+Đồ án đáp ứng đủ yêu cầu cơ bản và nâng cao của đề số 3:
+\begin{itemize}
+  \item ba cấu trúc dữ liệu (\code{DoublyLinkedList}, \code{LinkedQueue}, \code{Graph}) được tự cài đặt, không dùng container của STL trong lõi, có độ phức tạp ghi ngay trong mã và được kiểm thử (596 kiểm tra);
+  \item hàng đợi đặt trước giữ 24 giờ, đẩy xuống cuối, loại sau hai lần lỡ, và chuyển quyền dây chuyền đúng khi tua nhiều giờ;
+  \item đồ thị mượn kèm cho gợi ý top 3 theo thiết bị và theo cả giỏ;
+  \item hai giao diện (console và web) dùng chung một lõi, cho số liệu giống nhau; dữ liệu lưu CSV và dựng lại phần suy ra khi nạp;
+  \item bản phát hành chạy trên Windows 10 trở lên mà không cần cài thêm gì.
+\end{itemize}
+Điều rút ra: tách lõi khỏi giao diện ngay từ đầu giúp kiểm thử lõi độc lập, và việc chốt trước các quy ước nghiệp vụ (M1--M19) giúp mã, kiểm thử và báo cáo thống nhất.
+
+\section{Hạn chế}
+\begin{itemize}
+  \item \textbf{Tra cứu theo mã là $O(n)$} (duyệt danh sách liên kết), và nhiều thao tác lặp lại phép tra này. Với vài chục thiết bị là không đáng kể, nhưng không mở rộng được cho hàng chục nghìn thiết bị.
+  \item \textbf{Lưu CSV ghi lại toàn bộ tệp} sau mỗi thao tác, và \code{rename} sau \code{remove} không nguyên tử tuyệt đối: nếu mất điện đúng lúc đó, tệp \code{.tmp} còn nguyên dữ liệu mới nhưng phải khôi phục thủ công.
+  \item \textbf{Một người dùng một tiến trình}: không đăng nhập, không phân quyền; không chạy đồng thời \code{app.exe} và \code{LabApp.exe} trên cùng thư mục dữ liệu.
+  \item \textbf{Đồ thị chỉ ghi lịch sử}, không ``quên'': trọng số cũ vẫn ảnh hưởng gợi ý dù thói quen mượn đã đổi; phiếu 1 món (kể cả nhận từ hàng đợi) không đóng góp cạnh.
+  \item \textbf{Đồng hồ giả lập} chỉ tiến, không lùi; thiếu \code{meta.csv} thì đồng hồ về 01/01/2026 00:00 (có cảnh báo).
+  \item Mỗi thiết bị tối đa 1 đơn vị trong một phiếu (M7) và chưa có gia hạn phiếu.
+\end{itemize}
+
+\section{Hướng phát triển}
+\begin{itemize}
+  \item Thêm \textbf{bảng băm} hoặc \textbf{cây tìm kiếm cân bằng} để tra thiết bị theo mã trong $O(1)$ hoặc $O(\log n)$, giữ danh sách liên kết kép cho thứ tự hiển thị.
+  \item Dùng \textbf{heap} để lấy top-$k$ trong $O(d + k\log d)$ và cho hàng đợi theo thời hạn (ưu tiên theo \code{holdUntil}).
+  \item Cho đồ thị \textbf{trọng số suy giảm theo thời gian} để ưu tiên thói quen mượn gần đây.
+  \item Hỗ trợ \textbf{nhiều phòng Lab}, gia hạn phiếu, nhắc hạn qua email, và lưu trữ bằng cơ sở dữ liệu nhẹ (SQLite) thay cho CSV.
+  \item Bổ sung đăng nhập và phân quyền (thủ thư / sinh viên) nếu triển khai thực tế.
+\end{itemize}
+
+\section*{Phần có AI hỗ trợ}
+\addcontentsline{toc}{section}{Phần có AI hỗ trợ}
+Đồ án có dùng công cụ AI hỗ trợ lập trình, theo kế hoạch do sinh viên duyệt từng giai đoạn. \textbf{Claude Code} (Anthropic) hỗ trợ viết lõi cấu trúc dữ liệu, lưu CSV, console, máy chủ API, kiểm thử, tập lệnh đóng gói và bản nháp tài liệu; \textbf{Google Antigravity} (Gemini) hỗ trợ viết giao diện web theo đặc tả. Sinh viên chọn đề, chốt quy ước nghiệp vụ, duyệt kế hoạch và mã nguồn, chạy kiểm thử và chịu trách nhiệm giải thích cấu trúc dữ liệu cũng như độ phức tạp của sản phẩm nộp.
+
+
+ocite{*}
+\nocite{*}
+\begin{thebibliography}{9}
+\bibitem{clrs} T.~H. Cormen, C.~E. Leiserson, R.~L. Rivest, C.~Stein, \emph{Introduction to Algorithms}, 4th ed., MIT Press, 2022 (danh sách liên kết, hàng đợi, biểu diễn đồ thị bằng danh sách kề).
+\bibitem{weiss} M.~A. Weiss, \emph{Data Structures and Algorithm Analysis in C++}, 4th ed., Pearson, 2013.
+\bibitem{stroustrup} B.~Stroustrup, \emph{The C++ Programming Language}, 4th ed., Addison-Wesley, 2013.
+\bibitem{cppref} \emph{cppreference.com}, tài liệu C++17. \url{https://en.cppreference.com}
+\bibitem{httplib} Y.~Yhirose, \emph{cpp-httplib}, thư viện HTTP header-only cho C++. \url{https://github.com/yhirose/cpp-httplib}
+\bibitem{json} N.~Lohmann, \emph{JSON for Modern C++}. \url{https://github.com/nlohmann/json}
+\bibitem{de} Trần Tuấn Kiệt, \emph{Đề đồ án số 3 --- Quản lý mượn trả thiết bị và gợi ý đồ dùng thực hành}, môn Thực hành Cấu trúc dữ liệu và Giải thuật, HCMUS.
+\end{thebibliography}
