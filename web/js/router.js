@@ -9,6 +9,7 @@ import * as ReturnPage from './pages/return.js';
 import * as ReservationsPage from './pages/reservations.js';
 import * as RecordsPage from './pages/records.js';
 import * as GraphPage from './pages/graph.js';
+import { isMotionAllowed, prefersReducedMotion } from './ui/fx.js';
 
 const ROUTES = {
   '#/dashboard': DashboardPage,
@@ -22,6 +23,8 @@ const ROUTES = {
 
 const DEFAULT_ROUTE = '#/dashboard';
 let currentRoute = null;
+let routeAnimTimer = 0;
+let routeNavSeq = 0;
 
 export function getRoute() {
   const hash = window.location.hash || DEFAULT_ROUTE;
@@ -41,6 +44,14 @@ export async function handleRouteChange() {
   const route = getRoute();
   currentRoute = route;
 
+  // Đóng panel trượt chi tiết thiết bị & dọn vòng lặp đồ thị nếu điều hướng sang route khác
+  if (typeof DevicesPage.closeDevicePanel === 'function') {
+    DevicesPage.closeDevicePanel();
+  }
+  if (route !== '#/graph' && typeof GraphPage.cleanupGraphResources === 'function') {
+    GraphPage.cleanupGraphResources();
+  }
+
   // Cập nhật liên kết active trên Sidebar
   document.querySelectorAll('.sidebar-nav .nav-item').forEach(link => {
     const href = link.getAttribute('href');
@@ -54,10 +65,21 @@ export async function handleRouteChange() {
   const container = document.getElementById('page-container');
   if (!container) return;
 
-  // Hiệu ứng chuyển trang: fade + trượt lên 8px (200ms)
-  container.classList.remove('page-enter');
+  const seq = ++routeNavSeq;
+  if (routeAnimTimer) {
+    window.clearTimeout(routeAnimTimer);
+    routeAnimTimer = 0;
+  }
+
+  // Chuyển trang phối cảnh 3D (260ms) khi bật 3D (trừ #/graph giữ nguyên 2D);
+  // Tắt 3D dùng .page-enter phẳng (200ms); prefers-reduced-motion chuyển tức thì.
+  container.classList.remove('page-enter', 'page-perspective-active');
   void container.offsetWidth;
-  container.classList.add('page-enter');
+
+  const usePerspective = isMotionAllowed() && route !== '#/graph';
+  if (!prefersReducedMotion()) {
+    container.classList.add(usePerspective ? 'page-perspective-active' : 'page-enter');
+  }
 
   const pageModule = ROUTES[route];
   if (pageModule && typeof pageModule.render === 'function') {
@@ -76,9 +98,35 @@ export async function handleRouteChange() {
     }
   }
 
-  // Tái tạo lại Lucide icons nếu có
-  if (window.lucide && typeof window.lucide.createIcons === 'function') {
-    window.lucide.createIcons();
+  // Sau khi hoàn tất 260ms, gỡ class hiệu ứng để transform trở về none hoàn toàn
+  if (seq === routeNavSeq) {
+    const clearTransitionClasses = () => {
+      container.classList.remove('page-enter', 'page-perspective-active');
+    };
+    const pageEl = container.querySelector('.page');
+    if (pageEl && usePerspective) {
+      pageEl.addEventListener(
+        'animationend',
+        (ev) => {
+          if (ev.target === pageEl) clearTransitionClasses();
+        },
+        { once: true }
+      );
+    }
+    routeAnimTimer = window.setTimeout(() => {
+      routeAnimTimer = 0;
+      if (seq === routeNavSeq) clearTransitionClasses();
+    }, 280);
+  }
+
+  // Chỉ tạo icon cho các thẻ <i data-lucide> chưa được chuyển sang <svg>,
+  // tránh thay thế các thẻ <svg> đang gắn sự kiện/hiệu ứng trên trang.
+  if (
+    window.lucide &&
+    typeof window.lucide.createIcons === 'function' &&
+    container.querySelector('i[data-lucide]')
+  ) {
+    window.lucide.createIcons({ nodes: [container] });
   }
 }
 

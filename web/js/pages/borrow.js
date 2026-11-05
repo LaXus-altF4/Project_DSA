@@ -10,6 +10,7 @@
 import { api } from '../api.js';
 import { showToast } from '../ui/toast.js';
 import { openModal, closeModal } from '../ui/modal.js';
+import { launchSuccessConfetti } from '../ui/confetti.js';
 
 let currentContainer = null;
 let allDevices = [];
@@ -47,6 +48,18 @@ async function loadAllDevices() {
   try {
     const res = await api.get('/devices');
     allDevices = res.devices || [];
+
+    // Đồng bộ lại thông tin kho mới nhất cho các món đang nằm trong giỏ (khi đổi màn hoặc tua giờ)
+    if (basket.length > 0) {
+      const byId = new Map(allDevices.map(d => [d.id, d]));
+      basket = basket.map(item => byId.get(item.id)).filter(Boolean);
+      unavailableIds = unavailableIds.filter(id => {
+        const dev = byId.get(id);
+        return !dev || dev.available === 0;
+      });
+    }
+
+    renderBasket();
     renderDeviceList();
   } catch (err) {
     console.error('Lỗi tải danh mục thiết bị:', err);
@@ -193,9 +206,16 @@ function renderBasket() {
                 }
               </div>
             </div>
-            <button class="btn-icon btn-remove-basket" data-id="${escapeHtml(d.id)}" title="Xóa khỏi giỏ" style="color: var(--color-danger);">
-              <i data-lucide="trash-2" style="width: 16px; height: 16px;"></i>
-            </button>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              ${isUnavailable ? `
+                <button type="button" class="btn btn-outline btn-sm btn-basket-queue" data-id="${escapeHtml(d.id)}" data-name="${escapeHtml(d.name)}" title="Đăng ký vào hàng đợi đặt trước">
+                  Đăng ký chờ
+                </button>
+              ` : ''}
+              <button type="button" class="btn-icon btn-remove-basket" data-id="${escapeHtml(d.id)}" title="Xóa khỏi giỏ" style="color: var(--color-danger);">
+                <i data-lucide="trash-2" style="width: 16px; height: 16px;"></i>
+              </button>
+            </div>
           </div>
         `;
       }).join('')}
@@ -203,6 +223,12 @@ function renderBasket() {
   `;
 
   if (window.lucide) window.lucide.createIcons();
+
+  container.querySelectorAll('.btn-basket-queue').forEach(btn => {
+    btn.addEventListener('click', () => {
+      openRegisterQueueModal(btn.dataset.id, btn.dataset.name);
+    });
+  });
 
   container.querySelectorAll('.btn-remove-basket').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -253,7 +279,7 @@ function renderSuggestions() {
       ${suggestions.map(s => {
         const isOutOfStock = s.outOfStock === true || s.available === 0;
         return `
-          <div class="suggestion-card suggestion-popin">
+          <div class="suggestion-card suggestion-popin" data-glow="${isOutOfStock ? 'borrowed' : 'available'}">
             <div style="display: flex; flex-direction: column; gap: 2px;">
               <div style="font-size: 13.5px; font-weight: 600; color: var(--color-text-primary);">
                 ${escapeHtml(s.name)}
@@ -347,7 +373,7 @@ function renderDeviceList() {
         const isOutOfStock = d.available === 0;
 
         return `
-          <div class="device-select-item ${inBasket ? 'in-basket' : ''}">
+          <div class="device-select-item ${inBasket ? 'in-basket' : ''}" data-glow="${escapeHtml(d.status || (isOutOfStock ? 'borrowed' : 'available'))}">
             <div style="display: flex; flex-direction: column; gap: 2px;">
               <div style="font-size: 13.5px; font-weight: 600; color: var(--color-text-primary);">
                 ${escapeHtml(d.name)}
@@ -409,12 +435,17 @@ function renderDeviceList() {
 function openRegisterQueueModal(deviceId, deviceName) {
   const inputStId = document.getElementById('borrow-student-id')?.value.trim() || '';
   const inputStName = document.getElementById('borrow-student-name')?.value.trim() || '';
+  const localDev = allDevices.find(d => d.id === deviceId);
+  const fallbackNextPos = localDev ? (Number(localDev.queueLength || 0) + 1) : null;
 
   const content = document.createElement('div');
   content.innerHTML = `
     <div class="form-group">
       <label class="form-label">Thiết bị đăng ký:</label>
-      <div style="font-weight: 600;">${escapeHtml(deviceName)} (<code class="mono">${deviceId}</code>)</div>
+      <div style="font-weight: 600;">${escapeHtml(deviceName)} (<code class="mono">${escapeHtml(deviceId)}</code>)</div>
+      <div id="borrow-next-queue-pos" class="form-helper" style="margin-top: 4px; color: var(--color-primary); font-weight: 600;">
+        ${fallbackNextPos ? `Vị trí dự kiến trong hàng đợi: #${fallbackNextPos}` : 'Đang kiểm tra vị trí hàng đợi…'}
+      </div>
     </div>
     <div class="form-group">
       <label class="form-label" for="borrow-queue-student-id">Mã số sinh viên (MSSV):</label>
@@ -423,6 +454,7 @@ function openRegisterQueueModal(deviceId, deviceName) {
     <div class="form-group">
       <label class="form-label" for="borrow-queue-student-name">Họ và tên sinh viên:</label>
       <input type="text" id="borrow-queue-student-name" class="form-input" placeholder="VD: Trần Văn An" value="${escapeHtml(inputStName)}" required>
+      <div class="form-helper">Không chứa dấu phẩy (,), gạch đứng (|) hoặc xuống dòng (M5).</div>
     </div>
     <div style="font-size: 12px; margin-top: 4px;">
       <a href="#/reservations?id=${escapeHtml(deviceId)}" id="borrow-jump-reservation" style="color: var(--color-primary); text-decoration: underline; display: inline-flex; align-items: center; gap: 4px;">
@@ -430,6 +462,15 @@ function openRegisterQueueModal(deviceId, deviceName) {
       </a>
     </div>
   `;
+
+  // Lấy chính xác nextQueuePosition từ GET /api/devices/{id}
+  api.get(`/devices/${encodeURIComponent(deviceId)}`).then(res => {
+    const posEl = content.querySelector('#borrow-next-queue-pos');
+    if (posEl && res) {
+      const pos = res.nextQueuePosition || ((res.queue ? res.queue.length : 0) + 1);
+      posEl.textContent = `Vị trí dự kiến trong hàng đợi: #${pos}`;
+    }
+  }).catch(() => {});
 
   const jumpLink = content.querySelector('#borrow-jump-reservation');
   if (jumpLink) {
@@ -450,10 +491,16 @@ function openRegisterQueueModal(deviceId, deviceName) {
         throw new Error('Missing student info');
       }
 
+      if (/[,|\n\r]/.test(stId) || /[,|\n\r]/.test(stName)) {
+        showToast('Mã SV và Họ tên không được chứa dấu phẩy (,), gạch đứng (|) hoặc xuống dòng', 'warning');
+        throw new Error('Invalid M5 chars');
+      }
+
       try {
         const res = await api.post(`/reservations/${deviceId}`, { studentId: stId, studentName: stName });
-        showToast(`Đăng ký hàng đợi thành công! Bạn đứng vị trí số ${res.position}.`, 'success');
+        showToast(`Đăng ký hàng đợi thành công! Sinh viên ${stName} đứng vị trí #${res.position}.`, 'success');
         await loadAllDevices();
+        if (basket.length > 0) fetchBasketSuggestions();
       } catch (err) {
         showToast(err.message || 'Lỗi khi đăng ký hàng đợi', 'error');
         throw err;
@@ -545,6 +592,11 @@ function handleCheckout() {
 
         const res = await api.post('/borrow', payload);
         const rec = res.record;
+
+        launchSuccessConfetti(
+          document.querySelector('#modal-backdrop.active #modal-footer .btn-primary') ||
+            document.getElementById('btn-borrow-checkout')
+        );
 
         showToast(
           `Tạo phiếu #${rec.recordId} thành công cho SV ${escapeHtml(studentName)}! Hạn trả: ${rec.dueText}`,
@@ -736,6 +788,9 @@ export async function render(container) {
   renderBasket();
   renderSuggestions();
   await loadAllDevices();
+  if (basket.length > 0) {
+    fetchBasketSuggestions();
+  }
 
   // Tự động thêm thiết bị vào giỏ nếu được truyền từ màn hình khác sang (VD: thông báo M12 của Hàng đợi)
   const autoAddId = getAddDeviceIdFromHash();
@@ -759,5 +814,8 @@ export async function render(container) {
 export async function onTimeAdvanced() {
   if (currentContainer && document.body.contains(currentContainer)) {
     await loadAllDevices();
+    if (basket.length > 0) {
+      await fetchBasketSuggestions();
+    }
   }
 }

@@ -1,9 +1,22 @@
 <!DOCTYPE html>
-<html lang="vi" data-theme="light">
+<html lang="vi" data-theme="light" data-fx="3d">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Lab Manager — Quản lý mượn trả thiết bị phòng Lab</title>
+
+  <!-- Favicon vector cục bộ (100% Offline, khắc phục thiếu /favicon.ico - Đợt E.1) -->
+  <link rel="icon" type="image/svg+xml" href="assets/icons/favicon.svg">
+
+  <!-- Đồng bộ sớm Theme & Công tắc 3D trước khung hình đầu tiên (tránh nháy sáng/hiệu ứng) -->
+  <script>
+    try {
+      var savedFx = localStorage.getItem('lab_fx_3d');
+      if (savedFx === 'off') {
+        document.documentElement.setAttribute('data-fx', 'flat');
+      }
+    } catch (_) {}
+  </script>
 
   <!-- CSS hệ thống (100% Cục bộ) -->
   <link rel="stylesheet" href="css/base.css">
@@ -11,18 +24,48 @@
   <link rel="stylesheet" href="css/components.css">
   <link rel="stylesheet" href="css/pages.css">
   <link rel="stylesheet" href="css/animations.css">
+  <link rel="stylesheet" href="css/effects-3d.css">
 
   <!-- Thư viện Vendor cục bộ (100% Offline) -->
   <script src="vendor/lucide.min.js"></script>
   <script src="vendor/vis-network.min.js"></script>
 </head>
 <body>
+  <!-- Lớp nền không khí Gradient Mesh & hạt/lưới 3D mờ (Đợt A) -->
+  <div id="ambient-bg-root" aria-hidden="true">
+    <div class="bg-gradient-mesh">
+      <div class="mesh-orb mesh-orb-1"></div>
+      <div class="mesh-orb mesh-orb-2"></div>
+      <div class="mesh-orb mesh-orb-3"></div>
+    </div>
+    <canvas id="bg-3d-canvas"></canvas>
+  </div>
+
   <div id="app">
     <!-- Sidebar điều hướng bên trái -->
     <aside id="sidebar">
       <div class="sidebar-header">
-        <div class="sidebar-logo-icon">
-          <i data-lucide="cpu" style="width: 22px; height: 22px;"></i>
+        <div class="sidebar-logo-icon" aria-hidden="true" title="Lab Manager — HCMUS">
+          <svg class="sidebar-logo-svg" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="32" height="32" rx="8" fill="url(#logo-bg-grad)"/>
+            <!-- Mạch vi xử lý đa lớp -->
+            <path d="M7 16H10M22 16H25M16 7V10M16 22V25" stroke="#93C5FD" stroke-width="1.5" stroke-linecap="round" opacity="0.85"/>
+            <rect x="10.5" y="10.5" width="11" height="11" rx="2.5" fill="#1E3A8A" stroke="#60A5FA" stroke-width="1.2"/>
+            <!-- Lõi chip trung tâm tông lục bảo -->
+            <rect x="13" y="13" width="6" height="6" rx="1.5" fill="#10B981" class="logo-chip-core"/>
+            <!-- Các chân góc -->
+            <circle cx="8" cy="8" r="1" fill="#60A5FA" opacity="0.6"/>
+            <circle cx="24" cy="8" r="1" fill="#60A5FA" opacity="0.6"/>
+            <circle cx="8" cy="24" r="1" fill="#60A5FA" opacity="0.6"/>
+            <circle cx="24" cy="24" r="1" fill="#60A5FA" opacity="0.6"/>
+            <defs>
+              <linearGradient id="logo-bg-grad" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#3B82F6"/>
+                <stop offset="100%" stop-color="#1D4ED8"/>
+              </linearGradient>
+            </defs>
+          </svg>
+          <span class="sidebar-logo-sheen"></span>
         </div>
         <div>
           <div class="sidebar-title">Lab Manager</div>
@@ -57,7 +100,7 @@
         </a>
         <a href="#/graph" class="nav-item">
           <i data-lucide="network"></i>
-          <span>Đồ thị mượn kèm</span>
+          <span>Minh hoạ CTDL Đồ thị</span>
         </a>
       </nav>
 
@@ -100,6 +143,30 @@
         </div>
 
         <div class="topbar-right">
+          <!-- Công tắc toàn cục Bật / Tắt Hiệu ứng 3D -->
+          <button
+            id="btn-fx-toggle"
+            type="button"
+            class="fx-toggle-btn is-active"
+            role="switch"
+            aria-checked="true"
+            aria-label="Hiệu ứng 3D"
+            title="Hiệu ứng 3D đang BẬT — Nhấp để tắt về giao diện phẳng"
+          >
+            <span class="fx-toggle-icon" aria-hidden="true">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 3l8 4.5v9L12 21l-8-4.5v-9L12 3z"></path>
+                <path d="M12 12l8-4.5"></path>
+                <path d="M12 12v9"></path>
+                <path d="M12 12L4 7.5"></path>
+              </svg>
+            </span>
+            <span class="fx-toggle-label">Hiệu ứng 3D</span>
+            <span class="fx-toggle-track" aria-hidden="true">
+              <span class="fx-toggle-thumb"></span>
+            </span>
+          </button>
+
           <!-- Nút chuyển đổi Theme Sáng / Tối -->
           <button id="btn-theme-toggle" class="btn-icon" title="Chuyển đổi giao diện Sáng / Tối" aria-label="Theme Toggle">
             <i data-lucide="moon" style="width: 18px; height: 18px;"></i>

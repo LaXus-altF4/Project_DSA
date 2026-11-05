@@ -5,16 +5,34 @@
 import { api } from '../api.js';
 import { showToast } from './toast.js';
 import { openModal } from './modal.js';
-import { triggerRollDigit } from './motion.js';
+import { teardownFlipClock3D, triggerRollDigit, updateFlipClock3D } from './motion.js';
+import { isFxEnabled, onFxChange } from './fx.js';
 
 let isAdvancing = false;
+let lastKnownFxState = null;
+
+function applyClockDisplay(newText, animateFlip = false) {
+  const clockEl = document.getElementById('clock-time');
+  if (!clockEl || !newText) return;
+
+  clockEl.dataset.rawTime = newText;
+  clockEl.setAttribute('aria-label', newText);
+
+  if (isFxEnabled()) {
+    updateFlipClock3D(clockEl, newText, animateFlip);
+  } else {
+    if (clockEl.classList.contains('flip-clock-active')) {
+      teardownFlipClock3D(clockEl);
+    }
+    triggerRollDigit(clockEl, newText);
+  }
+}
 
 export async function refreshClock() {
   try {
     const clock = await api.get('/clock');
-    const clockEl = document.getElementById('clock-time');
-    if (clockEl && clock && clock.text) {
-      triggerRollDigit(clockEl, clock.text);
+    if (clock && clock.text) {
+      applyClockDisplay(clock.text, false);
     }
     return clock;
   } catch (err) {
@@ -31,9 +49,8 @@ export async function advanceTime(hours) {
 
   try {
     const result = await api.post('/clock/advance', { hours: Number(hours) });
-    if (result && result.clock) {
-      const clockEl = document.getElementById('clock-time');
-      if (clockEl) triggerRollDigit(clockEl, result.clock.text);
+    if (result && result.clock && result.clock.text) {
+      applyClockDisplay(result.clock.text, true);
     }
 
     // Lấy thông báo sự kiện phát sinh từ hàng đợi / quá hạn
@@ -88,7 +105,24 @@ export function promptAdvanceNh() {
 }
 
 export function initClock() {
+  lastKnownFxState = isFxEnabled();
   refreshClock();
+
+  onFxChange(({ fxEnabled }) => {
+    if (fxEnabled === lastKnownFxState) return;
+    lastKnownFxState = fxEnabled;
+
+    const clockEl = document.getElementById('clock-time');
+    if (!clockEl) return;
+    const raw = clockEl.dataset.rawTime || clockEl.textContent || '';
+    if (!raw || raw.includes('--')) return;
+
+    if (fxEnabled) {
+      updateFlipClock3D(clockEl, raw, false);
+    } else {
+      teardownFlipClock3D(clockEl);
+    }
+  });
 
   const btn1h = document.getElementById('btn-advance-1h');
   if (btn1h) btn1h.addEventListener('click', () => advanceTime(1));

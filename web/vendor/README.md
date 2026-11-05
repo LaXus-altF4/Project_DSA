@@ -20,6 +20,13 @@
 - **Giấy phép (License):** ISC License
 - **Mục đích:** Cung cấp bộ icon vector SVG hiện đại cho toàn hệ thống (đồng hồ, menu sidebar, trạng thái kho, giỏ hàng, thông báo). Tự động render qua `lucide.createIcons()`.
 
+### `three.module.min.js`
+- **Phiên bản:** `0.160.0` (`r160` — Standalone ES Module minified, ~655 KB)
+- **Nguồn tải:** [unpkg.com/three@0.160.0](https://unpkg.com/three@0.160.0/build/three.module.min.js)
+- **Trang chủ / Repo:** [https://github.com/mrdoob/three.js](https://github.com/mrdoob/three.js)
+- **Giấy phép (License):** MIT License (`SPDX-License-Identifier: MIT`, Copyright 2010–2023 Three.js Authors)
+- **Mục đích:** Dựng lớp lưới sóng phối cảnh & hạt bụi ánh sáng 3D mờ phía sau nội dung (`bg-scene.js`) và mô hình 3D Low-Poly linh kiện Lab trang trí có thể thu gọn ở màn Tổng quan (`lab-hero-3d.js`). Được nạp động qua `import()` khi bật công tắc `"Hiệu ứng 3D"`, giới hạn `devicePixelRatio ≤ 1.5` và tự động tạm dừng khi ẩn tab hoặc khi bật `prefers-reduced-motion`.
+
 ---
 
 ## 2. Phông chữ cục bộ (`web/assets/fonts/`)

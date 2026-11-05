@@ -279,7 +279,7 @@ function renderRecordsList(error = null) {
     }
 
     return `
-      <div class="return-record-item ${isSelected ? 'is-selected' : ''}" data-record-id="${escapeHtml(r.recordId)}">
+      <div class="return-record-item ${isSelected ? 'is-selected' : ''} ${isOverdue ? 'is-overdue-record' : ''}" data-glow="${isOverdue ? 'maintenance' : 'borrowed'}" data-record-id="${escapeHtml(r.recordId)}">
         <div class="return-record-header">
           <span class="return-record-id">#${escapeHtml(r.recordId)}</span>
           ${badgeHtml}
@@ -541,7 +541,15 @@ function renderRecordDetail(error = null) {
                   ${dev.deleted ? '<span class="badge badge-maintenance" style="margin-left: 6px; font-size: 10.5px;">Đã xoá (M4)</span>' : ''}
                 </div>
               </div>
-              <span style="font-weight: 600; color: var(--color-text-secondary); font-size: 12px;">1 đơn vị</span>
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <span style="font-weight: 600; color: var(--color-text-secondary); font-size: 12px;">1 đơn vị</span>
+                ${!r.open && !dev.deleted ? `
+                  <a href="#/reservations?id=${encodeURIComponent(dev.id)}" class="btn btn-outline btn-sm" style="font-size: 11.5px; padding: 3px 10px; text-decoration: none;" title="Kiểm tra hàng đợi đặt trước của thiết bị này">
+                    <span>Xem hàng đợi</span>
+                    <i data-lucide="arrow-right" style="width: 12px; height: 12px;"></i>
+                  </a>
+                ` : ''}
+              </div>
             </div>
           `).join('')}
         </div>
@@ -817,17 +825,22 @@ export async function render(container) {
     });
   }
 
-  // Gắn sự kiện nút "Làm mới"
+  // Gắn sự kiện nút "Làm mới" (hiệu ứng xoay SVG chuẩn spin-loading)
   const btnRefresh = container.querySelector('#btn-refresh-return-page');
   if (btnRefresh) {
     btnRefresh.addEventListener('click', async () => {
-      const icon = btnRefresh.querySelector('i');
-      if (icon) icon.classList.add('spinning');
-      await loadOpenRecords(searchQuery, selectedRecordId);
-      setTimeout(() => {
-        if (icon) icon.classList.remove('spinning');
-      }, 400);
-      showToast('Đã làm mới dữ liệu từ máy chủ', 'info', '', 2000);
+      const icon = btnRefresh.querySelector('svg, i');
+      if (icon) icon.classList.add('spin-loading');
+      btnRefresh.disabled = true;
+      try {
+        await loadOpenRecords(searchQuery, selectedRecordId);
+        showToast('Đã làm mới dữ liệu từ máy chủ', 'info', '', 2000);
+      } finally {
+        setTimeout(() => {
+          if (icon) icon.classList.remove('spin-loading');
+          btnRefresh.disabled = false;
+        }, 350);
+      }
     });
   }
 

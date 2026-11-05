@@ -73,6 +73,19 @@
   justify-content: space-between;
 }
 
+.metric-card.metric-card-clickable {
+  cursor: pointer;
+}
+
+.metric-card.metric-card-clickable:hover {
+  border-color: var(--color-danger-border);
+}
+
+.metric-card.metric-card-clickable:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
 .metric-info {
   display: flex;
   flex-direction: column;
@@ -127,38 +140,119 @@
   color: var(--color-success);
 }
 
-/* Pure CSS Bar Chart (Top mượn nhiều nhất) */
+/* Pure CSS Bar Chart (Top mượn nhiều nhất — thanh phẳng bo tròn ~8px) */
 .css-bar-chart {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 10px;
 }
 
 .css-bar-item {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 6px;
+  padding: 6px 8px;
+  margin: 0 -8px;
+  border-radius: var(--radius-md);
+  transition: background-color 160ms ease;
+}
+
+.css-bar-item:hover,
+.css-bar-item:focus-within {
+  background-color: var(--color-bg-hover);
 }
 
 .css-bar-header {
   display: flex;
   justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
   font-size: 13px;
   font-weight: 500;
 }
 
+.css-bar-track-wrap {
+  position: relative;
+}
+
 .css-bar-track {
-  height: 10px;
-  background-color: var(--color-bg-muted);
+  height: 8px;
+  background-color: rgba(148, 163, 184, 0.20);
   border-radius: var(--radius-full);
   overflow: hidden;
 }
 
+[data-theme="dark"] .css-bar-track {
+  background-color: rgba(148, 163, 184, 0.16);
+}
+
 .css-bar-fill {
   height: 100%;
-  background: linear-gradient(90deg, var(--color-primary), #60A5FA);
+  background: linear-gradient(90deg, var(--color-primary) 0%, #60A5FA 100%);
   border-radius: var(--radius-full);
-  transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  transition:
+    width 0.55s cubic-bezier(0.16, 1, 0.3, 1),
+    filter 160ms ease,
+    box-shadow 160ms ease;
+}
+
+[data-theme="dark"] .css-bar-fill {
+  background: linear-gradient(90deg, #2563EB 0%, #60A5FA 100%);
+}
+
+.css-bar-item:hover .css-bar-fill,
+.css-bar-item:focus-within .css-bar-fill {
+  filter: brightness(1.14) saturate(1.06);
+  box-shadow: 0 0 10px rgba(59, 130, 246, 0.38);
+}
+
+.css-bar-tooltip {
+  position: absolute;
+  bottom: calc(100% + 7px);
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  font-size: 11.5px;
+  font-weight: 600;
+  line-height: 1.35;
+  white-space: nowrap;
+  color: #F8FAFC;
+  background-color: #0F172A;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.18);
+  opacity: 0;
+  transform: translateY(4px);
+  pointer-events: none;
+  z-index: 6;
+  transition: opacity 150ms ease, transform 150ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.css-bar-tooltip::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  margin-left: -4px;
+  border-width: 4px 4px 0 4px;
+  border-style: solid;
+  border-color: #0F172A transparent transparent transparent;
+}
+
+[data-theme="dark"] .css-bar-tooltip {
+  color: #0F172A;
+  background-color: #F8FAFC;
+  border-color: rgba(255, 255, 255, 0.50);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+}
+
+[data-theme="dark"] .css-bar-tooltip::after {
+  border-color: #F8FAFC transparent transparent transparent;
+}
+
+.css-bar-item:hover .css-bar-tooltip,
+.css-bar-item:focus-within .css-bar-tooltip {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 /* Placeholder banner cho Shell */
@@ -194,6 +288,15 @@
   animation: skeletonShimmer 1.5s infinite;
   border-radius: var(--radius-sm);
   display: inline-block;
+}
+
+html[data-fx="flat"] .skeleton {
+  animation: none;
+  background: var(--color-bg-muted);
+}
+
+html[data-tab-hidden] .skeleton {
+  animation-play-state: paused !important;
 }
 
 @keyframes skeletonShimmer {
@@ -2114,6 +2217,834 @@
   font-size: 13px;
   user-select: none;
 }
+
+/* ==========================================================================
+   Màn hình 7: Đồ thị mượn kèm (#/graph)
+   ========================================================================== */
+
+/* Đảm bảo thuộc tính hidden không bị ghi đè bởi display: flex */
+.graph-filter-banner[hidden],
+.graph-canvas-controls .btn[hidden] {
+  display: none !important;
+}
+
+/* Ghi chú nhỏ cho người chấm */
+.graph-grader-note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 14px;
+  border-radius: var(--radius-md);
+  background-color: var(--color-primary-soft);
+  border: 1px solid var(--color-primary-border);
+  color: var(--color-text-primary);
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.graph-grader-note i,
+.graph-grader-note svg {
+  width: 15px;
+  height: 15px;
+  color: var(--color-primary);
+  flex-shrink: 0;
+}
+
+/* Thanh công cụ điều khiển lọc cạnh & chú giải */
+.graph-toolbar-panel {
+  background-color: var(--color-bg-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: 12px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
+.graph-slider-group {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.graph-slider-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+}
+
+.graph-slider-label svg {
+  width: 15px;
+  height: 15px;
+  color: var(--color-primary);
+}
+
+.graph-slider-label strong {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 22px;
+  padding: 0 7px;
+  border-radius: var(--radius-sm);
+  background-color: var(--color-primary-soft);
+  border: 1px solid var(--color-primary-border);
+  color: var(--color-primary);
+  font-size: 12.5px;
+}
+
+.graph-slider-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.graph-slider-bound {
+  font-size: 11.5px;
+  color: var(--color-text-muted);
+  font-weight: 600;
+}
+
+.graph-range-input {
+  width: 160px;
+  height: 6px;
+  accent-color: var(--color-primary);
+  cursor: pointer;
+}
+
+.graph-range-input:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.graph-edge-counter {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  background-color: var(--color-bg-muted);
+  border: 1px solid var(--color-border);
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  white-space: nowrap;
+}
+
+.graph-legend-group {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+.graph-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 500;
+  color: var(--color-text-primary);
+}
+
+.graph-legend-dot,
+.graph-tip-dot,
+.stock-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: var(--radius-full);
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.dot-available { background-color: var(--status-available-bar); }
+.dot-borrowed { background-color: var(--status-borrowed-bar); }
+.dot-onhold { background-color: var(--status-onhold-bar); }
+.dot-maintenance { background-color: var(--status-maintenance-bar); }
+
+.graph-legend-sep {
+  color: var(--color-text-muted);
+}
+
+.graph-legend-hint {
+  color: var(--color-text-muted);
+  font-size: 11.5px;
+}
+
+/* Khung làm việc 2 cột: Canvas (trái) + Chi tiết đỉnh (phải) */
+.graph-workspace-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: 18px;
+  align-items: stretch;
+  min-height: 560px;
+}
+
+@media (max-width: 1120px) {
+  .graph-workspace-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Cột trái: Vùng vẽ đồ thị */
+.graph-canvas-panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 560px;
+  background-color: var(--color-bg-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.graph-canvas-host {
+  position: relative;
+  flex: 1;
+  min-height: 510px;
+  width: 100%;
+  background-color: #FCFDFE;
+  background-image: radial-gradient(rgba(148, 163, 184, 0.36) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+[data-theme="dark"] .graph-canvas-host {
+  background-color: #111827;
+  background-image: radial-gradient(rgba(71, 85, 105, 0.42) 1px, transparent 1px);
+}
+
+.graph-vis-surface {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  outline: none;
+}
+
+.graph-vis-surface canvas {
+  outline: none;
+}
+
+.graph-skeleton-canvas {
+  flex: 1;
+  min-height: 510px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 24px;
+}
+
+/* Cụm nút công cụ nổi góc trên phải của canvas */
+.graph-canvas-controls {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.graph-canvas-controls .btn-secondary {
+  background-color: var(--color-bg-surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.graph-canvas-controls .btn-secondary.is-simulating {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  background-color: var(--color-primary-soft);
+}
+
+#btn-graph-relayout svg {
+  animation: none;
+  transform-origin: center;
+}
+
+#btn-graph-relayout.is-simulating svg {
+  animation: spinOnceSmooth 600ms cubic-bezier(0.22, 1, 0.36, 1) 1;
+}
+
+.graph-zoom-group {
+  display: inline-flex;
+  align-items: center;
+  background-color: var(--color-bg-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  padding: 2px;
+  gap: 2px;
+}
+
+.graph-zoom-group .btn-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-sm);
+}
+
+/* Banner nổi khi lọc ẩn hết cạnh hoặc chưa có cạnh */
+.graph-filter-banner {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 6;
+  max-width: min(520px, calc(100% - 280px));
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: var(--radius-md);
+  background-color: var(--color-bg-surface);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-md);
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+@media (max-width: 768px) {
+  .graph-filter-banner {
+    top: 56px;
+    max-width: calc(100% - 24px);
+  }
+}
+
+.graph-filter-banner svg {
+  width: 14px;
+  height: 14px;
+  color: var(--color-primary);
+  flex-shrink: 0;
+}
+
+.graph-banner-link,
+.graph-banner-reset {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-primary);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.graph-banner-link:hover,
+.graph-banner-reset:hover {
+  color: var(--color-primary-hover);
+}
+
+/* Chân khung canvas */
+.graph-canvas-footer {
+  padding: 8px 16px;
+  border-top: 1px solid var(--color-border);
+  background-color: var(--color-bg-muted);
+  font-size: 11.5px;
+  color: var(--color-text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.graph-canvas-footer > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.graph-canvas-footer code {
+  font-size: 11px;
+  padding: 1px 5px;
+  border-radius: var(--radius-sm);
+  background-color: var(--color-bg-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-primary);
+}
+
+/* Tooltip tuỳ biến nổi trên canvas đồ thị */
+.graph-floating-tooltip {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 12;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 120ms ease;
+  background-color: var(--color-bg-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  padding: 10px 12px;
+  min-width: 195px;
+  max-width: 280px;
+}
+
+.graph-floating-tooltip.visible {
+  opacity: 1;
+  visibility: visible;
+}
+
+.graph-tip-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+  font-size: 11px;
+}
+
+.graph-tip-status {
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.graph-tip-code {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-primary);
+  background-color: var(--color-bg-muted);
+  padding: 1px 5px;
+  border-radius: var(--radius-sm);
+}
+
+.graph-tip-header > .graph-tip-code:first-child {
+  margin-left: 0;
+}
+
+.graph-tip-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  line-height: 1.3;
+  margin-bottom: 4px;
+}
+
+.graph-tip-meta {
+  font-size: 11.5px;
+  color: var(--color-text-secondary);
+}
+
+/* Cột phải: Panel Chi tiết Đỉnh */
+.graph-detail-panel {
+  background-color: var(--color-bg-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.graph-detail-header {
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--color-border);
+  background-color: var(--color-bg-muted);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 52px;
+}
+
+.graph-detail-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.graph-detail-heading svg {
+  width: 16px;
+  height: 16px;
+  color: var(--color-primary);
+}
+
+.graph-detail-body {
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  flex: 1;
+  overflow-y: auto;
+}
+
+/* Trạng thái chưa chọn đỉnh */
+.graph-unselected-prompt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 18px 12px;
+  border-radius: var(--radius-md);
+  background-color: var(--color-bg-muted);
+  border: 1px dashed var(--color-border);
+  gap: 8px;
+}
+
+.graph-unselected-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: var(--radius-full);
+  background-color: var(--color-primary-soft);
+  color: var(--color-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.graph-unselected-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.graph-unselected-desc {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  line-height: 1.45;
+}
+
+.graph-summary-box,
+.graph-quick-pick-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.graph-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.graph-summary-stat {
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  background-color: var(--color-bg-muted);
+  border: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.graph-summary-label {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+}
+
+.graph-summary-value {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.graph-quick-chips {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.graph-quick-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  padding: 8px 10px;
+  border-radius: var(--radius-md);
+  background-color: var(--color-bg-muted);
+  border: 1px solid var(--color-border);
+  transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+
+.graph-quick-chip:hover {
+  background-color: var(--color-bg-hover);
+  border-color: var(--color-primary);
+  transform: translateX(2px);
+}
+
+.graph-quick-chip code {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--color-primary);
+  flex-shrink: 0;
+}
+
+.graph-quick-chip-name {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--color-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Trạng thái đã chọn đỉnh: Thẻ thông tin thiết bị */
+.graph-node-info-card {
+  padding: 14px;
+  border-radius: var(--radius-md);
+  background-color: var(--color-bg-muted);
+  border: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.graph-node-top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.graph-node-code {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  background-color: var(--color-bg-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-primary);
+}
+
+.graph-node-name {
+  font-size: 15.5px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  line-height: 1.3;
+}
+
+.graph-node-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--color-border);
+}
+
+.graph-node-metric-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.graph-node-metric-label {
+  font-size: 10.5px;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  font-weight: 600;
+}
+
+.graph-node-metric-item strong {
+  font-size: 12.5px;
+  color: var(--color-text-primary);
+}
+
+.graph-hidden-edges-hint {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  color: var(--status-borrowed-text);
+  background-color: var(--status-borrowed-bg);
+  border: 1px solid var(--status-borrowed-border);
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+}
+
+.graph-stock-box {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 4px;
+}
+
+.graph-stock-numbers {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 4px 10px;
+  font-size: 11.5px;
+  color: var(--color-text-secondary);
+}
+
+.graph-stock-numbers > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.graph-stock-numbers strong {
+  color: var(--color-text-primary);
+}
+
+/* Danh sách Top 3 mượn kèm trong panel phải */
+.graph-companions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.graph-companion-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  background-color: var(--color-bg-muted);
+  border: 1px solid var(--color-border);
+  transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+
+.graph-companion-card:hover {
+  background-color: var(--color-bg-hover);
+  border-color: var(--color-primary);
+  transform: translateX(2px);
+}
+
+.graph-companion-rank {
+  width: 26px;
+  height: 26px;
+  border-radius: var(--radius-full);
+  background-color: var(--color-primary-soft);
+  border: 1px solid var(--color-primary-border);
+  color: var(--color-primary);
+  font-size: 11.5px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.graph-companion-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.graph-companion-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.graph-companion-title > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.graph-companion-title code {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-text-secondary);
+  flex-shrink: 0;
+}
+
+.graph-companion-sub {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  color: var(--color-text-secondary);
+}
+
+.graph-weight-pill {
+  font-weight: 700;
+  color: var(--color-primary);
+}
+
+.comp-stock-ok {
+  color: var(--color-success);
+  font-weight: 600;
+}
+
+.comp-stock-out {
+  color: var(--color-danger);
+  font-weight: 600;
+}
+
+.graph-companion-arrow {
+  width: 15px;
+  height: 15px;
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+  transition: transform 0.15s ease, color 0.15s ease;
+}
+
+.graph-companion-card:hover .graph-companion-arrow {
+  color: var(--color-primary);
+  transform: translate(2px, -2px);
+}
+
+.graph-empty-companions {
+  padding: 14px;
+  border-radius: var(--radius-md);
+  background-color: var(--color-bg-muted);
+  border: 1px dashed var(--color-border);
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  text-align: center;
+  line-height: 1.45;
+}
+
+.graph-inline-error {
+  padding: 12px;
+  border-radius: var(--radius-md);
+  background-color: var(--color-danger-bg);
+  border: 1px solid var(--color-danger-border);
+  color: var(--color-danger-text);
+  font-size: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+/* Nút Xem hàng đợi ở chân panel chi tiết */
+.graph-detail-actions {
+  margin-top: auto;
+  padding-top: 8px;
+  border-top: 1px solid var(--color-border);
+}
+
+.graph-queue-btn {
+  width: 100%;
+  justify-content: center;
+  padding: 10px 14px;
+  font-weight: 600;
+}
+
+.graph-queue-count {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: var(--radius-full);
+  background-color: rgba(255, 255, 255, 0.22);
+  color: inherit;
+}
+
+[data-theme="dark"] .graph-queue-count {
+  background-color: rgba(15, 23, 42, 0.22);
+}
+
 
 
 

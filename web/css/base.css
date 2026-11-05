@@ -43,7 +43,14 @@
 }
 
 html, body {
+  width: 100%;
+  max-width: 100%;
   height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  overflow-x: hidden !important;
+  overscroll-behavior-x: none !important;
   font-family: 'Be Vietnam Pro', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   font-size: 14px;
   line-height: 1.5;
@@ -51,6 +58,8 @@ html, body {
   color: var(--color-text-primary);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  position: relative;
+  transform: none !important;
 }
 
 /* Tabular numbers cho số liệu */
@@ -75,39 +84,56 @@ button {
   background: none;
 }
 
-/* Khung cấu trúc SPA chính (Sidebar + Content Area) */
+/* Khung cấu trúc SPA chính (Sidebar + Content Area) - CỐ ĐỊNH TUYỆT ĐỐI */
 #app {
   display: flex;
+  width: 100vw;
+  max-width: 100vw;
   height: 100vh;
-  overflow: hidden;
+  max-height: 100vh;
+  overflow: hidden !important;
+  overflow-x: hidden !important;
+  overscroll-behavior-x: none !important;
   background-color: var(--color-bg-canvas);
+  position: relative;
+  transform: none !important;
 }
 
-/* Sidebar bên trái */
+/* Sidebar bên trái - Cố định tuyệt đối, không dịch chuyển */
 #sidebar {
   width: 250px;
   min-width: 250px;
+  max-width: 250px;
+  height: 100vh;
+  flex-shrink: 0;
   background-color: var(--color-bg-surface);
   border-right: 1px solid var(--color-border);
   display: flex;
   flex-direction: column;
   z-index: 20;
-  transition: width 0.2s ease, transform 0.2s ease;
+  overflow-y: auto;
+  overflow-x: hidden !important;
+  transform: none !important;
 }
 
 /* Khu vực nội dung chính */
 #main-wrapper {
-  flex: 1;
+  flex: 1 1 0%;
   display: flex;
   flex-direction: column;
   min-width: 0;
   height: 100vh;
-  overflow: hidden;
+  max-height: 100vh;
+  overflow: hidden !important;
+  overflow-x: hidden !important;
+  transform: none !important;
 }
 
 /* Thanh đỉnh (Top Bar) */
 #topbar {
   height: 64px;
+  width: 100%;
+  max-width: 100%;
   background-color: var(--color-bg-surface);
   border-bottom: 1px solid var(--color-border);
   display: flex;
@@ -116,15 +142,22 @@ button {
   padding: 0 24px;
   flex-shrink: 0;
   z-index: 10;
+  overflow-x: hidden !important;
+  transform: none !important;
 }
 
-/* Vùng view chính (scrollable) */
+/* Vùng view chính (scrollable theo trục dọc duy nhất, không cuộn ngang) */
 #page-container {
-  flex: 1;
-  overflow-y: auto;
-  overflow-x: hidden;
+  flex: 1 1 0%;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  overscroll-behavior-x: none !important;
   padding: 24px;
   background-color: var(--color-bg-canvas);
+  transform: none !important;
 }
 
 /* Tôn trọng người dùng tắt hiệu ứng */

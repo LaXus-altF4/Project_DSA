@@ -4,7 +4,11 @@
  */
 
 export const isMockEnabled = () => {
-  return window.location.search.includes('mock=1') || localStorage.getItem('lab_use_mock') === 'true';
+  try {
+    return new URLSearchParams(window.location.search).get('mock') === '1';
+  } catch (e) {
+    return window.location.search.includes('mock=1');
+  }
 };
 
 // Trạng thái dữ liệu giả lập trong bộ nhớ
@@ -674,7 +678,99 @@ export async function handleMockRequest(endpoint, options = {}) {
 
   // 9. GET /api/graph
   if (pathname === '/api/graph' && method === 'GET') {
-    return { status: 200, body: mockState.graph };
+    const syncedNodes = mockState.devices.map(d => ({
+      id: d.id,
+      name: d.name,
+      status: d.status,
+      timesBorrowed: d.timesBorrowed || 0
+    }));
+    return {
+      status: 200,
+      body: {
+        nodes: syncedNodes,
+        edges: mockState.graph.edges
+      }
+    };
+  }
+
+  // 10. GET /api/suggestions/{deviceId}?k=3 (chỉ chạy khi ?mock=1)
+  const suggestionNodeMatch = pathname.match(/^\/api\/suggestions\/([^/]+)$/);
+  if (suggestionNodeMatch && method === 'GET') {
+    const devId = decodeURIComponent(suggestionNodeMatch[1]);
+    const dev = mockState.devices.find(d => d.id === devId);
+    if (!dev) {
+      return { status: 404, body: { error: { code: "DEVICE_NOT_FOUND", message: `Không tìm thấy thiết bị: ${devId}` } } };
+    }
+    const k = Math.min(20, Math.max(1, parseInt(searchParams.get('k') || '3', 10) || 3));
+    const suggestions = mockState.graph.edges
+      .filter(e => e.from === devId || e.to === devId)
+      .map(e => {
+        const otherId = e.from === devId ? e.to : e.from;
+        const otherDev = mockState.devices.find(d => d.id === otherId);
+        if (!otherDev || otherDev.status === 'maintenance') return null;
+        return {
+          id: otherDev.id,
+          name: otherDev.name,
+          weight: e.weight,
+          status: otherDev.status,
+          available: otherDev.available,
+          outOfStock: otherDev.available === 0
+        };
+      })
+      .filter(Boolean)
+      .sort((a, b) => (b.weight !== a.weight ? b.weight - a.weight : a.id.localeCompare(b.id)))
+      .slice(0, k);
+
+    return {
+      status: 200,
+      body: {
+        deviceId: devId,
+        suggestions
+      }
+    };
+  }
+
+  // 10.1 GET /api/suggestions?ids=...&k=3 (chỉ chạy khi ?mock=1)
+  if (pathname === '/api/suggestions' && method === 'GET') {
+    const rawIds = (searchParams.get('ids') || '').split(',').map(s => s.trim()).filter(Boolean);
+    const k = Math.min(20, Math.max(1, parseInt(searchParams.get('k') || '3', 10) || 3));
+    const basketSet = new Set(rawIds);
+    const weightAcc = new Map();
+
+    for (const id of rawIds) {
+      for (const e of mockState.graph.edges) {
+        if (e.from === id && !basketSet.has(e.to)) {
+          weightAcc.set(e.to, (weightAcc.get(e.to) || 0) + e.weight);
+        } else if (e.to === id && !basketSet.has(e.from)) {
+          weightAcc.set(e.from, (weightAcc.get(e.from) || 0) + e.weight);
+        }
+      }
+    }
+
+    const suggestions = Array.from(weightAcc.entries())
+      .map(([otherId, weight]) => {
+        const otherDev = mockState.devices.find(d => d.id === otherId);
+        if (!otherDev || otherDev.status === 'maintenance') return null;
+        return {
+          id: otherDev.id,
+          name: otherDev.name,
+          weight,
+          status: otherDev.status,
+          available: otherDev.available,
+          outOfStock: otherDev.available === 0
+        };
+      })
+      .filter(Boolean)
+      .sort((a, b) => (b.weight !== a.weight ? b.weight - a.weight : a.id.localeCompare(b.id)))
+      .slice(0, k);
+
+    return {
+      status: 200,
+      body: {
+        ids: rawIds,
+        suggestions
+      }
+    };
   }
 
   // Endpoint mặc định không khớp

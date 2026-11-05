@@ -106,8 +106,8 @@
    4. Biểu đồ thanh: Kéo dài từ 0 đến giá trị (Staggered Bar Fill)
    -------------------------------------------------------------------------- */
 .css-bar-fill-animated {
-  transform-origin: left;
-  animation: barExpand 350ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  transform-origin: left center;
+  animation: barExpand 400ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
 }
 
 @keyframes barExpand {
@@ -145,6 +145,12 @@
   animation: pulseRedBorder 400ms ease-in-out 2;
 }
 
+/* Tránh xung đột với .stagger-item (opacity: 0) khi vừa mount vừa kích hoạt pulse */
+.stagger-item.pulse-border-red {
+  opacity: 1;
+  transform: translateY(0);
+}
+
 @keyframes pulseRedBorder {
   0% {
     box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.6);
@@ -167,11 +173,13 @@
 }
 
 .sidebar-nav .nav-item:hover:not(.active) {
+  background-color: var(--color-bg-hover);
+  color: var(--color-text-primary);
   transform: translateX(3px);
 }
 
 /* --------------------------------------------------------------------------
-   8. Thẻ (Hover nhấc lên 2px) & Nút (Nhấn co nhẹ scale 0.97)
+   8. Thẻ (Hover nhấc lên 2px) & Nút (Nhấn co nhẹ scale 0.98)
    -------------------------------------------------------------------------- */
 .card, .metric-card {
   transition: transform 200ms ease, box-shadow 200ms ease, background-color 250ms ease, border-color 250ms ease;
@@ -210,14 +218,14 @@ html.theme-transitioning *::after {
 }
 
 /* --------------------------------------------------------------------------
-   10. Nút "Làm mới": Icon xoay tròn khi đang nạp
+   10. Nút "Làm mới" / "Sắp xếp lại lực": Icon xoay 1 vòng (~600ms, hữu hạn)
    -------------------------------------------------------------------------- */
 .spin-loading {
-  animation: spinInfinite 400ms linear infinite;
+  animation: spinOnceSmooth 600ms cubic-bezier(0.22, 1, 0.36, 1) 1;
   display: inline-block;
 }
 
-@keyframes spinInfinite {
+@keyframes spinOnceSmooth {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }

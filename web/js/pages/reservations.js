@@ -21,6 +21,8 @@ import { api } from '../api.js';
 import { showToast } from '../ui/toast.js';
 import { openModal } from '../ui/modal.js';
 import { triggerRedPulse } from '../ui/motion.js';
+import { isMotionAllowed, prefersReducedMotion } from '../ui/fx.js';
+import { launchSuccessConfetti } from '../ui/confetti.js';
 
 let currentContainer = null;
 let allDevices = [];
@@ -29,6 +31,32 @@ let currentDevice = null;
 let currentQueue = [];
 let isLoadingDevices = false;
 let isLoadingQueue = false;
+const prevHoldHoursMap = new Map(); // Lưu số giờ còn lại trước đó để animate vòng đếm 24h mượt mà
+
+function sortDevicesByQueuePriority(list) {
+  list.sort((a, b) => {
+    const qA = a.queueLength || 0;
+    const qB = b.queueLength || 0;
+    if (qA > 0 && qB === 0) return -1;
+    if (qA === 0 && qB > 0) return 1;
+    if (qA !== qB) return qB - qA;
+    return a.id.localeCompare(b.id);
+  });
+}
+
+/**
+ * Đồng bộ ngầm số lượng kho & hàng đợi của toàn bộ thiết bị trong dropdown
+ */
+async function syncAllDevicesSelector() {
+  try {
+    const res = await api.get('/devices');
+    if (res && Array.isArray(res.devices)) {
+      allDevices = res.devices;
+      sortDevicesByQueuePriority(allDevices);
+      renderDeviceSelector();
+    }
+  } catch (_) {}
+}
 
 function escapeHtml(str) {
   return String(str || '').replace(/[&<>"']/g, c => ({
@@ -72,14 +100,7 @@ async function loadDevices(preferredId = null) {
     allDevices = res.devices || [];
 
     // Ưu tiên thiết bị có người đang chờ (queueLength > 0) lên đầu
-    allDevices.sort((a, b) => {
-      const qA = a.queueLength || 0;
-      const qB = b.queueLength || 0;
-      if (qA > 0 && qB === 0) return -1;
-      if (qA === 0 && qB > 0) return 1;
-      if (qA !== qB) return qB - qA;
-      return a.id.localeCompare(b.id);
-    });
+    sortDevicesByQueuePriority(allDevices);
 
     // Xác định thiết bị được chọn ban đầu
     const urlId = preferredId || getDeviceIdFromHash();
@@ -143,6 +164,7 @@ async function loadReservations(deviceId, animateFlip = false, animatedStudentEv
       const idx = allDevices.findIndex(d => d.id === currentDevice.id);
       if (idx !== -1) {
         allDevices[idx] = currentDevice;
+        sortDevicesByQueuePriority(allDevices);
         renderDeviceSelector();
       }
     }
@@ -164,6 +186,8 @@ async function loadReservations(deviceId, animateFlip = false, animatedStudentEv
             const deltaY = firstRect.top - lastRect.top;
 
             if (deltaX !== 0 || deltaY !== 0) {
+              card.dataset.flipBusy = '1';
+
               // Invert: dịch thẻ về vị trí cũ ngay lập tức (không transition)
               card.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
               card.style.transition = 'none';
@@ -175,12 +199,18 @@ async function loadReservations(deviceId, animateFlip = false, animatedStudentEv
               card.style.transition = 'transform 420ms cubic-bezier(0.16, 1, 0.3, 1)';
               card.style.transform = 'translate(0, 0)';
 
-              const cleanup = () => {
+              const finishSlide = () => {
                 card.style.transform = '';
                 card.style.transition = '';
+                delete card.dataset.flipBusy;
                 card.removeEventListener('transitionend', cleanup);
               };
+              const cleanup = (e) => {
+                if (e.target !== card || e.propertyName !== 'transform') return;
+                finishSlide();
+              };
               card.addEventListener('transitionend', cleanup);
+              window.setTimeout(finishSlide, 460);
             }
           }
         });
@@ -260,6 +290,7 @@ function renderDeviceOverview() {
     statusBadgeHtml = `<span class="badge badge-maintenance"><span class="badge-dot"></span> Đang bảo trì</span>`;
   }
 
+  container.setAttribute('data-glow', d.status || 'available');
   container.innerHTML = `
     <div class="reservation-device-header">
       <div class="reservation-device-title-box">
@@ -357,6 +388,11 @@ function renderQueueList(animatedEvents = {}) {
     const circumference = 2 * Math.PI * radius;
     const ratio = Math.max(0, Math.min(1, hoursLeft / 24));
     const strokeDashoffset = circumference * (1 - ratio);
+    const holdKey = `${selectedDeviceId}:${item.studentId}`;
+    const prevHours = prevHoldHoursMap.get(holdKey);
+    const initialDashoffset = prevHours !== undefined
+      ? circumference * (1 - Math.max(0, Math.min(1, prevHours / 24)))
+      : circumference;
 
     let strokeClass = 'stroke-normal';
     let urgencyClass = '';
@@ -382,7 +418,9 @@ function renderQueueList(animatedEvents = {}) {
     const holdGlowClass = isNewlyGranted ? 'pulse-glow-hold' : '';
 
     return `
-      <div class="queue-card ${isHold ? 'queue-card-holding' : 'queue-card-waiting'} ${holdGlowClass}" 
+      <div class="queue-card ${isHold ? 'queue-card-holding' : 'queue-card-waiting'} ${urgencyClass} ${holdGlowClass}" 
+           data-glow="${isHold ? (hoursLeft <= 6 ? 'maintenance' : 'onhold') : (missCount === 1 ? 'borrowed' : '')}"
+           data-miss="${missCount}"
            data-student-id="${escapeHtml(item.studentId)}" 
            data-position="${pos}">
         
@@ -419,7 +457,8 @@ function renderQueueList(animatedEvents = {}) {
                   <circle class="queue-svg-track" cx="32" cy="32" r="${radius}"></circle>
                   <circle class="queue-svg-bar ${strokeClass}" 
                           cx="32" cy="32" r="${radius}" 
-                          style="stroke-dasharray: ${circumference}; stroke-dashoffset: ${strokeDashoffset};"></circle>
+                          data-target-offset="${strokeDashoffset}"
+                          style="stroke-dasharray: ${circumference}; stroke-dashoffset: ${initialDashoffset};"></circle>
                 </svg>
                 <div class="queue-svg-number">
                   <span>${hoursLeft}h</span>
@@ -471,6 +510,23 @@ function renderQueueList(animatedEvents = {}) {
 
   container.innerHTML = `<div class="reservation-queue-grid">${cardsHtml}</div>`;
   if (window.lucide) window.lucide.createIcons();
+
+  // Cập nhật bộ nhớ vòng đếm ngược của thiết bị hiện tại & kích hoạt hiệu ứng quét cung tròn
+  for (const key of Array.from(prevHoldHoursMap.keys())) {
+    if (key.startsWith(`${selectedDeviceId}:`)) {
+      prevHoldHoursMap.delete(key);
+    }
+  }
+  currentQueue.forEach(item => {
+    if (item.holding) {
+      prevHoldHoursMap.set(`${selectedDeviceId}:${item.studentId}`, Number(item.hoursLeft) || 0);
+    }
+  });
+  requestAnimationFrame(() => {
+    container.querySelectorAll('.queue-svg-bar[data-target-offset]').forEach(bar => {
+      bar.style.strokeDashoffset = bar.getAttribute('data-target-offset');
+    });
+  });
 
   // Gắn sự kiện cho các nút Nhận thiết bị
   container.querySelectorAll('.btn-claim').forEach(btn => {
@@ -671,6 +727,11 @@ function openClaimModal(deviceId, studentId, studentName) {
       try {
         const res = await api.post(`/reservations/${deviceId}/claim`, { studentId, days });
         const recId = res.record ? res.record.recordId : '';
+
+        launchSuccessConfetti(
+          document.querySelector('#modal-backdrop.active #modal-footer .btn-primary')
+        );
+
         showToast(`Nhận thiết bị thành công! Đã tạo phiếu mượn ${recId} cho sinh viên ${studentName}.`, 'success', 'Phiếu mượn đã lập');
 
         // Lấy thông báo hệ thống nếu có phát sinh
@@ -772,29 +833,99 @@ export async function onTimeAdvanced(detail) {
   const removedList = devNotis.filter(n => n.type === 'removed');
   const holdGrantedList = devNotis.filter(n => n.type === 'hold_granted');
 
-  // Bước 1: Xử lý thẻ bị loại bỏ (removed - lỡ lần 2):
-  // Thẻ viền đỏ nhấp nháy 2 lần, co lại và mờ dần
-  if (removedList.length > 0 && currentContainer) {
-    removedList.forEach(n => {
-      const card = currentContainer.querySelector(`.queue-card[data-student-id="${n.studentId}"]`);
-      if (card) {
-        // Viền đỏ nhấp nháy 2 lần (được định nghĩa trong animations.css: pulseRedBorder 400ms x 2)
-        triggerRedPulse(card);
-        // Sau đó co lại và mờ dần
-        card.classList.add('card-shrink-remove');
-      }
-    });
+  const reducedMotion = prefersReducedMotion();
+  const fx3dAllowed = isMotionAllowed();
 
-    // Chờ 360ms cho hiệu ứng co mờ hoàn tất trước khi fetch và render lại
-    await new Promise(r => setTimeout(r, 360));
+  // Hàm tìm an toàn thẻ .queue-card theo MSSV trong vùng hiển thị hiện tại
+  const findCardByStudent = (studentId) => {
+    if (!currentContainer || !studentId) return null;
+    const allCards = currentContainer.querySelectorAll('.queue-card[data-student-id]');
+    for (const el of allCards) {
+      if (el.getAttribute('data-student-id') === studentId) return el;
+    }
+    return null;
+  };
+
+  // Pha 1 (Đợt D.2): Lật 3D báo lỡ hạn (320ms) cho người đầu lỡ hẹn & nghiêng rơi 3D cho người bị loại
+  if (!reducedMotion && currentContainer) {
+    if (fx3dAllowed && (missedList.length > 0 || removedList.length > 0)) {
+      const phase1Anims = [];
+      const flippedCards = [];
+
+      missedList.forEach(n => {
+        const card = findCardByStudent(n.studentId);
+        if (!card) return;
+        card.dataset.flipBusy = '1';
+        card.classList.add('queue-card-flip-3d');
+        flippedCards.push(card);
+
+        if (typeof card.animate === 'function') {
+          const anim = card.animate(
+            [
+              { transform: 'perspective(800px) rotateY(0deg) scale(1)' },
+              { transform: 'perspective(800px) rotateY(180deg) scale(1.03)', offset: 0.5 },
+              { transform: 'perspective(800px) rotateY(360deg) scale(1)' },
+            ],
+            { duration: 320, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' }
+          );
+          phase1Anims.push(anim.finished.catch(() => {}));
+        } else {
+          phase1Anims.push(new Promise(r => setTimeout(r, 320)));
+        }
+      });
+
+      removedList.forEach(n => {
+        const card = findCardByStudent(n.studentId);
+        if (!card) return;
+        card.dataset.flipBusy = '1';
+        triggerRedPulse(card);
+
+        if (typeof card.animate === 'function') {
+          const anim = card.animate(
+            [
+              { transform: 'perspective(800px) rotateX(0deg) scale(1)', opacity: 1 },
+              {
+                transform: 'perspective(800px) translateY(14px) rotateX(-18deg) scale(0.85)',
+                opacity: 0,
+              },
+            ],
+            { duration: 340, easing: 'cubic-bezier(0.4, 0, 0.2, 1)', fill: 'forwards' }
+          );
+          phase1Anims.push(anim.finished.catch(() => {}));
+        } else {
+          card.classList.add('card-shrink-remove');
+          phase1Anims.push(new Promise(r => setTimeout(r, 340)));
+        }
+      });
+
+      if (phase1Anims.length > 0) {
+        await Promise.all(phase1Anims);
+      }
+
+      // Trả thẻ missed về khung chuẩn trước khi đo toạ độ đầu của Pha 2 FLIP
+      flippedCards.forEach(card => {
+        card.classList.remove('queue-card-flip-3d');
+        delete card.dataset.flipBusy;
+      });
+    } else if (removedList.length > 0) {
+      // Chế độ phẳng (tắt 3D): giữ nguyên hiệu ứng nháy đỏ + co mờ phẳng
+      removedList.forEach(n => {
+        const card = findCardByStudent(n.studentId);
+        if (card) {
+          triggerRedPulse(card);
+          card.classList.add('card-shrink-remove');
+        }
+      });
+      await new Promise(r => setTimeout(r, 360));
+    }
   }
 
-  // Bước 2: Nạp lại hàng đợi và kích hoạt FLIP animation cho thẻ trượt xuống cuối (missed)
-  // và phát sáng cho thẻ được giữ (hold_granted)
-  await loadReservations(selectedDeviceId, true, {
+  // Pha 2: Nạp lại hàng đợi và kích hoạt FLIP trượt mượt xuống cuối hàng (420ms)
+  await loadReservations(selectedDeviceId, !reducedMotion, {
     missed: missedList,
     holdGranted: holdGrantedList
   });
+  syncAllDevicesSelector();
 }
 
 /**
@@ -972,18 +1103,20 @@ export async function render(container) {
   const refreshBtn = container.querySelector('#btn-refresh-reservations');
   if (refreshBtn) {
     refreshBtn.addEventListener('click', async () => {
-      const icon = refreshBtn.querySelector('i');
+      const icon = refreshBtn.querySelector('svg, i');
       if (icon) icon.classList.add('spin-loading');
       refreshBtn.disabled = true;
 
       try {
         await loadDevices(selectedDeviceId);
-        showToast('Đã làm mới dữ liệu hàng đợi', 'info');
+        showToast('Đã làm mới dữ liệu hàng đợi', 'info', '', 2000);
       } catch (err) {
         showToast('Lỗi khi làm mới dữ liệu', 'error');
       } finally {
-        if (icon) icon.classList.remove('spin-loading');
-        refreshBtn.disabled = false;
+        setTimeout(() => {
+          if (icon) icon.classList.remove('spin-loading');
+          refreshBtn.disabled = false;
+        }, 300);
       }
     });
   }

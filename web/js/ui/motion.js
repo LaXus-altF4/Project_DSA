@@ -3,6 +3,8 @@
  * Dùng chung cho toàn bộ giao diện web Lab
  */
 
+export { prefersReducedMotion } from './fx.js';
+
 /**
  * Hiệu ứng đếm số (Count-up) từ giá trị hiện tại đến giá trị mới
  * Hỗ trợ so sánh hiển thị nhãn delta (+1/-1) bay lên khi có thay đổi
@@ -101,13 +103,13 @@ export function triggerRedPulse(element) {
 }
 
 /**
- * Lăn chữ số (Roll) kiểu đồng hồ cơ khi đổi text
+ * Lăn chữ số (Roll) kiểu đồng hồ cơ khi đổi text (chế độ phẳng)
  * @param {HTMLElement} element - Phần tử hiển thị
  * @param {string} newText - Nội dung ngày giờ mới
  */
 export function triggerRollDigit(element, newText) {
   if (!element) return;
-  if (element.textContent === newText) return;
+  if (element.textContent === newText && !element.classList.contains('flip-clock-active')) return;
 
   element.classList.remove('clock-roll');
   void element.offsetWidth; // Force reflow
@@ -116,4 +118,157 @@ export function triggerRollDigit(element, newText) {
   setTimeout(() => {
     element.classList.remove('clock-roll');
   }, 320);
+}
+
+/**
+ * Tách chuỗi ngày giờ ("03/03/2026 16:00") thành mảng token số & ký tự phân cách
+ */
+function tokenizeClockText(text) {
+  const str = String(text || '');
+  return str.match(/\d+|\s+|[^\d\s]+/g) || [str];
+}
+
+function clearTileFlipTimer(tile) {
+  if (tile._flipTimer) {
+    clearTimeout(tile._flipTimer);
+    tile._flipTimer = 0;
+  }
+  tile.classList.remove('is-flipping');
+  const oldRig = tile.querySelector('.flip-3d-rig');
+  if (oldRig) oldRig.remove();
+}
+
+function buildFlipClockDom(element, tokens) {
+  element.innerHTML = '';
+  element.classList.add('flip-clock-active');
+
+  tokens.forEach((tok) => {
+    if (/^\d+$/.test(tok)) {
+      const tile = document.createElement('span');
+      tile.className = 'flip-tile';
+      tile.dataset.val = tok;
+
+      const valSpan = document.createElement('span');
+      valSpan.className = 'flip-tile-val';
+      valSpan.textContent = tok;
+
+      tile.appendChild(valSpan);
+      element.appendChild(tile);
+    } else if (/^\s+$/.test(tok)) {
+      const sp = document.createElement('span');
+      sp.className = 'flip-space';
+      sp.textContent = tok;
+      element.appendChild(sp);
+    } else {
+      const sep = document.createElement('span');
+      sep.className = 'flip-sep';
+      sep.textContent = tok;
+      element.appendChild(sep);
+    }
+  });
+}
+
+/**
+ * Cập nhật đồng hồ kiểu Flip-Clock 3D (Đợt B.2):
+ * Các cụm số thay đổi sẽ lật cánh 3D quanh trục X khi tua giờ.
+ * @param {HTMLElement} element - Phần tử #clock-time
+ * @param {string} newText - Chuỗi giờ mới từ API (VD "03/03/2026 17:00")
+ * @param {boolean} [animate=true] - Có chạy hiệu ứng lật cánh 3D hay không
+ */
+export function updateFlipClock3D(element, newText, animate = true) {
+  if (!element) return;
+  const cleanText = String(newText || '');
+  element.dataset.rawTime = cleanText;
+  element.setAttribute('aria-label', cleanText);
+
+  const newTokens = tokenizeClockText(cleanText);
+  const existingChildren = Array.from(element.children);
+
+  // Kiểm tra cấu trúc DOM hiện tại có khớp khung Flip-Clock hay chưa
+  const structureMatches =
+    element.classList.contains('flip-clock-active') &&
+    existingChildren.length === newTokens.length &&
+    newTokens.every((tok, idx) => {
+      const child = existingChildren[idx];
+      if (/^\d+$/.test(tok)) return child.classList.contains('flip-tile');
+      if (/^\s+$/.test(tok)) return child.classList.contains('flip-space');
+      return child.classList.contains('flip-sep');
+    });
+
+  if (!structureMatches) {
+    buildFlipClockDom(element, newTokens);
+    return;
+  }
+
+  const reducedMotion =
+    window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  let changedOrder = 0;
+  newTokens.forEach((tok, idx) => {
+    const child = existingChildren[idx];
+    if (!child.classList.contains('flip-tile')) {
+      if (child.textContent !== tok) child.textContent = tok;
+      return;
+    }
+
+    const oldVal = child.dataset.val || '';
+    if (oldVal === tok) return;
+
+    clearTileFlipTimer(child);
+    child.dataset.val = tok;
+
+    const valSpan = child.querySelector('.flip-tile-val');
+    if (valSpan) {
+      valSpan.textContent = tok;
+    }
+
+    if (!animate || reducedMotion || !oldVal || oldVal.includes('-')) {
+      return;
+    }
+
+    // Dựng giàn 4 nửa cánh lật cơ học (dùng data-txt để không nhân đôi textContent)
+    const delayMs = changedOrder * 35;
+    changedOrder += 1;
+
+    const rig = document.createElement('span');
+    rig.className = 'flip-3d-rig';
+    rig.setAttribute('aria-hidden', 'true');
+    rig.style.setProperty('--flip-delay', `${delayMs}ms`);
+
+    const staticTop = document.createElement('span');
+    staticTop.className = 'flip-plate flip-static-top';
+    staticTop.setAttribute('data-txt', tok);
+
+    const staticBottom = document.createElement('span');
+    staticBottom.className = 'flip-plate flip-static-bottom';
+    staticBottom.setAttribute('data-txt', oldVal);
+
+    const leafTop = document.createElement('span');
+    leafTop.className = 'flip-plate flip-leaf-top';
+    leafTop.setAttribute('data-txt', oldVal);
+
+    const leafBottom = document.createElement('span');
+    leafBottom.className = 'flip-plate flip-leaf-bottom';
+    leafBottom.setAttribute('data-txt', tok);
+
+    rig.append(staticTop, staticBottom, leafTop, leafBottom);
+    child.appendChild(rig);
+    child.classList.add('is-flipping');
+
+    child._flipTimer = window.setTimeout(() => {
+      clearTileFlipTimer(child);
+    }, 390 + delayMs);
+  });
+}
+
+/**
+ * Gỡ cấu trúc Flip-Clock 3D và trả phần tử đồng hồ về chuỗi phẳng gốc
+ * @param {HTMLElement} element - Phần tử #clock-time
+ */
+export function teardownFlipClock3D(element) {
+  if (!element) return;
+  const raw = element.dataset.rawTime || element.textContent || '';
+  element.querySelectorAll('.flip-tile').forEach(clearTileFlipTimer);
+  element.classList.remove('flip-clock-active');
+  element.textContent = raw;
 }

@@ -14,11 +14,38 @@ let currentQuery = '';
 let currentStatus = '';
 let searchTimeout = null;
 let activeDeviceId = null;
+let globalPanelListenersBound = false;
 
 function escapeHtml(str) {
   return String(str || '').replace(/[&<>"']/g, c => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'
   }[c]));
+}
+
+/**
+ * Lấy và hiển thị các thông báo phát sinh từ hàng đợi C++ (M3, M16, bảo trì...)
+ */
+async function drainAndToastNotifications(defaultTitle = 'Sự kiện hệ thống') {
+  try {
+    const notiRes = await api.get('/notifications');
+    if (notiRes && Array.isArray(notiRes.notifications)) {
+      notiRes.notifications.forEach(n => {
+        let type = 'info';
+        let title = defaultTitle;
+        if (n.type === 'hold_granted') {
+          type = 'success';
+          title = 'Hàng đợi: Giữ chỗ 24h';
+        } else if (n.type === 'missed') {
+          type = 'warning';
+          title = 'Hàng đợi: Lỡ hẹn';
+        } else if (n.type === 'removed') {
+          type = 'error';
+          title = 'Hàng đợi: Bị loại';
+        }
+        showToast(n.message, type, title, 6000);
+      });
+    }
+  } catch (_) {}
 }
 
 /**
@@ -315,7 +342,7 @@ function renderPanelContent(panel, data) {
         <div class="side-panel-section-title">
           <i data-lucide="box"></i> Tình trạng kho (${escapeHtml(dev.id)})
         </div>
-        <div style="background-color: var(--color-bg-muted); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: 16px; display: flex; flex-direction: column; gap: 12px;">
+        <div class="device-stock-summary-card" data-glow="${escapeHtml(dev.status || 'available')}" style="background-color: var(--color-bg-muted); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: 16px; display: flex; flex-direction: column; gap: 12px;">
           <div style="display: flex; justify-content: space-between; align-items: center;">
             <span style="font-size: 13px; color: var(--color-text-secondary);">Trạng thái hệ thống:</span>
             ${statusBadge}
@@ -372,7 +399,7 @@ function renderPanelContent(panel, data) {
         ` : `
           <div style="display: flex; flex-direction: column; gap: 8px;">
             ${suggestions.map(s => `
-              <div class="companion-card">
+              <div class="companion-card" data-glow="${s.outOfStock ? 'borrowed' : 'available'}">
                 <div class="companion-info">
                   <div class="companion-name">${escapeHtml(s.name)} <code class="mono" style="font-size: 11px;">${escapeHtml(s.id)}</code></div>
                   <div class="companion-weight">
@@ -396,7 +423,7 @@ function renderPanelContent(panel, data) {
             <i data-lucide="clock"></i> Hàng đợi đặt trước (${queue.length} người)
           </div>
           <div style="display: flex; align-items: center; gap: 6px;">
-            <a href="#/reservations?id=${escapeHtml(dev.id)}" class="btn btn-outline btn-sm" style="font-size: 11px; padding: 3px 8px; text-decoration: none;" title="Mở trang Hàng đợi đặt trước chi tiết">
+            <a href="#/reservations?id=${escapeHtml(dev.id)}" id="btn-panel-view-queue" class="btn btn-outline btn-sm" style="font-size: 11px; padding: 3px 8px; text-decoration: none;" title="Mở trang Hàng đợi đặt trước chi tiết">
               <i data-lucide="external-link" style="width: 12px; height: 12px;"></i> Xem đầy đủ
             </a>
             ${dev.available === 0 ? `
@@ -445,7 +472,7 @@ function renderPanelContent(panel, data) {
                         Nhận máy
                       </button>
                     ` : ''}
-                    <button class="btn btn-outline btn-sm btn-cancel-queue" data-dev="${escapeHtml(dev.id)}" data-stuid="${escapeHtml(q.studentId)}" style="font-size: 10.5px; padding: 2px 6px; color: var(--color-text-muted);">
+                    <button class="btn btn-outline btn-sm btn-cancel-queue" data-dev="${escapeHtml(dev.id)}" data-devname="${escapeHtml(dev.name)}" data-stuid="${escapeHtml(q.studentId)}" data-stuname="${escapeHtml(q.studentName)}" data-holding="${isHold}" style="font-size: 10.5px; padding: 2px 6px; color: var(--color-text-muted);">
                       Huỷ
                     </button>
                   </div>
@@ -490,10 +517,17 @@ function renderPanelContent(panel, data) {
   const deleteBtn = panel.querySelector('#btn-panel-delete');
   if (deleteBtn) deleteBtn.addEventListener('click', () => confirmDeleteDevice(dev));
 
+  // Đóng panel trượt khi bấm liên kết "Xem đầy đủ" sang #/reservations
+  const viewQueueLink = panel.querySelector('#btn-panel-view-queue');
+  if (viewQueueLink) {
+    viewQueueLink.addEventListener('click', closeDevicePanel);
+  }
+
   // Nút Đăng ký hàng đợi từ panel
   const registerQueueBtn = panel.querySelector('#btn-panel-register-queue');
   if (registerQueueBtn) {
-    registerQueueBtn.addEventListener('click', () => openRegisterQueueModal(dev.id, dev.name));
+    const nextPos = data.nextQueuePosition || (queue.length + 1);
+    registerQueueBtn.addEventListener('click', () => openRegisterQueueModal(dev.id, dev.name, nextPos));
   }
 
   // Nút Nhận thiết bị trong queue
@@ -503,21 +537,56 @@ function renderPanelContent(panel, data) {
     });
   });
 
-  // Nút Huỷ đăng ký queue
+  // Nút Huỷ đăng ký queue (mở Modal chuẩn kèm cảnh báo M16 & xả notifications)
   panel.querySelectorAll('.btn-cancel-queue').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      if (confirm(`Bạn có chắc muốn huỷ đăng ký của sinh viên ${btn.dataset.stuid}?`)) {
-        try {
-          await api.delete(`/reservations/${btn.dataset.dev}/${btn.dataset.stuid}`);
-          showToast('Đã huỷ đăng ký hàng đợi thành công', 'success');
-          // Nạp lại panel và danh sách
-          openDevicePanel(btn.dataset.dev);
-          loadDevices();
-        } catch (err) {
-          showToast(err.message || 'Lỗi khi huỷ đăng ký', 'error');
-        }
-      }
+    btn.addEventListener('click', () => {
+      const isHold = btn.dataset.holding === 'true';
+      openCancelQueueFromPanelModal(
+        btn.dataset.dev,
+        btn.dataset.devname || dev.name,
+        btn.dataset.stuid,
+        btn.dataset.stuname || btn.dataset.stuid,
+        isHold
+      );
     });
+  });
+}
+
+/**
+ * Modal Huỷ đăng ký hàng đợi từ Panel phải (DELETE /api/reservations/{dev}/{stuid})
+ */
+function openCancelQueueFromPanelModal(deviceId, deviceName, studentId, studentName, isHolding) {
+  const content = document.createElement('div');
+  content.innerHTML = `
+    <div style="display: flex; flex-direction: column; gap: 10px;">
+      <p style="margin: 0; line-height: 1.5;">
+        Bạn có chắc chắn muốn huỷ đăng ký của sinh viên <strong>${escapeHtml(studentName)}</strong> (<code class="mono">${escapeHtml(studentId)}</code>) khỏi hàng đợi thiết bị <strong>${escapeHtml(deviceName)}</strong>?
+      </p>
+      ${isHolding ? `
+        <div style="background-color: var(--color-danger-bg); border: 1px solid var(--color-danger-border); color: var(--color-danger-text); padding: 10px 12px; border-radius: var(--radius-md); font-size: 12px;">
+          <strong>⚠️ Quy tắc M16:</strong> Sinh viên này đang giữ chỗ 24h. Khi huỷ, quyền giữ hàng sẽ tự động chuyển cho người kế tiếp trong hàng đợi.
+        </div>
+      ` : ''}
+    </div>
+  `;
+
+  openModal({
+    title: 'Xác nhận Huỷ đăng ký Hàng đợi',
+    content,
+    confirmText: 'Huỷ đăng ký',
+    cancelText: 'Quay lại',
+    onConfirm: async () => {
+      try {
+        await api.delete(`/reservations/${deviceId}/${studentId}`);
+        showToast(`Đã huỷ đăng ký hàng đợi cho sinh viên ${studentName}.`, 'success');
+        await drainAndToastNotifications('Chuyển quyền giữ hàng (M16)');
+        openDevicePanel(deviceId);
+        loadDevices();
+      } catch (err) {
+        showToast(err.message || 'Lỗi khi huỷ đăng ký', 'error');
+        throw err;
+      }
+    }
   });
 }
 
@@ -620,6 +689,7 @@ function openEditDeviceModal(dev) {
       try {
         await api.put(`/devices/${dev.id}`, { name: nameInput, total: totalInput });
         showToast(`Cập nhật thông tin ${dev.id} thành công!`, 'success');
+        await drainAndToastNotifications('Hàng đợi được phục vụ (M3)');
         openDevicePanel(dev.id);
         loadDevices();
       } catch (err) {
@@ -719,12 +789,7 @@ function openFinishMaintenanceModal(dev) {
         showToast(`Đã phục hồi ${qtyInput} đơn vị ${dev.id} về kho`, 'success');
 
         // Kiểm tra thông báo sự kiện nếu có người trong queue nhận hàng
-        const notiRes = await api.get('/notifications');
-        if (notiRes && Array.isArray(notiRes.notifications)) {
-          notiRes.notifications.forEach(n => {
-            showToast(n.message, 'success', 'Hàng đợi được phục vụ', 5000);
-          });
-        }
+        await drainAndToastNotifications('Hàng đợi được phục vụ');
 
         openDevicePanel(dev.id);
         loadDevices();
@@ -770,12 +835,15 @@ function confirmDeleteDevice(dev) {
 /**
  * 6. Modal Đăng ký hàng đợi từ panel (POST /api/reservations/{deviceId})
  */
-function openRegisterQueueModal(deviceId, deviceName) {
+function openRegisterQueueModal(deviceId, deviceName, nextQueuePosition = null) {
   const content = document.createElement('div');
   content.innerHTML = `
     <div class="form-group">
       <label class="form-label">Thiết bị đăng ký:</label>
-      <div style="font-weight: 600;">${escapeHtml(deviceName)} (<code class="mono">${deviceId}</code>)</div>
+      <div style="font-weight: 600;">${escapeHtml(deviceName)} (<code class="mono">${escapeHtml(deviceId)}</code>)</div>
+      <div id="panel-next-queue-pos" class="form-helper" style="margin-top: 4px; color: var(--color-primary); font-weight: 600;">
+        ${nextQueuePosition ? `Vị trí dự kiến trong hàng đợi: #${nextQueuePosition}` : 'Đang kiểm tra vị trí hàng đợi…'}
+      </div>
     </div>
     <div class="form-group">
       <label class="form-label" for="queue-student-id">Mã số sinh viên (MSSV):</label>
@@ -784,8 +852,19 @@ function openRegisterQueueModal(deviceId, deviceName) {
     <div class="form-group">
       <label class="form-label" for="queue-student-name">Họ và tên sinh viên:</label>
       <input type="text" id="queue-student-name" class="form-input" placeholder="VD: Trần Văn An" required>
+      <div class="form-helper">Không chứa dấu phẩy (,), gạch đứng (|) hoặc xuống dòng (M5).</div>
     </div>
   `;
+
+  if (!nextQueuePosition) {
+    api.get(`/devices/${encodeURIComponent(deviceId)}`).then(res => {
+      const posEl = content.querySelector('#panel-next-queue-pos');
+      if (posEl && res) {
+        const pos = res.nextQueuePosition || ((res.queue ? res.queue.length : 0) + 1);
+        posEl.textContent = `Vị trí dự kiến trong hàng đợi: #${pos}`;
+      }
+    }).catch(() => {});
+  }
 
   openModal({
     title: 'Đăng ký vào Hàng đợi đặt trước',
@@ -799,6 +878,11 @@ function openRegisterQueueModal(deviceId, deviceName) {
       if (!stId || !stName) {
         showToast('Vui lòng nhập đầy đủ MSSV và Họ tên', 'warning');
         throw new Error('Missing input');
+      }
+
+      if (/[,|\n\r]/.test(stId) || /[,|\n\r]/.test(stName)) {
+        showToast('Mã SV và Họ tên không được chứa dấu phẩy (,), gạch đứng (|) hoặc xuống dòng', 'warning');
+        throw new Error('Invalid M5 chars');
       }
 
       try {
@@ -845,8 +929,10 @@ function openClaimModal(deviceId, studentId, studentName) {
       }
 
       try {
-        await api.post(`/reservations/${deviceId}/claim`, { studentId, days });
-        showToast('Sinh viên đã nhận thiết bị thành công! Phiếu mượn đã được tạo.', 'success');
+        const res = await api.post(`/reservations/${deviceId}/claim`, { studentId, days });
+        const recId = res.record ? ` #${res.record.recordId}` : '';
+        showToast(`Sinh viên ${studentName} đã nhận thiết bị! Đã tạo phiếu mượn${recId}.`, 'success');
+        await drainAndToastNotifications();
         openDevicePanel(deviceId);
         loadDevices();
       } catch (err) {
@@ -955,26 +1041,39 @@ export async function render(container) {
     addBtn.addEventListener('click', openAddDeviceModal);
   }
 
-  // Nút Làm mới
+  // Nút Làm mới (kèm hiệu ứng xoay spin-loading)
   const refreshBtn = container.querySelector('#btn-devices-refresh');
   if (refreshBtn) {
-    refreshBtn.addEventListener('click', () => {
-      loadDevices();
+    refreshBtn.addEventListener('click', async () => {
+      const icon = refreshBtn.querySelector('svg, i');
+      if (icon) icon.classList.add('spin-loading');
+      refreshBtn.disabled = true;
+      try {
+        await loadDevices();
+        showToast('Đã làm mới danh mục thiết bị', 'info', '', 2000);
+      } finally {
+        setTimeout(() => {
+          if (icon) icon.classList.remove('spin-loading');
+          refreshBtn.disabled = false;
+        }, 300);
+      }
     });
   }
 
-  // Gắn sự kiện click vào backdrop để đóng panel trượt
-  const backdrop = document.getElementById('side-panel-backdrop');
-  if (backdrop) {
-    backdrop.addEventListener('click', closeDevicePanel);
-  }
-
-  // Phím Escape để đóng panel
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && activeDeviceId) {
-      closeDevicePanel();
+  // Gắn sự kiện đóng panel toàn cục đúng 1 lần (tránh rò rỉ listener khi chuyển route)
+  if (!globalPanelListenersBound) {
+    globalPanelListenersBound = true;
+    const backdrop = document.getElementById('side-panel-backdrop');
+    if (backdrop) {
+      backdrop.addEventListener('click', closeDevicePanel);
     }
-  });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && activeDeviceId) {
+        closeDevicePanel();
+      }
+    });
+  }
 
   // Nạp danh sách lần đầu
   await loadDevices();
