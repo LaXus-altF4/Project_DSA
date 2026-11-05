@@ -395,13 +395,18 @@ function renderPanelContent(panel, data) {
           <div class="side-panel-section-title">
             <i data-lucide="clock"></i> Hàng đợi đặt trước (${queue.length} người)
           </div>
-          ${dev.available === 0 ? `
-            <button id="btn-panel-register-queue" class="btn btn-primary btn-sm" style="font-size: 11.5px; padding: 3px 8px;">
-              + Đăng ký
-            </button>
-          ` : `
-            <span style="font-size: 11px; color: var(--color-text-muted);" title="Thiết bị còn hàng, phải mượn trực tiếp">+ Đăng ký (chỉ khi hết hàng)</span>
-          `}
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <a href="#/reservations?id=${escapeHtml(dev.id)}" class="btn btn-outline btn-sm" style="font-size: 11px; padding: 3px 8px; text-decoration: none;" title="Mở trang Hàng đợi đặt trước chi tiết">
+              <i data-lucide="external-link" style="width: 12px; height: 12px;"></i> Xem đầy đủ
+            </a>
+            ${dev.available === 0 ? `
+              <button id="btn-panel-register-queue" class="btn btn-primary btn-sm" style="font-size: 11.5px; padding: 3px 8px;">
+                + Đăng ký
+              </button>
+            ` : `
+              <span style="font-size: 11px; color: var(--color-text-muted);" title="Thiết bị còn hàng, phải mượn trực tiếp">+ Đăng ký (chỉ khi hết hàng)</span>
+            `}
+          </div>
         </div>
 
         ${queue.length === 0 ? `

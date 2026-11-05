@@ -939,5 +939,620 @@
   gap: 6px;
 }
 
+/* --------------------------------------------------------------------------
+   Màn hình Hàng đợi đặt trước (#/reservations)
+   -------------------------------------------------------------------------- */
+.reservation-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Thanh chọn thiết bị */
+.reservation-selector-card {
+  background-color: var(--color-bg-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 16px 20px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  box-shadow: var(--shadow-sm);
+}
+
+.reservation-selector-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 300px;
+}
+
+.reservation-select-label {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.reservation-device-select {
+  flex: 1;
+  max-width: 520px;
+  padding: 9px 14px;
+  font-size: 13.5px;
+  font-weight: 500;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background-color: var(--color-bg-surface);
+  color: var(--color-text-primary);
+}
+
+/* Card tổng quan kho của thiết bị đang chọn */
+.reservation-device-card {
+  background-color: var(--color-bg-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-shadow: var(--shadow-sm);
+}
+
+.reservation-device-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.reservation-device-title-box {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.reservation-device-name {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.reservation-device-code {
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  background-color: var(--color-bg-muted);
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border);
+}
+
+.reservation-stock-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.stock-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: var(--radius-md);
+  font-size: 12.5px;
+  font-weight: 500;
+  border: 1px solid var(--color-border);
+  background-color: var(--color-bg-muted);
+}
+
+.stock-chip-total {
+  font-weight: 700;
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-surface);
+}
+
+.stock-chip-available {
+  border-color: var(--status-available-border);
+  background-color: var(--status-available-bg);
+  color: var(--status-available-text);
+}
+
+.stock-chip-borrowed {
+  border-color: var(--status-borrowed-border);
+  background-color: var(--status-borrowed-bg);
+  color: var(--status-borrowed-text);
+}
+
+.stock-chip-onhold {
+  border-color: var(--status-onhold-border);
+  background-color: var(--status-onhold-bg);
+  color: var(--status-onhold-text);
+}
+
+.stock-chip-maint {
+  border-color: var(--status-maintenance-border);
+  background-color: var(--status-maintenance-bg);
+  color: var(--status-maintenance-text);
+}
+
+.stock-chip-queue {
+  border-color: var(--color-primary-border);
+  background-color: var(--color-primary-soft);
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.stock-chip-val {
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-weight: 700;
+}
+
+.reservation-device-progress-box {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.reservation-invariant-hint {
+  font-size: 11.5px;
+  color: var(--color-text-muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.reservation-invariant-hint code {
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 11px;
+}
+
+/* Danh sách thẻ hàng đợi */
+.reservation-queue-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.reservation-queue-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.reservation-queue-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 18px;
+  align-items: stretch;
+}
+
+@media (max-width: 640px) {
+  .reservation-queue-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Thẻ người chờ */
+.queue-card {
+  background-color: var(--color-bg-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  position: relative;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  will-change: transform, opacity;
+}
+
+.queue-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+/* Thẻ đang giữ hàng */
+.queue-card.queue-card-holding {
+  border: 2px solid var(--color-primary);
+  background-color: var(--color-bg-surface);
+  box-shadow: 0 2px 10px rgba(59, 130, 246, 0.12);
+}
+
+.queue-card.queue-card-holding::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--color-primary), #60A5FA);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+
+/* Header của thẻ */
+.queue-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.queue-pos-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+}
+
+.queue-card-holding .queue-pos-pill {
+  background-color: var(--status-onhold-bg);
+  color: var(--status-onhold-text);
+  border: 1px solid var(--status-onhold-border);
+}
+
+.queue-card-waiting .queue-pos-pill {
+  background-color: var(--color-bg-muted);
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border);
+}
+
+.queue-miss-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+}
+
+.queue-miss-badge.badge-clean {
+  background-color: var(--color-bg-muted);
+  color: var(--color-text-muted);
+  border: 1px solid var(--color-border);
+}
+
+.queue-miss-badge.badge-missed {
+  background-color: var(--status-borrowed-bg);
+  color: var(--status-borrowed-text);
+  border: 1px solid var(--status-borrowed-border);
+  font-weight: 700;
+}
+
+/* Thân thẻ */
+.queue-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  flex: 1;
+}
+
+.queue-student-box {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.queue-avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: var(--radius-full);
+  background-color: var(--color-bg-muted);
+  border: 1px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-primary);
+  flex-shrink: 0;
+}
+
+.queue-card-holding .queue-avatar {
+  background-color: var(--color-primary-soft);
+  color: var(--color-primary);
+  border-color: var(--color-primary-border);
+}
+
+.queue-student-details {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.queue-student-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  line-height: 1.25;
+}
+
+.queue-student-id {
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 12.5px;
+  color: var(--color-text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.queue-time-sub {
+  font-size: 11.5px;
+  color: var(--color-text-muted);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 2px;
+}
+
+/* Vòng đếm ngược SVG */
+.queue-countdown-box {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background-color: var(--color-bg-muted);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+}
+
+.queue-countdown-box.is-urgent {
+  background-color: var(--color-danger-bg);
+  border-color: var(--color-danger-border);
+}
+
+.queue-countdown-box.is-warning {
+  background-color: var(--status-borrowed-bg);
+  border-color: var(--status-borrowed-border);
+}
+
+.queue-svg-gauge {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  flex-shrink: 0;
+}
+
+.queue-svg-circle {
+  transform: rotate(-90deg);
+  transform-origin: 50% 50%;
+}
+
+.queue-svg-track {
+  fill: none;
+  stroke: var(--color-border);
+  stroke-width: 6;
+}
+
+.queue-svg-bar {
+  fill: none;
+  stroke-width: 6;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.4s ease, stroke 0.3s ease;
+}
+
+.queue-svg-bar.stroke-normal { stroke: var(--color-primary); }
+.queue-svg-bar.stroke-warning { stroke: var(--status-borrowed-bar); }
+.queue-svg-bar.stroke-danger { stroke: var(--color-danger); }
+
+.queue-svg-number {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-weight: 700;
+  font-size: 14px;
+  line-height: 1;
+  color: var(--color-text-primary);
+}
+
+.queue-svg-number small {
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  margin-top: 1px;
+}
+
+.queue-countdown-details {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.queue-countdown-title {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.queue-countdown-deadline {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+.queue-countdown-urgent-badge {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-danger);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Thông tin người đang chờ (chưa được giữ) */
+.queue-waiting-box {
+  background-color: var(--color-bg-muted);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  line-height: 1.45;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.queue-waiting-box i {
+  color: var(--color-primary);
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+/* Nút hành động trong thẻ */
+.queue-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-top: 6px;
+  border-top: 1px dashed var(--color-border);
+  margin-top: auto;
+}
+
+.queue-card-actions .btn {
+  flex: 1;
+}
+
+/* Form đăng ký người mới */
+.reservation-register-card {
+  background-color: var(--color-bg-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 22px;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.reservation-register-header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.reservation-register-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.reservation-register-desc {
+  font-size: 12.5px;
+  color: var(--color-text-secondary);
+}
+
+.reservation-register-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 14px;
+  align-items: flex-end;
+}
+
+@media (max-width: 768px) {
+  .reservation-register-form {
+    grid-template-columns: 1fr;
+  }
+}
+
+.reservation-alert-available {
+  background-color: var(--status-available-bg);
+  border: 1px solid var(--status-available-border);
+  border-radius: var(--radius-md);
+  padding: 14px 18px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  font-size: 13px;
+  color: var(--status-available-text);
+}
+
+.reservation-alert-available i {
+  color: var(--status-available-bar);
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.reservation-alert-content {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.reservation-alert-content a:not(.btn):not(.btn-jump-borrow) {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-weight: 600;
+  color: var(--color-primary);
+  text-decoration: underline;
+}
+
+/* Nút chuyển sang Lập phiếu mượn từ thông báo M12 */
+.btn-jump-borrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: var(--radius-md);
+  background-color: var(--color-primary);
+  color: #FFFFFF !important;
+  text-decoration: none !important;
+  border: 1px solid transparent;
+  transition: all 0.15s ease;
+  box-shadow: var(--shadow-sm);
+  margin-top: 4px;
+}
+
+.btn-jump-borrow:hover {
+  background-color: var(--color-primary-hover);
+  color: #FFFFFF !important;
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+[data-theme="dark"] .btn-jump-borrow {
+  background-color: var(--color-primary);
+  color: #0F172A !important;
+  font-weight: 700;
+}
+
+[data-theme="dark"] .btn-jump-borrow:hover {
+  background-color: var(--color-primary-hover);
+  color: #FFFFFF !important;
+}
+
+
 
 

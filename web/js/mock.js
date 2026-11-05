@@ -423,11 +423,178 @@ export async function handleMockRequest(endpoint, options = {}) {
   if (reservationsMatch && method === 'GET') {
     const devId = reservationsMatch[1];
     const dev = mockState.devices.find(d => d.id === devId);
+    if (!dev) {
+      return { status: 404, body: { error: { code: "DEVICE_NOT_FOUND", message: `Không tìm thấy thiết bị: ${devId}` } } };
+    }
+    const q = mockState.reservations[devId] || [];
     return {
       status: 200,
       body: {
-        device: dev || { id: devId, name: devId, total: 1, available: 0, borrowed: 1, onHold: 0, maintenance: 0, status: "borrowed" },
-        queue: mockState.reservations[devId] || []
+        device: dev,
+        queue: q
+      }
+    };
+  }
+
+  // 8.1 POST /api/reservations/{deviceId} (Đăng ký hàng đợi)
+  if (reservationsMatch && method === 'POST') {
+    const devId = reservationsMatch[1];
+    const dev = mockState.devices.find(d => d.id === devId);
+    if (!dev) {
+      return { status: 404, body: { error: { code: "DEVICE_NOT_FOUND", message: `Không tìm thấy thiết bị: ${devId}` } } };
+    }
+    if (dev.available > 0) {
+      return { status: 409, body: { error: { code: "CAN_BORROW_DIRECTLY", message: `Thiết bị còn ${dev.available} đơn vị sẵn sàng, vui lòng mượn trực tiếp.` } } };
+    }
+    const body = options.body ? (typeof options.body === 'string' ? JSON.parse(options.body) : options.body) : {};
+    const { studentId, studentName } = body;
+    if (!studentId || !studentName) {
+      return { status: 400, body: { error: { code: "INVALID_INPUT", message: "Vui lòng nhập đầy đủ MSSV và Họ tên" } } };
+    }
+
+    if (!mockState.reservations[devId]) mockState.reservations[devId] = [];
+    const q = mockState.reservations[devId];
+
+    if (q.some(p => p.studentId === studentId)) {
+      return { status: 409, body: { error: { code: "ALREADY_QUEUED", message: `Sinh viên ${studentId} đã có trong hàng đợi của ${devId}` } } };
+    }
+
+    const newRes = {
+      position: q.length + 1,
+      studentId: String(studentId).trim(),
+      studentName: String(studentName).trim(),
+      enqueueHour: mockState.clock.hour,
+      enqueueText: mockState.clock.text,
+      holding: false,
+      holdUntil: null,
+      holdUntilText: null,
+      hoursLeft: null,
+      missCount: 0
+    };
+
+    q.push(newRes);
+    dev.queueLength = q.length;
+
+    return {
+      status: 201,
+      body: {
+        position: newRes.position,
+        device: dev,
+        queue: q
+      }
+    };
+  }
+
+  // 8.2 POST /api/reservations/{deviceId}/claim (Nhận thiết bị)
+  const claimMatch = pathname.match(/^\/api\/reservations\/([^/]+)\/claim$/);
+  if (claimMatch && method === 'POST') {
+    const devId = claimMatch[1];
+    const dev = mockState.devices.find(d => d.id === devId);
+    if (!dev) {
+      return { status: 404, body: { error: { code: "DEVICE_NOT_FOUND", message: `Không tìm thấy thiết bị: ${devId}` } } };
+    }
+    const body = options.body ? (typeof options.body === 'string' ? JSON.parse(options.body) : options.body) : {};
+    const { studentId, days = 7 } = body;
+    const q = mockState.reservations[devId] || [];
+    const idx = q.findIndex(p => p.studentId === studentId);
+    if (idx === -1) {
+      return { status: 404, body: { error: { code: "NOT_IN_QUEUE", message: `Sinh viên ${studentId} không có trong hàng đợi` } } };
+    }
+    if (!q[idx].holding) {
+      return { status: 409, body: { error: { code: "NOT_HOLDING", message: "Chưa tới lượt nhận thiết bị (chưa được giữ hàng)" } } };
+    }
+
+    // Nhận thành công
+    const [claimedPerson] = q.splice(idx, 1);
+    dev.onHold = Math.max(0, (dev.onHold || 0) - 1);
+    dev.borrowed = (dev.borrowed || 0) + 1;
+    dev.timesBorrowed = (dev.timesBorrowed || 0) + 1;
+
+    // Đánh lại số thứ tự
+    q.forEach((p, i) => { p.position = i + 1; });
+    dev.queueLength = q.length;
+
+    const newRecord = {
+      recordId: `PM${String(mockState.records.length + 1).padStart(4, '0')}`,
+      studentId: claimedPerson.studentId,
+      studentName: claimedPerson.studentName,
+      devices: [{ id: dev.id, name: dev.name, deleted: false }],
+      borrowHour: mockState.clock.hour,
+      borrowText: mockState.clock.text,
+      dueHour: mockState.clock.hour + Number(days) * 24,
+      dueText: `Sau ${days} ngày`,
+      returnHour: null,
+      returnText: null,
+      open: true,
+      overdue: false,
+      lateDays: 0,
+      fine: 0,
+      fineFinal: false
+    };
+    mockState.records.unshift(newRecord);
+
+    return {
+      status: 201,
+      body: {
+        record: newRecord,
+        queue: q
+      }
+    };
+  }
+
+  // 8.3 DELETE /api/reservations/{deviceId}/{studentId} (Huỷ đăng ký hàng đợi)
+  const deleteResMatch = pathname.match(/^\/api\/reservations\/([^/]+)\/([^/]+)$/);
+  if (deleteResMatch && method === 'DELETE') {
+    const devId = deleteResMatch[1];
+    const studentId = deleteResMatch[2];
+    const dev = mockState.devices.find(d => d.id === devId);
+    if (!dev) {
+      return { status: 404, body: { error: { code: "DEVICE_NOT_FOUND", message: `Không tìm thấy thiết bị: ${devId}` } } };
+    }
+    const q = mockState.reservations[devId] || [];
+    const idx = q.findIndex(p => p.studentId === studentId);
+    if (idx === -1) {
+      return { status: 404, body: { error: { code: "NOT_IN_QUEUE", message: `Sinh viên ${studentId} không có trong hàng đợi` } } };
+    }
+
+    const wasHolding = q[idx].holding;
+    q.splice(idx, 1);
+
+    if (wasHolding) {
+      dev.onHold = Math.max(0, (dev.onHold || 0) - 1);
+      // Chuyển quyền cho người kế tiếp chưa giữ (M16)
+      const nextPerson = q.find(p => !p.holding);
+      if (nextPerson) {
+        nextPerson.holding = true;
+        nextPerson.holdUntil = mockState.clock.hour + 24;
+        nextPerson.holdUntilText = "Sau 24 giờ";
+        nextPerson.hoursLeft = 24;
+        dev.onHold += 1;
+        mockState.notifications.push({
+          type: "hold_granted",
+          studentId: nextPerson.studentId,
+          studentName: nextPerson.studentName,
+          deviceId: dev.id,
+          deviceName: dev.name,
+          hour: mockState.clock.hour,
+          hourText: mockState.clock.text,
+          holdUntil: nextPerson.holdUntil,
+          holdUntilText: nextPerson.holdUntilText,
+          message: `${nextPerson.studentName} (${nextPerson.studentId}) được quyền nhận ${dev.name} (${dev.id}) trong 24 giờ (do người trước huỷ lượt)`
+        });
+      } else {
+        dev.available += 1;
+      }
+    }
+
+    q.forEach((p, i) => { p.position = i + 1; });
+    dev.queueLength = q.length;
+
+    return {
+      status: 200,
+      body: {
+        device: dev,
+        queue: q
       }
     };
   }

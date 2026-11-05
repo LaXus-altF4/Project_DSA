@@ -290,7 +290,7 @@ function renderContent(container, data, isUpdating = false) {
                         <i data-lucide="hourglass" style="width: 13px; height: 13px;"></i>
                         Còn ${item.hoursLeft}h
                       </span>
-                      <a href="#/reservations" class="btn btn-secondary btn-sm" title="Mở hàng đợi">
+                      <a href="#/reservations?id=${escapeHtml(item.deviceId)}" class="btn btn-secondary btn-sm" title="Mở hàng đợi thiết bị này">
                         Nhận
                       </a>
                     </div>

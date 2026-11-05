@@ -38,19 +38,18 @@ export async function advanceTime(hours) {
 
     // Lấy thông báo sự kiện phát sinh từ hàng đợi / quá hạn
     const notiRes = await api.get('/notifications');
-    if (notiRes && Array.isArray(notiRes.notifications)) {
-      notiRes.notifications.forEach(n => {
-        let type = 'info';
-        if (n.type === 'hold_granted') type = 'success';
-        if (n.type === 'missed') type = 'warning';
-        if (n.type === 'removed') type = 'error';
+    const notifications = (notiRes && Array.isArray(notiRes.notifications)) ? notiRes.notifications : [];
+    notifications.forEach(n => {
+      let type = 'info';
+      if (n.type === 'hold_granted') type = 'success';
+      if (n.type === 'missed') type = 'warning';
+      if (n.type === 'removed') type = 'error';
 
-        showToast(n.message, type, 'Sự kiện hệ thống', 6000);
-      });
-    }
+      showToast(n.message, type, 'Sự kiện hệ thống', 6000);
+    });
 
     // Phát sự kiện để màn hình hiện tại tự làm mới dữ liệu
-    window.dispatchEvent(new CustomEvent('lab:time-advanced', { detail: { hours, clock: result.clock } }));
+    window.dispatchEvent(new CustomEvent('lab:time-advanced', { detail: { hours, clock: result.clock, notifications } }));
   } catch (err) {
     showToast(err.message || 'Lỗi khi tua thời gian', 'error', 'Lỗi đồng hồ');
   } finally {

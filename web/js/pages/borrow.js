@@ -9,7 +9,7 @@
 
 import { api } from '../api.js';
 import { showToast } from '../ui/toast.js';
-import { openModal } from '../ui/modal.js';
+import { openModal, closeModal } from '../ui/modal.js';
 
 let currentContainer = null;
 let allDevices = [];
@@ -25,6 +25,19 @@ function escapeHtml(str) {
   return String(str || '').replace(/[&<>"']/g, c => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'
   }[c]));
+}
+
+/**
+ * Lấy mã thiết bị cần thêm vào giỏ từ tham số URL (VD: #/borrow?id=ARD01)
+ */
+function getAddDeviceIdFromHash() {
+  const hash = window.location.hash || '';
+  const queryIndex = hash.indexOf('?');
+  if (queryIndex !== -1) {
+    const params = new URLSearchParams(hash.substring(queryIndex + 1));
+    return params.get('id') || params.get('add');
+  }
+  return null;
 }
 
 /**
@@ -411,7 +424,17 @@ function openRegisterQueueModal(deviceId, deviceName) {
       <label class="form-label" for="borrow-queue-student-name">Họ và tên sinh viên:</label>
       <input type="text" id="borrow-queue-student-name" class="form-input" placeholder="VD: Trần Văn An" value="${escapeHtml(inputStName)}" required>
     </div>
+    <div style="font-size: 12px; margin-top: 4px;">
+      <a href="#/reservations?id=${escapeHtml(deviceId)}" id="borrow-jump-reservation" style="color: var(--color-primary); text-decoration: underline; display: inline-flex; align-items: center; gap: 4px;">
+        <span>Mở toàn màn hình Hàng đợi của thiết bị này</span> &rarr;
+      </a>
+    </div>
   `;
+
+  const jumpLink = content.querySelector('#borrow-jump-reservation');
+  if (jumpLink) {
+    jumpLink.addEventListener('click', () => closeModal());
+  }
 
   openModal({
     title: 'Đăng ký vào Hàng đợi đặt trước',
@@ -713,6 +736,21 @@ export async function render(container) {
   renderBasket();
   renderSuggestions();
   await loadAllDevices();
+
+  // Tự động thêm thiết bị vào giỏ nếu được truyền từ màn hình khác sang (VD: thông báo M12 của Hàng đợi)
+  const autoAddId = getAddDeviceIdFromHash();
+  if (autoAddId && allDevices.length > 0) {
+    const devToAdd = allDevices.find(d => d.id === autoAddId);
+    if (devToAdd) {
+      if (devToAdd.available > 0) {
+        addToBasket(devToAdd);
+        showToast(`Đã thêm thiết bị "${devToAdd.name}" (${devToAdd.id}) vào giỏ mượn`, 'success');
+      } else {
+        showToast(`Thiết bị "${devToAdd.name}" (${devToAdd.id}) hiện đã hết hàng trong kho`, 'warning');
+      }
+    }
+    history.replaceState(null, '', '#/borrow');
+  }
 }
 
 /**

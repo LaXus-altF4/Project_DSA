@@ -290,6 +290,37 @@ html.theme-transitioning *::after {
 }
 
 /* --------------------------------------------------------------------------
+   Hiệu ứng hàng đợi: Thẻ được quyền giữ phát sáng (2 lần rồi dừng)
+   -------------------------------------------------------------------------- */
+.pulse-glow-hold {
+  animation: pulseGlowHold 450ms ease-in-out 2;
+}
+
+@keyframes pulseGlowHold {
+  0% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7);
+    border-color: var(--color-primary);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(59, 130, 246, 0.25);
+    border-color: var(--color-primary);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Hiệu ứng hàng đợi: Thẻ bị loại khỏi hàng (lỡ lần 2) co lại và mờ dần
+   -------------------------------------------------------------------------- */
+.card-shrink-remove {
+  transform: scale(0.85);
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 350ms cubic-bezier(0.16, 1, 0.3, 1), opacity 350ms ease;
+}
+
+/* --------------------------------------------------------------------------
    Ràng buộc: Tắt toàn bộ hiệu ứng khi prefers-reduced-motion
    -------------------------------------------------------------------------- */
 @media (prefers-reduced-motion: reduce) {

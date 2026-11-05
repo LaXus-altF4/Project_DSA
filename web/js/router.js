@@ -86,10 +86,10 @@ export function initRouter() {
   window.addEventListener('hashchange', handleRouteChange);
 
   // Lắng nghe sự kiện tua thời gian để trang hiện tại có thể phản ứng nếu cần
-  window.addEventListener('lab:time-advanced', () => {
+  window.addEventListener('lab:time-advanced', (e) => {
     const pageModule = ROUTES[currentRoute];
     if (pageModule && typeof pageModule.onTimeAdvanced === 'function') {
-      pageModule.onTimeAdvanced();
+      pageModule.onTimeAdvanced(e.detail);
     }
   });
 
