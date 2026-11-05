@@ -136,6 +136,45 @@ const mockState = {
       lateDays: 0,
       fine: 0,
       fineFinal: false
+    },
+    {
+      recordId: "PM0018",
+      studentId: "25120145",
+      studentName: "Võ Thị Hạnh",
+      devices: [
+        { id: "DMM01", name: "Đồng hồ vạn năng số", deleted: false }
+      ],
+      borrowHour: 970,
+      borrowText: "10/02/2026 10:00",
+      dueHour: 1066,
+      dueText: "14/02/2026 10:00",
+      returnHour: 1060,
+      returnText: "14/02/2026 04:00",
+      open: false,
+      overdue: false,
+      lateDays: 0,
+      fine: 0,
+      fineFinal: true
+    },
+    {
+      recordId: "PM0012",
+      studentId: "25120162",
+      studentName: "Đặng Quốc Bảo",
+      devices: [
+        { id: "RPI01", name: "Raspberry Pi 4 Model B", deleted: false },
+        { id: "CAB01", name: "Cáp USB Type-C sang C", deleted: false }
+      ],
+      borrowHour: 720,
+      borrowText: "31/01/2026 00:00",
+      dueHour: 792,
+      dueText: "03/02/2026 00:00",
+      returnHour: 842,
+      returnText: "05/02/2026 02:00",
+      open: false,
+      overdue: false,
+      lateDays: 3,
+      fine: 216000,
+      fineFinal: true
     }
   ],
   graph: {
@@ -185,6 +224,21 @@ export async function handleMockRequest(endpoint, options = {}) {
     d.setHours(d.getHours() + mockState.clock.hour);
     const pad = n => String(n).padStart(2, '0');
     mockState.clock.text = `${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()} ${pad(d.getHours())}:00`;
+
+    // Cập nhật quá hạn & tiền phạt tạm tính cho các phiếu đang mở trong mock
+    for (const r of mockState.records) {
+      if (r.open) {
+        if (mockState.clock.hour > r.dueHour) {
+          r.overdue = true;
+          r.lateDays = Math.ceil((mockState.clock.hour - r.dueHour) / 24);
+          r.fine = r.lateDays * ((r.devices && r.devices.length) || 1) * 36000;
+        } else {
+          r.overdue = false;
+          r.lateDays = 0;
+          r.fine = 0;
+        }
+      }
+    }
 
     // Cập nhật hoursLeft cho người đang giữ
     let pending = 0;
@@ -321,33 +375,52 @@ export async function handleMockRequest(endpoint, options = {}) {
   // 7. GET /api/records
   if (pathname === '/api/records' && method === 'GET') {
     const status = searchParams.get('status') || 'all';
-    const query = (searchParams.get('query') || '').toLowerCase();
-    let list = [...mockState.records];
+    const query = (searchParams.get('query') || '').toLowerCase().trim();
+    const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1);
+    const pageSize = Math.min(100, Math.max(1, parseInt(searchParams.get('pageSize') || '20', 10) || 20));
 
-    if (status === 'open') {
-      list = list.filter(r => r.open);
-    } else if (status === 'overdue') {
-      list = list.filter(r => r.open && r.overdue);
-    } else if (status === 'returned') {
-      list = list.filter(r => !r.open);
-    }
-
+    let matched = [...mockState.records];
     if (query) {
-      list = list.filter(r =>
+      matched = matched.filter(r =>
         (r.recordId && r.recordId.toLowerCase().includes(query)) ||
         (r.studentId && r.studentId.toLowerCase().includes(query)) ||
         (r.studentName && r.studentName.toLowerCase().includes(query))
       );
     }
 
+    const counts = {
+      all: matched.length,
+      open: matched.filter(r => r.open).length,
+      overdue: matched.filter(r => r.open && r.overdue).length,
+      returned: matched.filter(r => !r.open).length
+    };
+
+    let list = matched;
+    if (status === 'open') {
+      list = matched.filter(r => r.open);
+    } else if (status === 'overdue') {
+      list = matched.filter(r => r.open && r.overdue).sort((a, b) => {
+        if ((b.lateDays || 0) !== (a.lateDays || 0)) return (b.lateDays || 0) - (a.lateDays || 0);
+        return String(a.recordId).localeCompare(String(b.recordId));
+      });
+    } else if (status === 'returned') {
+      list = matched.filter(r => !r.open);
+    }
+
+    const total = list.length;
+    const totalPages = Math.ceil(total / pageSize);
+    const startIdx = (page - 1) * pageSize;
+    const pagedRecords = list.slice(startIdx, startIdx + pageSize);
+
     return {
       status: 200,
       body: {
-        page: 1,
-        pageSize: 50,
-        total: list.length,
-        totalPages: 1,
-        records: list
+        page,
+        pageSize,
+        total,
+        totalPages,
+        counts,
+        records: pagedRecords
       }
     };
   }

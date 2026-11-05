@@ -1553,6 +1553,569 @@
   color: #FFFFFF !important;
 }
 
+/* ==========================================================================
+   Màn hình 6: Quá hạn & Lịch sử (#/records)
+   ========================================================================== */
+
+.records-control-panel {
+  background-color: var(--color-bg-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+/* Thanh Tab lọc 4 trạng thái */
+.records-tabs-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 16px 0;
+  border-bottom: 1px solid var(--color-border);
+  background-color: var(--color-bg-muted);
+  overflow-x: auto;
+}
+
+.records-tab-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  border: 1px solid transparent;
+  border-bottom: none;
+  background: transparent;
+  white-space: nowrap;
+  transition: color 0.15s ease, background-color 0.15s ease;
+  margin-bottom: -1px;
+}
+
+.records-tab-btn:hover:not(.active) {
+  color: var(--color-text-primary);
+  background-color: rgba(148, 163, 184, 0.12);
+}
+
+.records-tab-btn.active {
+  color: var(--color-primary);
+  background-color: var(--color-bg-surface);
+  border-color: var(--color-border);
+  border-bottom-color: var(--color-bg-surface);
+}
+
+.records-tab-btn.tab-overdue.active {
+  color: var(--color-danger);
+}
+
+.records-tab-icon {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+}
+
+.records-tab-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 20px;
+  padding: 0 7px;
+  font-size: 11.5px;
+  font-weight: 700;
+  border-radius: var(--radius-full);
+  background-color: var(--color-bg-surface);
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border);
+  transition: all 0.15s ease;
+}
+
+.records-tab-btn.active .records-tab-count {
+  background-color: var(--color-primary-soft);
+  color: var(--color-primary);
+  border-color: var(--color-primary-border);
+}
+
+.records-tab-btn.tab-overdue .records-tab-count.has-overdue {
+  background-color: var(--color-danger-bg);
+  color: var(--color-danger);
+  border-color: var(--color-danger-border);
+}
+
+.records-tab-btn.tab-open.active .records-tab-count {
+  background-color: var(--status-borrowed-bg);
+  color: var(--status-borrowed-text);
+  border-color: var(--status-borrowed-border);
+}
+
+.records-tab-btn.tab-returned.active .records-tab-count {
+  background-color: var(--status-available-bg);
+  color: var(--status-available-text);
+  border-color: var(--status-available-border);
+}
+
+/* Thanh tìm kiếm & ghi chú quy ước */
+.records-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 14px 16px;
+  background-color: var(--color-bg-surface);
+}
+
+.records-search-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 260px;
+  max-width: 440px;
+}
+
+.records-search-box .records-search-icon {
+  position: absolute;
+  left: 12px;
+  width: 16px;
+  height: 16px;
+  color: var(--color-text-muted);
+  pointer-events: none;
+}
+
+.records-search-input {
+  width: 100%;
+  padding: 8px 34px 8px 36px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background-color: var(--color-bg-canvas);
+  color: var(--color-text-primary);
+  font-size: 13.5px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+}
+
+.records-search-input:focus {
+  outline: none;
+  background-color: var(--color-bg-surface);
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.16);
+}
+
+.records-search-clear {
+  position: absolute;
+  right: 8px;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  line-height: 1;
+  color: var(--color-text-muted);
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.records-search-clear:hover {
+  background-color: var(--color-bg-muted);
+  color: var(--color-text-primary);
+}
+
+.records-toolbar-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  background-color: var(--color-bg-muted);
+  border: 1px solid var(--color-border);
+  padding: 6px 12px;
+  border-radius: var(--radius-full);
+}
+
+.records-toolbar-hint i {
+  width: 14px;
+  height: 14px;
+  color: var(--color-primary);
+  flex-shrink: 0;
+}
+
+/* Khung bảng & chân trang phân trang */
+.records-table-panel {
+  background-color: var(--color-bg-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.records-table-scroll {
+  width: 100%;
+  overflow-x: auto;
+}
+
+/* Dòng quá hạn tô nhạt đỏ */
+.records-table tbody tr.record-row-overdue td {
+  background-color: #FEF2F2;
+}
+
+.records-table tbody tr.record-row-overdue td:first-child {
+  box-shadow: inset 3.5px 0 0 var(--color-danger);
+}
+
+.records-table tbody tr.record-row-overdue.clickable-row:hover td {
+  background-color: #FEE2E2;
+}
+
+[data-theme="dark"] .records-table tbody tr.record-row-overdue td {
+  background-color: rgba(127, 29, 29, 0.24);
+}
+
+[data-theme="dark"] .records-table tbody tr.record-row-overdue.clickable-row:hover td {
+  background-color: rgba(153, 27, 27, 0.36);
+}
+
+/* Dòng đang mở (chưa quá hạn) có hover nhẹ + viền trái khi rê chuột */
+.records-table tbody tr.record-row-open:not(.record-row-overdue):hover td:first-child {
+  box-shadow: inset 3px 0 0 var(--color-primary);
+}
+
+.records-table tbody tr.record-row-open:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: -2px;
+}
+
+.records-table tbody tr.record-row-returned td {
+  color: var(--color-text-secondary);
+}
+
+/* Các thành phần ô dữ liệu trong bảng phiếu mượn */
+.record-id-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.record-id-code {
+  font-weight: 700;
+  font-size: 13.5px;
+  color: var(--color-primary);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.record-row-overdue .record-id-code {
+  color: var(--color-danger);
+}
+
+.record-row-returned .record-id-code {
+  color: var(--color-text-primary);
+}
+
+.record-jump-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-primary);
+  opacity: 0.78;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.record-row-overdue .record-jump-hint {
+  color: var(--color-danger);
+}
+
+.record-row-open:hover .record-jump-hint {
+  opacity: 1;
+  transform: translateX(2px);
+}
+
+.record-student-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.record-student-name {
+  font-weight: 600;
+  color: var(--color-text-primary);
+  line-height: 1.3;
+}
+
+.record-student-id {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+/* Danh sách chip thiết bị trong 1 phiếu */
+.record-devices-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  max-width: 320px;
+}
+
+.record-device-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  background-color: var(--color-bg-muted);
+  border: 1px solid var(--color-border);
+  font-size: 12px;
+  line-height: 1.25;
+  max-width: 240px;
+}
+
+.record-row-overdue .record-device-chip {
+  background-color: var(--color-bg-surface);
+}
+
+.record-device-chip code {
+  font-weight: 700;
+  font-size: 11.5px;
+  color: var(--color-primary);
+  flex-shrink: 0;
+}
+
+.record-device-chip-name {
+  color: var(--color-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.record-device-chip.is-deleted {
+  background-color: var(--color-bg-muted);
+  border-style: dashed;
+  color: var(--color-text-muted);
+}
+
+.record-device-chip.is-deleted code {
+  color: var(--color-text-muted);
+  text-decoration: line-through;
+}
+
+.record-device-chip-deleted {
+  font-style: italic;
+  color: var(--color-text-muted);
+}
+
+/* Cột ngày mượn & hạn trả / ngày trả */
+.record-time-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  white-space: nowrap;
+}
+
+.record-time-main {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-primary);
+}
+
+.record-time-main.is-overdue-due {
+  color: var(--color-danger);
+  font-weight: 700;
+}
+
+.record-time-sub {
+  font-size: 11.5px;
+  color: var(--color-text-secondary);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Cột số ngày trễ */
+.badge-late-days {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: var(--radius-full);
+  font-size: 12px;
+  font-weight: 700;
+  background-color: var(--color-danger-bg);
+  color: var(--color-danger);
+  border: 1px solid var(--color-danger-border);
+  white-space: nowrap;
+}
+
+.badge-late-returned {
+  background-color: var(--status-borrowed-bg);
+  color: var(--status-borrowed-text);
+  border-color: var(--status-borrowed-border);
+}
+
+.record-ontime-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+.record-ontime-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-full);
+  background-color: var(--status-available-bar);
+}
+
+/* Cột tiền phạt */
+.record-fine-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  white-space: nowrap;
+}
+
+.record-fine-amount {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.record-fine-amount.has-fine-temp {
+  color: var(--color-danger);
+}
+
+.record-fine-amount.has-fine-final {
+  color: var(--status-borrowed-text);
+}
+
+.record-fine-amount.zero-fine {
+  font-weight: 500;
+  color: var(--color-text-muted);
+}
+
+.record-fine-asterisk {
+  font-weight: 800;
+  margin-left: 1px;
+  color: var(--color-danger);
+}
+
+.record-fine-amount.zero-fine .record-fine-asterisk {
+  color: var(--color-text-muted);
+  font-weight: 600;
+}
+
+.record-fine-tag {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.record-fine-tag.is-temp {
+  color: var(--color-danger);
+}
+
+/* Chân bảng: Chú thích * & Phân trang */
+.records-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--color-border);
+  background-color: var(--color-bg-muted);
+}
+
+.records-footer-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+.records-temp-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+.records-temp-note strong {
+  color: var(--color-danger);
+  font-weight: 700;
+}
+
+.records-pagination {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.records-page-info {
+  font-size: 12.5px;
+  color: var(--color-text-secondary);
+  margin-right: 6px;
+  white-space: nowrap;
+}
+
+.records-page-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: 32px;
+  height: 32px;
+  padding: 0 10px;
+  font-size: 12.5px;
+  font-weight: 600;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background-color: var(--color-bg-surface);
+  color: var(--color-text-primary);
+  transition: all 0.15s ease;
+}
+
+.records-page-btn:hover:not(:disabled):not(.active) {
+  background-color: var(--color-bg-hover);
+  border-color: var(--color-border-hover);
+  color: var(--color-primary);
+}
+
+.records-page-btn.active {
+  background-color: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #FFFFFF;
+}
+
+[data-theme="dark"] .records-page-btn.active {
+  color: #0B0F17;
+  font-weight: 700;
+}
+
+.records-page-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.records-page-ellipsis {
+  padding: 0 4px;
+  color: var(--color-text-muted);
+  font-size: 13px;
+  user-select: none;
+}
+
+
 
 
 

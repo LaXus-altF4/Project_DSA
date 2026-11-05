@@ -308,6 +308,12 @@ function renderRecordsList(error = null) {
       }
     });
   });
+
+  // Cuộn mượt tới phiếu đang được chọn nếu chuyển từ màn #/records sang
+  const selectedEl = container.querySelector('.return-record-item.is-selected');
+  if (selectedEl) {
+    selectedEl.scrollIntoView({ block: 'nearest' });
+  }
 }
 
 /**
@@ -692,6 +698,14 @@ export async function onTimeAdvanced() {
  */
 export async function render(container) {
   currentContainer = container;
+
+  // Nếu điều hướng trực tiếp từ màn #/records kèm ?id=..., gỡ bộ lọc cũ để đảm bảo hiển thị đúng phiếu được chọn
+  const initialUrlRecordId = getRecordIdFromUrl();
+  if (initialUrlRecordId) {
+    searchQuery = '';
+    filterOnlyOverdue = false;
+    selectedRecordId = initialUrlRecordId;
+  }
 
   container.innerHTML = `
     <div class="page">
