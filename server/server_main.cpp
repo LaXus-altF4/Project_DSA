@@ -254,6 +254,14 @@ int main(int argc, char** argv) {
     if (fs::is_directory(webDir, ec) && !svr.set_mount_point("/", webDir))
         std::cout << YELLOW << "Cảnh báo: không phục vụ được thư mục web: " << webDir << RESET << "\n";
 
+    // Tắt cache cho HTML/JS/CSS để trình duyệt luôn lấy bản mới khi đang phát triển web
+    svr.set_file_request_handler([](const httplib::Request&, httplib::Response& res) {
+        const std::string type = res.get_header_value("Content-Type");
+        if (type.rfind("text/html", 0) == 0 || type.rfind("text/javascript", 0) == 0 ||
+            type.rfind("text/css", 0) == 0)
+            res.set_header("Cache-Control", "no-store");
+    });
+
     registerRoutes(svr, lab, labMutex);
 
     // Ghi nhật ký các thao tác thay đổi dữ liệu và các lỗi (bỏ qua GET thành công cho đỡ rối).
