@@ -4,6 +4,8 @@
 > Căn cứ theo quy tắc dự án trong `AGENTS.md` và tài liệu hợp đồng `docs/api.md`.  
 > Ngày tạo: 05/11/2026.
 
+> **Trạng thái (giai đoạn 8, 05/11/2026):** không còn yêu cầu nào đang mở — mục 1.1 đã được backend xử lý.
+
 ---
 
 ## 1. Yêu cầu cho Màn hình Quá hạn & Lịch sử (`#/records`)

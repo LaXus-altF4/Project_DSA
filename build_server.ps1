@@ -3,8 +3,10 @@
 # Chay tu CMD:        powershell -ExecutionPolicy Bypass -File build_server.ps1
 # Chay tu PowerShell: .\build_server.ps1
 # - Loi (src/*.cpp tru main.cpp va UI.cpp cua console) + server/*.cpp.
-# - third_party/ them bang -isystem: canh bao trong thu vien ngoai khong lam hong -Werror.
+# - third_party/ them bang -isystem de canh bao trong thu vien ngoai khong hien ra.
 # - cpp-httplib can Windows 10+ (_WIN32_WINNT=0x0A00) va Winsock (-lws2_32).
+# Mac dinh build RELEASE: -O2 -DNDEBUG -static (exe khong can DLL MinGW). Them -Dev de build debug (-g -O0, bat assert).
+param([switch]$Dev)
 $ErrorActionPreference = 'Stop'
 Set-Location $PSScriptRoot
 
@@ -15,8 +17,10 @@ $coreSources = @(Get-ChildItem src -Filter *.cpp |
     ForEach-Object { $_.FullName })
 $serverSources = @(Get-ChildItem server -Filter *.cpp | ForEach-Object { $_.FullName })
 
+if ($Dev) { $flags = @('-g', '-O0') } else { $flags = @('-O2', '-DNDEBUG', '-static') }
+
 Write-Host 'Building build/LabApp.exe ...'
-& g++ -std=c++17 -Wall -Wextra -Werror -g -O1 -D_WIN32_WINNT=0x0A00 -Iinclude -Iserver -isystem third_party `
+& g++ -std=c++17 -Wall -Wextra @flags -D_WIN32_WINNT=0x0A00 -Iinclude -Iserver -isystem third_party `
     @coreSources @serverSources -o build/LabApp.exe -lws2_32
 if ($LASTEXITCODE -ne 0) {
     Write-Host 'BUILD FAILED' -ForegroundColor Red

@@ -1,12 +1,20 @@
 # Phần mềm quản lý mượn trả thiết bị và gợi ý đồ dùng thực hành
 
-Đồ án môn Thực hành Cấu trúc dữ liệu & Giải thuật — HCMUS.
-Sinh viên: Lê Trường Khải — MSSV 25300003.
+Đồ án môn Thực hành Cấu trúc dữ liệu & Giải thuật — HCMUS (đề số 3).
 
-> README đang được viết dần theo từng giai đoạn (hiện có: lõi CTDL, bản console, API server).
+| | |
+|---|---|
+| Sinh viên | Lê Trường Khải — MSSV 25300003 (làm một mình) |
+| Giảng viên | ThS. Trần Tuấn Kiệt |
 
-## Yêu cầu
-- Windows, `g++` (MinGW-W64 13.2.0 trở lên), hỗ trợ C++17.
+CTDL tự cài đặt trong lõi: `DoublyLinkedList` (danh mục thiết bị), `LinkedQueue` (hàng đợi đặt trước 24h, thông báo),
+`Graph` danh sách kề (gợi ý thiết bị mượn kèm, top 3). Có bản console (`app.exe`) và bản web (`LabApp.exe`: API + giao diện).
+
+## Yêu cầu hệ thống
+- **Chạy bản đã đóng gói** (`Project_DSA_25300003.zip`): Windows 10 trở lên, không cần cài thêm gì
+  (exe build `-static`, không cần DLL MinGW; chỉ dùng DLL có sẵn của Windows).
+- **Build từ mã nguồn**: Windows 10+, `g++` ≥ 9 hỗ trợ C++17, **bản posix threads** (cpp-httplib cần `std::thread`),
+  ví dụ MinGW-w64 (winlibs, MSYS2 UCRT64). Đã thử với g++ 13.2.0. Không cần `make`; dùng các script PowerShell bên dưới.
 
 ## Build & chạy
 
@@ -21,9 +29,10 @@ Từ PowerShell (nếu đã cho phép chạy script) có thể gõ trực tiếp
 
 | Script | Kết quả |
 |---|---|
-| `build.ps1` | Build `build/app.exe` — chương trình console (bật `-Wall -Wextra -Werror`) |
-| `build_test.ps1` | Build `build/test.exe` và chạy unit test của lõi (CTDL, mượn/trả, hàng đợi, đồ thị, Storage, dữ liệu mẫu) |
-| `build_server.ps1` | Build `build/LabApp.exe` — API server + giao diện web (cpp-httplib, nlohmann/json trong `third_party/`) |
+| `build.ps1` | Build `build/app.exe` — chương trình console, **release** (`-O2 -DNDEBUG -static`). Thêm `-Dev` để build debug (`-g -O0`, bật `assert` kiểm bất biến) |
+| `build_test.ps1` | Build `build/test.exe` (`-Wall -Wextra -Werror`) và chạy unit test của lõi (CTDL, mượn/trả, hàng đợi, đồ thị, Storage, dữ liệu mẫu) |
+| `build_server.ps1` | Build `build/LabApp.exe` — API server + giao diện web (cpp-httplib, nlohmann/json trong `third_party/`); release như trên, có `-Dev` |
+| `make_release.ps1` | Build release rồi đóng gói `release/Project_DSA/`, `release/Project_DSA_25300003.zip` (exe + `web/` + `data/` mẫu + `README_RUN.txt`) và `release/Project_DSA_source.zip` (mã nguồn, `git archive` từ HEAD) |
 | `tests\api_smoke.ps1` | Chạy LabApp trên bản sao dữ liệu mẫu (thư mục tạm) và gọi thử mọi endpoint theo kịch bản demo |
 
 ### Chạy LabApp (API + web)
@@ -76,6 +85,19 @@ Chạy **từ thư mục gốc của repo** (đường dẫn `data` là tương 
 đã loại món đang có trong phiếu, điểm cộng dồn qua các món, tính trên lịch sử hiện tại) → có thể nhập thêm mã từ gợi ý
 (Enter = bỏ qua; gợi ý được tính lại sau mỗi lần thêm) → nhập số ngày → xem tóm tắt và xác nhận → tạo phiếu.
 Hạn trả = giờ mượn + số ngày × 24 giờ, tính đến đúng giờ.
+
+## Cấu trúc thư mục
+```
+include/      DoublyLinkedList.h  LinkedQueue.h  Graph.h  Models.h  Clock.h  LabManager.h  Storage.h  SampleData.h  UI.h
+src/          main.cpp  Graph.cpp  LabManager.cpp  Storage.cpp  SampleData.cpp  UI.cpp
+server/       server_main.cpp  JsonMapper.{h,cpp}  Routes.{h,cpp}
+third_party/  httplib.h  json.hpp            (header-only, chỉ dùng ở tầng server)
+web/          index.html  css/  js/  assets/  vendor/   (giao diện, chạy offline)
+tests/        test_main.cpp  api_smoke.ps1
+data/         devices.csv  borrow_records.csv  reservations.csv  meta.csv
+docs/         api.md  web-ui-spec.md  demo-checklist.md  README_RUN.txt  report-notes.md
+build.ps1  build_server.ps1  build_test.ps1  make_release.ps1
+```
 
 ## Dữ liệu (`data/*.csv`)
 
