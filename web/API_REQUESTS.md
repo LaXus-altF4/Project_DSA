@@ -10,6 +10,8 @@
 
 ### 1.1. Bổ sung trường `counts` (số lượng phiếu theo từng tab) trong `GET /api/records`
 
+> ✅ **Đã xử lý** (05/11/2026): `GET /api/records` trả thêm `counts {all, open, overdue, returned}`. `open` gồm cả phiếu quá hạn (nên `all = open + returned`, `overdue ⊂ open`); có `query` thì đếm trên tập khớp; `total == counts[status]`. Xem `docs/api.md` mục 4.3.
+
 - **Endpoint hiện tại:** `GET /api/records?status={status}&query={query}&page={page}&pageSize={pageSize}`
 - **Tài liệu tham chiếu:** `docs/api.md` mục 4.3; `web/DESIGN.md` mục 2.6 và 3.6.
 

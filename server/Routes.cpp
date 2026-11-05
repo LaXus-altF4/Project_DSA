@@ -272,9 +272,7 @@ void registerRoutes(httplib::Server& svr, LabManager& lab, std::mutex& mtx) {
             if (status == "open" && !r.isOpen()) return;
             if (status == "returned" && r.isOpen()) return;
             if (status == "overdue" && !lab.isOverdue(r)) return;
-            if (!query.empty() && !containsCI(r.recordId, query) && !containsCI(r.studentId, query) &&
-                !containsCI(r.studentName, query))
-                return;
+            if (!LabManager::recordMatchesQuery(r, query)) return;
             list.push_back(&r);
         });
         if (status == "overdue") {
@@ -295,8 +293,10 @@ void registerRoutes(httplib::Server& svr, LabManager& lab, std::mutex& mtx) {
         json arr = json::array();
         for (long long i = (page - 1) * pageSize; i < total && i < page * pageSize; ++i)
             arr.push_back(JM::record(lab, *list[static_cast<size_t>(i)]));
+        RecordCounts c = lab.countRecords(query); // lõi đếm; server chỉ chuyển sang JSON
+        json counts = {{"all", c.all}, {"open", c.open}, {"overdue", c.overdue}, {"returned", c.returned}};
         sendJson(res, 200, json{{"page", page}, {"pageSize", pageSize}, {"total", total},
-                                {"totalPages", totalPages}, {"records", arr}});
+                                {"totalPages", totalPages}, {"counts", counts}, {"records", arr}});
     }));
 
     svr.Get(R"(/api/records/([^/]+))", wrap(mtx, [&lab](const Request& req, Response& res) {

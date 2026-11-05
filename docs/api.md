@@ -186,12 +186,15 @@ Trả `{ "record": Record }` (`open: false`, `fineFinal: true`). Lỗi: `RECORD_
 Trước khi xác nhận, web gọi `GET /api/records/{id}` để hiện số ngày quá hạn và tiền phạt tạm tính.
 
 **`GET /api/records?status=all&query=&page=1&pageSize=20`**
-- `status`: `all` (mặc định) | `open` | `overdue` | `returned`.
+- `status`: `all` (mặc định) | `open` | `overdue` | `returned`. `open` = mọi phiếu chưa trả, **gồm cả phiếu quá hạn**; `overdue` là tập con của `open`.
 - `query`: chuỗi con của mã phiếu, MSSV hoặc họ tên (bỏ trống = tất cả).
 - `page` ≥ 1 (mặc định 1), `pageSize` 1–100 (mặc định 20).
 - Thứ tự: `overdue` → `lateDays` giảm dần, hoà thì mã phiếu tăng; các loại khác → phiếu mới nhất trước.
+- `counts`: số phiếu theo từng trạng thái **trong tập khớp `query`** (không phụ thuộc `status`, `page`). Bất biến: `all = open + returned`, `overdue ≤ open`, và `total == counts[status]`. Do lõi (`LabManager::countRecords`) tính.
 ```json
-{ "page": 1, "pageSize": 20, "total": 57, "totalPages": 3, "records": [ Record, ... ] }
+{ "page": 1, "pageSize": 20, "total": 52, "totalPages": 3,
+  "counts": { "all": 52, "open": 5, "overdue": 2, "returned": 47 },
+  "records": [ Record, ... ] }
 ```
 
 **`GET /api/records/{id}`** → `{ "record": Record }`. Lỗi: `RECORD_NOT_FOUND`.

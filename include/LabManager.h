@@ -118,6 +118,13 @@ public:
     // Phiếu đang mở và giờ hiện tại > hạn trả (đúng bằng hạn thì chưa quá hạn, M19). O(1)
     bool isOverdue(const BorrowRecord& record) const;
 
+    // Phiếu khớp query: query rỗng → luôn khớp; ngược lại là chuỗi con (không phân biệt hoa/thường ASCII)
+    // của mã phiếu, MSSV hoặc họ tên. O(len)
+    static bool recordMatchesQuery(const BorrowRecord& record, const std::string& query);
+
+    // Đếm phiếu theo trạng thái trong tập khớp query (rỗng = tất cả). open gồm cả quá hạn. O(m·len)
+    RecordCounts countRecords(const std::string& query = "") const;
+
     // ---------------- Thống kê / tổng quan (giai đoạn 6) ----------------
     // Số liệu tổng hợp cho màn hình Tổng quan. O(n·q + m·k), q = độ dài hàng đợi
     LabStats getStats() const;

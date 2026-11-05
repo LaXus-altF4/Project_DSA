@@ -130,6 +130,15 @@ struct OverdueInfo {
     long long fine = 0;
 };
 
+// Số phiếu theo trạng thái (tab màn hình Quá hạn & lịch sử).
+// open = mọi phiếu chưa trả (GỒM quá hạn); overdue ⊂ open; returned = đã trả; all = open + returned.
+struct RecordCounts {
+    int all = 0;
+    int open = 0;
+    int overdue = 0;
+    int returned = 0;
+};
+
 // Số liệu tổng quan (màn hình Tổng quan). Mọi con số tính theo đồng hồ giả lập hiện tại.
 struct LabStats {
     int deviceCount = 0;        // số loại thiết bị

@@ -90,6 +90,21 @@ try {
     $r = Api GET '/stats'
     Check 'stats mac dinh within=6: chua co ai sap het han' ($r.ok -and $r.body.expiringHolds.Count -eq 0)
 
+    $r = Api GET '/records'
+    Check 'GET /records: counts 52/5/2/47, total = all' ($r.ok -and $r.body.counts.all -eq 52 -and $r.body.counts.open -eq 5 -and $r.body.counts.overdue -eq 2 -and $r.body.counts.returned -eq 47 -and $r.body.total -eq 52)
+    $r = Api GET '/records?status=open&pageSize=100'
+    $openIds = @($r.body.records | ForEach-Object { $_.recordId })
+    Check 'status=open: total = counts.open = 5' ($r.ok -and $r.body.total -eq 5 -and $r.body.counts.open -eq 5 -and $openIds.Count -eq 5)
+    $r = Api GET '/records?status=overdue&pageSize=100'
+    $odIds = @($r.body.records | ForEach-Object { $_.recordId })
+    Check 'status=overdue: total = counts.overdue = 2, nam trong open' ($r.ok -and $r.body.total -eq 2 -and $r.body.counts.overdue -eq 2 -and @($odIds | Where-Object { $openIds -contains $_ }).Count -eq 2)
+    $r = Api GET '/records?status=returned'
+    Check 'status=returned: total = counts.returned = 47' ($r.ok -and $r.body.total -eq 47 -and $r.body.counts.returned -eq 47)
+    $r = Api GET '/records?query=pm001'
+    Check 'query: counts tren tap khop, all = open + returned = total' ($r.ok -and $r.body.counts.all -gt 0 -and $r.body.counts.all -lt 52 -and $r.body.counts.all -eq $r.body.counts.open + $r.body.counts.returned -and $r.body.total -eq $r.body.counts.all)
+    $r = Api GET '/records?query=khong-ton-tai-xyz'
+    Check 'query khong khop: counts toan 0' ($r.ok -and $r.body.total -eq 0 -and $r.body.counts.all -eq 0 -and $r.body.counts.open -eq 0 -and $r.body.counts.overdue -eq 0 -and $r.body.counts.returned -eq 0)
+
     $r = Api GET '/devices'
     Check 'GET /devices: 18 thiet bi' ($r.ok -and $r.body.count -eq 18 -and $r.body.devices.Count -eq 18)
     $vr = $r.body.devices | Where-Object { $_.id -eq 'VR01' }

@@ -295,6 +295,39 @@ bool LabManager::isOverdue(const BorrowRecord& record) const {
     return record.isOpen() && clock_.now() > record.dueHour;
 }
 
+// Tìm chuỗi con không phân biệt hoa/thường ASCII. O(|hay|·|needle|)
+static bool containsIgnoreCase(const std::string& hay, const std::string& needle) {
+    auto lower = [](char c) { return (c >= 'A' && c <= 'Z') ? static_cast<char>(c - 'A' + 'a') : c; };
+    if (needle.size() > hay.size()) return false;
+    for (size_t i = 0; i + needle.size() <= hay.size(); ++i) {
+        size_t j = 0;
+        while (j < needle.size() && lower(hay[i + j]) == lower(needle[j])) ++j;
+        if (j == needle.size()) return true;
+    }
+    return false;
+}
+
+bool LabManager::recordMatchesQuery(const BorrowRecord& record, const std::string& query) {
+    if (query.empty()) return true;
+    return containsIgnoreCase(record.recordId, query) || containsIgnoreCase(record.studentId, query) ||
+           containsIgnoreCase(record.studentName, query);
+}
+
+RecordCounts LabManager::countRecords(const std::string& query) const {
+    RecordCounts c;
+    for (const BorrowRecord& r : records_) {
+        if (!recordMatchesQuery(r, query)) continue;
+        ++c.all;
+        if (r.isOpen()) {
+            ++c.open;
+            if (isOverdue(r)) ++c.overdue;
+        } else {
+            ++c.returned;
+        }
+    }
+    return c;
+}
+
 // ============================ Thống kê / tổng quan ============================
 
 LabStats LabManager::getStats() const {

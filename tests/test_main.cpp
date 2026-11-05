@@ -1272,6 +1272,9 @@ static void testSampleData() {
             ++lateReturned;
         }
     });
+    RecordCounts rc = lab.countRecords();
+    CHECK(rc.all == 52 && rc.open == 5 && rc.overdue == 2 && rc.returned == 47);
+    CHECK(rc.all == rc.open + rc.returned && rc.overdue <= rc.open);
     CHECK(overdue == 2 && open >= 5 && lateReturned == 5); // đúng 5 phiếu cố ý trả trễ: PM0011, PM0019, PM0027, PM0034, PM0051 (trả đúng hạn thì không phạt)
 }
 
@@ -1442,6 +1445,40 @@ static void testStatsAndHolds() {
     CHECK(lab.checkInvariants());
 }
 
+static void testRecordCounts() {
+    std::cout << "LabManager: countRecords (open gồm quá hạn, query)\n";
+    LabManager lab;
+    CHECK(lab.addDevice("A", "Thiết bị A", 3).ok());
+    RecordCounts c = lab.countRecords();
+    CHECK(c.all == 0 && c.open == 0 && c.overdue == 0 && c.returned == 0);
+
+    BorrowResult r1 = lab.borrowDevices("S1", "Lan Anh", ids({"A"}), 1); // hạn giờ 24
+    BorrowResult r2 = lab.borrowDevices("S2", "Minh", ids({"A"}), 5);
+    BorrowResult r3 = lab.borrowDevices("S1", "Lan Anh", ids({"A"}), 5);
+    CHECK(r1.ok() && r2.ok() && r3.ok());
+    c = lab.countRecords();
+    CHECK(c.all == 3 && c.open == 3 && c.overdue == 0 && c.returned == 0);
+
+    CHECK(lab.advanceTime(25)); // r1 quá hạn
+    c = lab.countRecords();
+    CHECK(c.all == 3 && c.open == 3 && c.overdue == 1 && c.returned == 0); // quá hạn vẫn nằm trong open
+
+    CHECK(lab.returnRecord(r1.recordId).ok()); // trả rồi: sang returned, không còn quá hạn
+    c = lab.countRecords();
+    CHECK(c.all == 3 && c.open == 2 && c.overdue == 0 && c.returned == 1);
+    CHECK(c.all == c.open + c.returned);
+
+    // Query không phân biệt hoa/thường, theo MSSV / tên / mã phiếu; counts tính trên tập khớp.
+    c = lab.countRecords("lan");
+    CHECK(c.all == 2 && c.open == 1 && c.returned == 1);
+    c = lab.countRecords("s2");
+    CHECK(c.all == 1 && c.open == 1 && c.returned == 0);
+    c = lab.countRecords(r1.recordId);
+    CHECK(c.all == 1 && c.returned == 1);
+    c = lab.countRecords("khong-khop");
+    CHECK(c.all == 0 && c.open == 0 && c.overdue == 0 && c.returned == 0);
+}
+
 int main() {
 #ifdef _WIN32
     SetConsoleOutputCP(65001);
@@ -1486,6 +1523,7 @@ int main() {
     testBasketSuggestions();
     testRemoveDevice();
     testChangeListener();
+    testRecordCounts();
     testRestoreApi();
     testRestoreServesAndExpires();
     testSampleData();
