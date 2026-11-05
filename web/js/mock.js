@@ -320,16 +320,102 @@ export async function handleMockRequest(endpoint, options = {}) {
 
   // 7. GET /api/records
   if (pathname === '/api/records' && method === 'GET') {
+    const status = searchParams.get('status') || 'all';
+    const query = (searchParams.get('query') || '').toLowerCase();
+    let list = [...mockState.records];
+
+    if (status === 'open') {
+      list = list.filter(r => r.open);
+    } else if (status === 'overdue') {
+      list = list.filter(r => r.open && r.overdue);
+    } else if (status === 'returned') {
+      list = list.filter(r => !r.open);
+    }
+
+    if (query) {
+      list = list.filter(r =>
+        (r.recordId && r.recordId.toLowerCase().includes(query)) ||
+        (r.studentId && r.studentId.toLowerCase().includes(query)) ||
+        (r.studentName && r.studentName.toLowerCase().includes(query))
+      );
+    }
+
     return {
       status: 200,
       body: {
         page: 1,
-        pageSize: 20,
-        total: mockState.records.length,
+        pageSize: 50,
+        total: list.length,
         totalPages: 1,
-        records: mockState.records
+        records: list
       }
     };
+  }
+
+  // 7.1 GET /api/records/{id}
+  const recordDetailMatch = pathname.match(/^\/api\/records\/([^/]+)$/);
+  if (recordDetailMatch && method === 'GET') {
+    const recId = recordDetailMatch[1];
+    const rec = mockState.records.find(r => r.recordId.toLowerCase() === recId.toLowerCase());
+    if (!rec) {
+      return { status: 404, body: { error: { code: "RECORD_NOT_FOUND", message: `Không tìm thấy phiếu mượn: ${recId}` } } };
+    }
+    return { status: 200, body: { record: rec } };
+  }
+
+  // 7.2 POST /api/return
+  if (pathname === '/api/return' && method === 'POST') {
+    const body = options.body ? (typeof options.body === 'string' ? JSON.parse(options.body) : options.body) : {};
+    const recId = body.recordId;
+    const rec = mockState.records.find(r => r.recordId === recId);
+    if (!rec) {
+      return { status: 404, body: { error: { code: "RECORD_NOT_FOUND", message: `Không tìm thấy phiếu mượn: ${recId}` } } };
+    }
+    if (!rec.open) {
+      return { status: 409, body: { error: { code: "ALREADY_RETURNED", message: `Phiếu mượn ${recId} đã được trả trước đó` } } };
+    }
+
+    rec.open = false;
+    rec.returnHour = mockState.clock.hour;
+    rec.returnText = mockState.clock.text;
+    rec.fineFinal = true;
+
+    // Phục vụ hàng đợi cho các món trong phiếu vừa trả
+    for (const d of rec.devices) {
+      const dev = mockState.devices.find(x => x.id === d.id);
+      if (dev) {
+        dev.borrowed = Math.max(0, dev.borrowed - 1);
+        const q = mockState.reservations[d.id];
+        if (q && q.length > 0) {
+          const firstUnheld = q.find(p => !p.holding);
+          if (firstUnheld) {
+            firstUnheld.holding = true;
+            firstUnheld.holdUntil = mockState.clock.hour + 24;
+            firstUnheld.holdUntilText = "Sau 24 giờ";
+            firstUnheld.hoursLeft = 24;
+            dev.onHold = (dev.onHold || 0) + 1;
+            mockState.notifications.push({
+              type: "hold_granted",
+              studentId: firstUnheld.studentId,
+              studentName: firstUnheld.studentName,
+              deviceId: d.id,
+              deviceName: dev.name,
+              hour: mockState.clock.hour,
+              hourText: mockState.clock.text,
+              holdUntil: firstUnheld.holdUntil,
+              holdUntilText: firstUnheld.holdUntilText,
+              message: `${firstUnheld.studentName} (${firstUnheld.studentId}) được quyền nhận ${dev.name} (${d.id}) trong 24 giờ`
+            });
+          } else {
+            dev.available += 1;
+          }
+        } else {
+          dev.available += 1;
+        }
+      }
+    }
+
+    return { status: 200, body: { record: rec } };
   }
 
   // 8. GET /api/reservations/{deviceId}
