@@ -1,7 +1,7 @@
 # AGENTS.md — Đồ án CTDL & GT: Phần mềm quản lý mượn trả thiết bị và gợi ý đồ dùng thực hành
 
 > Quy tắc dự án dùng chung cho **Claude Code** (đọc qua `CLAUDE.md`) và **Google Antigravity** (tự đọc `AGENTS.md`). Đặt ở thư mục gốc repo.
-> Phân công: **Claude Code** làm lõi, console, server, đóng gói, báo cáo. **Antigravity** chỉ làm giao diện `web/`.
+> Phân công: **Claude Code** làm lõi, console, server, đóng gói, báo cáo. **Antigravity** làm giao diện `web/` đến hết UI v2 đợt 4; từ 11/2026 Antigravity đã dừng và **Claude Code tiếp quản `web/`** cho các đợt UI v2 còn lại.
 > Đặc tả giao diện web nằm ở `docs/web-ui-spec.md`; hợp đồng giữa backend và web là `docs/api.md`.
 
 ## 1. Bối cảnh
@@ -128,8 +128,8 @@ AGENTS.md  README.md  build*.ps1
 - Mọi thay đổi build được không warning (`-Wall -Wextra`).
 - Sau mỗi thao tác mượn/trả/hàng đợi, gọi `checkInvariants()` ở chế độ debug.
 - Không tự ý đổi quy ước ở mục 3. Gặp chỗ chưa rõ thì hỏi.
-- **Ranh giới công cụ:** Claude Code không sửa `web/`; Antigravity chỉ sửa `web/`. Hai bên giao tiếp qua `docs/api.md` và `web/API_REQUESTS.md`.
-- **Mỗi phiên chỉ làm một tầng.** Khi làm web (giai đoạn 7) **không sửa** `include/`, `src/`, `server/`; thiếu API thì ghi vào `web/API_REQUESTS.md` và dừng lại. Khi làm lõi/server **không sửa** `web/`.
+- **Ranh giới công cụ:** Claude Code được sửa `web/` cho các đợt UI v2 còn lại (Antigravity đã dừng). Vẫn giữ: không đổi logic API (`docs/api.md`, `web/js/api.js`), frontend không tự tính nghiệp vụ, web offline 100%. Giao tiếp về API qua `docs/api.md` và `web/API_REQUESTS.md`.
+- **Mỗi phiên chỉ làm một tầng.** Khi làm web **không sửa** `include/`, `src/`, `server/`, `docs/api.md`; thiếu API thì ghi vào `web/API_REQUESTS.md` và dừng lại. Khi làm lõi/server **không sửa** `web/`.
 - Không tự tính nghiệp vụ ở frontend (quá hạn, gợi ý, hàng đợi) — mọi số liệu lấy từ API.
 - Trước khi sửa code: tạo kế hoạch (implementation plan) để tôi duyệt. Sau khi xong: walkthrough ngắn + kết quả build/test.
 - Commit Git sau mỗi giai đoạn đã duyệt, message tiếng Anh ngắn gọn.

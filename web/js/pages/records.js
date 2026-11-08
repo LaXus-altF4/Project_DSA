@@ -94,6 +94,13 @@ function syncUrlHash() {
 }
 
 /**
+ * Khung ảnh minh hoạ trạng thái chừa sẵn (Đợt 7 gắn SVG theo data-illustration)
+ */
+function illustrationHtml(name, iconName, extraClass = '') {
+  return `<div class="empty-illustration ${extraClass}" data-illustration="${name}" aria-hidden="true"><i data-lucide="${iconName}"></i></div>`;
+}
+
+/**
  * Cập nhật giao diện các nút Tab và con số đếm từ API (res.counts)
  */
 function updateTabsUI() {
@@ -104,6 +111,12 @@ function updateTabsUI() {
     const isActive = tabStatus === currentStatus;
     btn.classList.toggle('active', isActive);
     btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
+    // Roving tabindex: chỉ tab đang chọn nằm trong thứ tự Tab, các tab khác dùng phím mũi tên
+    btn.setAttribute('tabindex', isActive ? '0' : '-1');
+    if (isActive) {
+      const panelEl = currentContainer.querySelector('#records-tabpanel');
+      if (panelEl) panelEl.setAttribute('aria-labelledby', btn.id);
+    }
 
     const countEl = btn.querySelector('.records-tab-count');
     if (countEl && tabStatus) {
@@ -153,29 +166,29 @@ function renderSkeletonTable() {
   if (!tbody) return;
 
   tbody.innerHTML = Array(6).fill(0).map(() => `
-    <tr>
+    <tr aria-hidden="true">
       <td>
-        <div class="skeleton" style="width: 68px; height: 16px; margin-bottom: 4px;"></div>
-        <div class="skeleton" style="width: 52px; height: 12px;"></div>
+        <div class="skeleton records-sk records-sk-id"></div>
+        <div class="skeleton records-sk records-sk-sub-s"></div>
       </td>
       <td>
-        <div class="skeleton" style="width: 135px; height: 15px; margin-bottom: 5px;"></div>
-        <div class="skeleton" style="width: 85px; height: 12px;"></div>
+        <div class="skeleton records-sk records-sk-name"></div>
+        <div class="skeleton records-sk records-sk-sub-m"></div>
       </td>
       <td>
-        <div style="display: flex; gap: 6px;">
-          <div class="skeleton" style="width: 105px; height: 22px; border-radius: 4px;"></div>
-          <div class="skeleton" style="width: 90px; height: 22px; border-radius: 4px;"></div>
+        <div class="records-sk-chips">
+          <div class="skeleton records-sk records-sk-chip-a"></div>
+          <div class="skeleton records-sk records-sk-chip-b"></div>
         </div>
       </td>
-      <td><div class="skeleton" style="width: 112px; height: 15px;"></div></td>
+      <td><div class="skeleton records-sk records-sk-time"></div></td>
       <td>
-        <div class="skeleton" style="width: 112px; height: 15px; margin-bottom: 4px;"></div>
-        <div class="skeleton" style="width: 72px; height: 12px;"></div>
+        <div class="skeleton records-sk records-sk-time records-sk-gap"></div>
+        <div class="skeleton records-sk records-sk-sub-m"></div>
       </td>
-      <td><div class="skeleton" style="width: 78px; height: 22px; border-radius: 999px;"></div></td>
-      <td style="text-align: right;">
-        <div class="skeleton" style="width: 84px; height: 16px; margin-left: auto;"></div>
+      <td><div class="skeleton records-sk records-sk-pill"></div></td>
+      <td class="col-right">
+        <div class="skeleton records-sk records-sk-fine"></div>
       </td>
     </tr>
   `).join('');
@@ -197,12 +210,13 @@ function renderErrorState(errorMsg) {
   tbody.innerHTML = `
     <tr>
       <td colspan="7">
-        <div class="error-state">
-          <i data-lucide="alert-octagon" class="error-state-icon"></i>
+        <div class="error-state" role="alert">
+          ${illustrationHtml('connection-error', 'alert-octagon', 'is-error')}
           <div class="error-state-title">Không thể tải danh sách phiếu mượn</div>
           <div class="error-state-desc">${escapeHtml(errorMsg)}</div>
           <button type="button" id="btn-records-retry" class="btn btn-primary btn-sm">
-            <i data-lucide="rotate-cw"></i> Thử lại
+            <i data-lucide="refresh-cw"></i>
+            <span>Thử lại</span>
           </button>
         </div>
       </td>
@@ -232,13 +246,14 @@ function renderEmptyState() {
       <tr>
         <td colspan="7">
           <div class="empty-state">
-            <i data-lucide="search-x" class="empty-state-icon"></i>
+            ${illustrationHtml('no-results', 'search-x')}
             <div class="empty-state-title">Không tìm thấy phiếu mượn phù hợp</div>
             <div class="empty-state-desc">
               Không có phiếu nào khớp với từ khoá <strong>"${escapeHtml(trimmedQuery)}"</strong> trong mục này.
             </div>
-            <button type="button" id="btn-records-reset-query" class="btn btn-secondary btn-sm" style="margin-top: 6px;">
-              Xoá bộ lọc tìm kiếm
+            <button type="button" id="btn-records-reset-query" class="btn btn-secondary btn-sm">
+              <i data-lucide="x"></i>
+              <span>Xoá bộ lọc tìm kiếm</span>
             </button>
           </div>
         </td>
@@ -255,7 +270,7 @@ function renderEmptyState() {
         const input = currentContainer.querySelector('#input-records-search');
         const clearBtn = currentContainer.querySelector('#btn-records-search-clear');
         if (input) input.value = '';
-        if (clearBtn) clearBtn.style.display = 'none';
+        if (clearBtn) clearBtn.hidden = true;
         loadRecords();
       });
     }
@@ -268,10 +283,7 @@ function renderEmptyState() {
       <tr>
         <td colspan="7">
           <div class="empty-state">
-            <svg width="48" height="48" viewBox="0 0 48 48" fill="none" aria-hidden="true" style="margin-bottom: 4px;">
-              <circle cx="24" cy="24" r="20" stroke="var(--status-available-border)" stroke-width="2.5" fill="var(--status-available-bg)" />
-              <path d="M15.5 24.5L21.5 30.5L33 18.5" stroke="var(--status-available-bar)" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" class="svg-draw-check" />
-            </svg>
+            ${illustrationHtml('no-overdue', 'shield-check', 'is-success')}
             <div class="empty-state-title">Không có phiếu mượn nào quá hạn</div>
             <div class="empty-state-desc">Tất cả các phiếu đang mượn hiện tại đều nằm trong thời hạn quy định.</div>
           </div>
@@ -296,7 +308,7 @@ function renderEmptyState() {
     <tr>
       <td colspan="7">
         <div class="empty-state">
-          <i data-lucide="inbox" class="empty-state-icon"></i>
+          ${illustrationHtml('no-results', 'inbox')}
           <div class="empty-state-title">${escapeHtml(emptyTitle)}</div>
           <div class="empty-state-desc">${escapeHtml(emptyDesc)}</div>
         </div>
@@ -312,16 +324,17 @@ function renderEmptyState() {
  */
 function renderRecordDevicesHtml(devices) {
   if (!Array.isArray(devices) || devices.length === 0) {
-    return `<span style="color: var(--color-text-muted); font-size: 12px;">Không có dữ liệu</span>`;
+    return `<span class="record-no-devices">Không có dữ liệu</span>`;
   }
 
   const chips = devices.map(dev => {
     const id = escapeHtml(dev.id || '');
     if (dev.deleted) {
+      // Quy tắc M4: giữ mã thiết bị trong phiếu lịch sử, hiển thị "đã xoá"
       return `
         <span class="record-device-chip is-deleted" title="Thiết bị ${id} đã bị xoá khỏi danh mục (Quy tắc M4)">
-          <code class="mono">${id}</code>
-          <span class="record-device-chip-deleted">(đã xoá)</span>
+          <code class="device-code-chip">${id}</code>
+          <span class="badge badge-maintenance record-deleted-badge"><i data-lucide="trash-2" class="badge-icon"></i><span>Đã xoá (M4)</span></span>
         </span>
       `;
     }
@@ -329,7 +342,8 @@ function renderRecordDevicesHtml(devices) {
     const name = escapeHtml(dev.name || '');
     return `
       <span class="record-device-chip" title="${name ? `${name} (${id})` : id}">
-        <code class="mono">${id}</code>
+        <span class="record-device-thumb" data-device-id="${id}" aria-hidden="true"><i data-lucide="cpu"></i></span>
+        <code class="device-code-chip">${id}</code>
         ${name ? `<span class="record-device-chip-name">${name}</span>` : ''}
       </span>
     `;
@@ -370,11 +384,14 @@ function renderRecordsRows(records) {
     const rowTitle = isOpen
       ? `Bấm để chuyển sang màn Trả thiết bị cho phiếu #${escapeHtml(r.recordId)}`
       : `Phiếu #${escapeHtml(r.recordId)} đã hoàn tất trả`;
+    const rowAriaLabel = isOpen
+      ? `Mở phiếu ${escapeHtml(r.recordId)} của ${escapeHtml(r.studentName)} để trả thiết bị${isOverdue ? ', đang quá hạn' : ''}`
+      : '';
 
     // Cột 1: Mã phiếu + chỉ báo mở/trả
     const statusSubHtml = isOpen
-      ? `<span class="record-jump-hint"><i data-lucide="corner-down-left" style="width: 11px; height: 11px;"></i> Trả phiếu</span>`
-      : `<span class="record-time-sub"><i data-lucide="check-circle-2" style="width: 11px; height: 11px; color: var(--status-available-bar);"></i> Đã trả</span>`;
+      ? `<span class="record-jump-hint"><i data-lucide="corner-down-left" class="record-mini-icon" aria-hidden="true"></i> Trả phiếu</span>`
+      : `<span class="record-time-sub"><i data-lucide="check-circle-2" class="record-mini-icon is-success" aria-hidden="true"></i> Đã trả</span>`;
 
     // Cột 5: Hạn trả (nếu đang mở) hoặc Ngày trả (nếu đã trả)
     let dueOrReturnHtml = '';
@@ -400,14 +417,14 @@ function renderRecordsRows(records) {
       const lateClass = isOpen ? 'badge-late-days' : 'badge-late-days badge-late-returned';
       lateDaysHtml = `
         <span class="${lateClass} tabular-nums">
-          <i data-lucide="alert-triangle" style="width: 12px; height: 12px;"></i>
+          <i data-lucide="alert-triangle" class="record-mini-icon" aria-hidden="true"></i>
           Trễ ${lateDays} ngày
         </span>
       `;
     } else {
       lateDaysHtml = `
         <span class="record-ontime-pill tabular-nums">
-          <span class="record-ontime-dot"></span>
+          <i data-lucide="check-circle-2" class="record-mini-icon is-success" aria-hidden="true"></i>
           ${isOpen ? 'Trong hạn (0)' : 'Đúng hạn (0)'}
         </span>
       `;
@@ -439,7 +456,7 @@ function renderRecordsRows(records) {
         class="${rowClasses.join(' ')}"
         data-record-id="${escapeHtml(r.recordId)}"
         data-record-open="${isOpen ? 'true' : 'false'}"
-        ${isOpen ? 'tabindex="0" role="link"' : ''}
+        ${isOpen ? `tabindex="0" role="link" aria-label="${rowAriaLabel}"` : ''}
         title="${rowTitle}"
       >
         <td>
@@ -469,7 +486,7 @@ function renderRecordsRows(records) {
         <td>
           ${lateDaysHtml}
         </td>
-        <td style="text-align: right;">
+        <td class="col-right">
           <div class="record-fine-cell">
             <span class="record-fine-amount tabular-nums ${fineClass}">${formatVND(fine)}${asteriskHtml}</span>
             ${fineSubTag}
@@ -558,7 +575,7 @@ function renderPaginationFooter({ page, pageSize, total, totalPages, countShown 
 
   const pageButtonsHtml = pageItems.map(item => {
     if (item === '...') {
-      return `<span class="records-page-ellipsis">…</span>`;
+      return `<span class="records-page-ellipsis" aria-hidden="true">…</span>`;
     }
     const isActive = item === safePage;
     return `
@@ -585,8 +602,9 @@ function renderPaginationFooter({ page, pageSize, total, totalPages, countShown 
       data-page="${safePage - 1}"
       ${!hasPrev ? 'disabled' : ''}
       title="Trang trước"
+      aria-label="Trang trước"
     >
-      <i data-lucide="chevron-left" style="width: 14px; height: 14px;"></i>
+      <i data-lucide="chevron-left" aria-hidden="true"></i>
       <span>Trước</span>
     </button>
     ${pageButtonsHtml}
@@ -596,9 +614,10 @@ function renderPaginationFooter({ page, pageSize, total, totalPages, countShown 
       data-page="${safePage + 1}"
       ${!hasNext ? 'disabled' : ''}
       title="Trang sau"
+      aria-label="Trang sau"
     >
       <span>Sau</span>
-      <i data-lucide="chevron-right" style="width: 14px; height: 14px;"></i>
+      <i data-lucide="chevron-right" aria-hidden="true"></i>
     </button>
   `;
 
@@ -683,7 +702,8 @@ async function loadRecords(options = {}) {
     if (scrollToTable && currentContainer) {
       const panelEl = currentContainer.querySelector('.records-control-panel');
       if (panelEl) {
-        panelEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        const smooth = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        panelEl.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto', block: 'nearest' });
       }
     }
   } catch (err) {
@@ -731,84 +751,89 @@ export async function render(container) {
         </div>
         <div class="page-actions">
           <button type="button" id="btn-records-refresh" class="btn btn-secondary btn-sm" title="Tải lại danh sách từ máy chủ">
-            <i data-lucide="refresh-cw" style="width: 14px; height: 14px;"></i>
+            <i data-lucide="refresh-cw"></i>
             <span>Làm mới</span>
           </button>
         </div>
       </div>
 
       <!-- Khối Tab trạng thái + Thanh tìm kiếm -->
-      <div class="records-control-panel stagger-item stagger-delay-1">
+      <section class="bento-card records-control-panel stagger-item stagger-delay-1" aria-label="Bộ lọc và tìm kiếm phiếu mượn">
         <div class="records-tabs-bar" role="tablist" aria-label="Bộ lọc trạng thái phiếu mượn">
-          <button type="button" class="records-tab-btn tab-all" data-status="all" role="tab">
-            <i data-lucide="layers" class="records-tab-icon"></i>
+          <button type="button" id="records-tab-all" class="records-tab-btn tab-all" data-status="all" role="tab" aria-controls="records-tabpanel">
+            <i data-lucide="layers" class="records-tab-icon" aria-hidden="true"></i>
             <span>Tất cả</span>
             <span class="records-tab-count tabular-nums">—</span>
           </button>
 
-          <button type="button" class="records-tab-btn tab-overdue" data-status="overdue" role="tab">
-            <i data-lucide="alert-triangle" class="records-tab-icon"></i>
+          <button type="button" id="records-tab-overdue" class="records-tab-btn tab-overdue" data-status="overdue" role="tab" aria-controls="records-tabpanel">
+            <i data-lucide="alert-triangle" class="records-tab-icon" aria-hidden="true"></i>
             <span>Quá hạn</span>
             <span class="records-tab-count tabular-nums">—</span>
           </button>
 
           <button
             type="button"
+            id="records-tab-open"
             class="records-tab-btn tab-open"
             data-status="open"
             role="tab"
+            aria-controls="records-tabpanel"
             title="Bao gồm tất cả các phiếu đang mở (cả trong hạn và quá hạn)"
           >
-            <i data-lucide="package-open" class="records-tab-icon"></i>
+            <i data-lucide="package-open" class="records-tab-icon" aria-hidden="true"></i>
             <span>Đang mượn</span>
             <span class="records-tab-count tabular-nums">—</span>
           </button>
 
-          <button type="button" class="records-tab-btn tab-returned" data-status="returned" role="tab">
-            <i data-lucide="check-circle-2" class="records-tab-icon"></i>
+          <button type="button" id="records-tab-returned" class="records-tab-btn tab-returned" data-status="returned" role="tab" aria-controls="records-tabpanel">
+            <i data-lucide="check-circle-2" class="records-tab-icon" aria-hidden="true"></i>
             <span>Đã trả</span>
             <span class="records-tab-count tabular-nums">—</span>
           </button>
         </div>
 
         <div class="records-toolbar">
-          <div class="records-search-box">
-            <i data-lucide="search" class="records-search-icon"></i>
-            <input
-              type="text"
-              id="input-records-search"
-              class="records-search-input"
-              placeholder="Tìm theo mã phiếu (PM...), MSSV hoặc họ tên sinh viên..."
-              value="${escapeHtml(currentQuery)}"
-              autocomplete="off"
-            >
-            <button
-              type="button"
-              id="btn-records-search-clear"
-              class="records-search-clear"
-              style="display: ${currentQuery ? 'flex' : 'none'};"
-              title="Xoá tìm kiếm"
-              aria-label="Xoá từ khoá tìm kiếm"
-            >&times;</button>
+          <div class="records-search-group">
+            <label class="form-label" for="input-records-search">Tìm theo mã phiếu, MSSV hoặc họ tên</label>
+            <div class="records-search-box">
+              <i data-lucide="search" class="records-search-icon" aria-hidden="true"></i>
+              <input
+                type="text"
+                id="input-records-search"
+                class="records-search-input"
+                placeholder="VD: PM0055, 25120104 hoặc Nguyễn Thị Lan"
+                value="${escapeHtml(currentQuery)}"
+                autocomplete="off"
+              >
+              <button
+                type="button"
+                id="btn-records-search-clear"
+                class="records-search-clear"
+                ${currentQuery ? '' : 'hidden'}
+                title="Xoá tìm kiếm"
+                aria-label="Xoá từ khoá tìm kiếm"
+              ><i data-lucide="x" aria-hidden="true"></i></button>
+            </div>
           </div>
 
           <div id="records-context-hint" class="records-toolbar-hint"></div>
         </div>
-      </div>
+      </section>
 
       <!-- Bảng dữ liệu phiếu mượn & Chân trang phân trang -->
-      <div class="records-table-panel stagger-item stagger-delay-2">
+      <section id="records-tabpanel" class="bento-card bento-table-card records-table-panel stagger-item no-overshoot stagger-delay-2" role="tabpanel" aria-label="Danh sách phiếu mượn">
         <div class="records-table-scroll">
           <table class="data-table records-table">
             <thead>
               <tr>
-                <th style="width: 105px;">Mã phiếu</th>
-                <th style="min-width: 155px;">Sinh viên</th>
-                <th style="min-width: 195px;">Thiết bị</th>
-                <th style="width: 138px;">Ngày mượn</th>
-                <th style="width: 145px;">Hạn trả / Ngày trả</th>
-                <th style="width: 120px;">Số ngày trễ</th>
-                <th style="width: 120px; text-align: right;">Tiền phạt</th>
+                <th class="records-col-id">Mã phiếu</th>
+                <th class="records-col-student">Sinh viên</th>
+                <th class="records-col-devices">Thiết bị</th>
+                <th class="records-col-borrow">Ngày mượn</th>
+                <th class="records-col-due">Hạn trả / Ngày trả</th>
+                <th class="records-col-late">Số ngày trễ</th>
+                <th class="records-col-fine col-right">Tiền phạt</th>
               </tr>
             </thead>
             <tbody id="records-table-body"></tbody>
@@ -817,30 +842,49 @@ export async function render(container) {
 
         <div class="records-footer">
           <div class="records-footer-meta">
-            <span id="records-range-summary">Đang tải danh sách phiếu mượn…</span>
+            <span id="records-range-summary" aria-live="polite">Đang tải danh sách phiếu mượn…</span>
             <span class="records-temp-note">
               <strong>*</strong> Tiền phạt tạm tính theo đồng hồ giả lập hiện tại (chốt chính thức khi trả phiếu — Quy tắc M19).
             </span>
           </div>
 
-          <div id="records-pagination-controls" class="records-pagination"></div>
+          <nav id="records-pagination-controls" class="records-pagination" aria-label="Phân trang danh sách phiếu mượn"></nav>
         </div>
-      </div>
+      </section>
     </div>
   `;
 
   updateTabsUI();
 
   // Sự kiện bấm chọn Tab lọc trạng thái
-  container.querySelectorAll('.records-tab-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const nextStatus = btn.getAttribute('data-status');
-      if (nextStatus && VALID_STATUSES.includes(nextStatus) && nextStatus !== currentStatus) {
-        currentStatus = nextStatus;
-        currentPage = 1;
-        updateTabsUI();
-        loadRecords();
-      }
+  const selectTab = (nextStatus, focusTab = false) => {
+    if (!nextStatus || !VALID_STATUSES.includes(nextStatus)) return;
+    if (nextStatus !== currentStatus) {
+      currentStatus = nextStatus;
+      currentPage = 1;
+      updateTabsUI();
+      loadRecords();
+    }
+    if (focusTab) {
+      const tabEl = container.querySelector(`.records-tab-btn[data-status="${nextStatus}"]`);
+      if (tabEl) tabEl.focus();
+    }
+  };
+
+  const tabButtons = Array.from(container.querySelectorAll('.records-tab-btn'));
+  tabButtons.forEach((btn, idx) => {
+    btn.addEventListener('click', () => selectTab(btn.getAttribute('data-status')));
+
+    // Phím mũi tên / Home / End chuyển tab theo chuẩn WAI-ARIA tablist
+    btn.addEventListener('keydown', (e) => {
+      let target = -1;
+      if (e.key === 'ArrowRight') target = (idx + 1) % tabButtons.length;
+      else if (e.key === 'ArrowLeft') target = (idx - 1 + tabButtons.length) % tabButtons.length;
+      else if (e.key === 'Home') target = 0;
+      else if (e.key === 'End') target = tabButtons.length - 1;
+      if (target === -1) return;
+      e.preventDefault();
+      selectTab(tabButtons[target].getAttribute('data-status'), true);
     });
   });
 
@@ -852,7 +896,7 @@ export async function render(container) {
     searchInput.addEventListener('input', (e) => {
       currentQuery = e.target.value;
       if (clearBtn) {
-        clearBtn.style.display = currentQuery ? 'flex' : 'none';
+        clearBtn.hidden = !currentQuery;
       }
 
       clearTimeout(searchDebounceTimer);
@@ -881,7 +925,7 @@ export async function render(container) {
         searchInput.value = '';
         searchInput.focus();
       }
-      clearBtn.style.display = 'none';
+      clearBtn.hidden = true;
       loadRecords();
     });
   }

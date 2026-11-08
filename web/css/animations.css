@@ -358,10 +358,10 @@ html.theme-transitioning *::after {
    Hiệu ứng hàng đợi: Thẻ bị loại khỏi hàng (lỡ lần 2) co lại và mờ dần
    -------------------------------------------------------------------------- */
 .card-shrink-remove {
-  transform: scale(0.85);
+  transform: scale(0.88);
   opacity: 0;
   pointer-events: none;
-  transition: transform 350ms var(--ease-enter), opacity 350ms ease;
+  transition: transform 300ms var(--ease-enter), opacity 300ms ease;
 }
 
 /* --------------------------------------------------------------------------

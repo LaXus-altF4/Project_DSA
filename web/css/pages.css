@@ -3076,109 +3076,187 @@ html[data-fx="flat"] .bento-queue-ring-card {
 .return-skeleton-btn { width: 100%; height: 46px; border-radius: var(--radius-btn); }
 
 /* --------------------------------------------------------------------------
-   Màn hình Hàng đợi đặt trước (#/reservations)
+   Màn hình Hàng đợi đặt trước (#/reservations) — UI v2 (chỉ dùng token)
    -------------------------------------------------------------------------- */
 .reservation-layout {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: var(--space-5);
+}
+
+.reservation-main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.reservation-main[hidden],
+#reservation-state-root[hidden] {
+  display: none;
+}
+
+/* Khung minh hoạ trạng thái chừa sẵn (Đợt 7 gắn SVG theo data-illustration) */
+.empty-illustration {
+  width: 200px;
+  max-width: 100%;
+  height: 150px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-bento);
+  background-color: var(--color-primary-soft);
+  border: 1px dashed var(--color-primary-border);
+  color: var(--color-primary-text);
+  flex-shrink: 0;
+}
+
+.empty-illustration svg {
+  width: 44px;
+  height: 44px;
+}
+
+.empty-illustration.is-error {
+  background-color: var(--color-danger-bg);
+  border-color: var(--color-danger-border);
+  color: var(--color-danger-text);
+}
+
+.empty-illustration.is-success {
+  background-color: var(--status-available-bg);
+  border-color: var(--status-available-border);
+  color: var(--status-available-text);
+}
+
+.empty-illustration img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 
 /* Thanh chọn thiết bị */
-.reservation-selector-card {
-  background-color: var(--color-bg-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  padding: 16px 20px;
-  display: flex;
+.bento-card.reservation-selector-card {
+  height: auto;
+  padding: var(--space-4) var(--space-5);
+  flex-direction: row;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  box-shadow: var(--shadow-sm);
+  gap: var(--space-4);
 }
 
 .reservation-selector-group {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: var(--space-3);
   flex: 1 1 280px;
   min-width: min(300px, 100%);
 }
 
 .reservation-select-label {
-  font-size: 13.5px;
+  font-size: var(--text-sm);
   font-weight: 600;
   color: var(--color-text-primary);
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   white-space: nowrap;
+}
+
+.reservation-select-label svg {
+  color: var(--color-primary-text);
 }
 
 .reservation-device-select {
   flex: 1 1 220px;
   min-width: 0;
   width: 100%;
-  max-width: 520px;
-  padding: 9px 14px;
-  font-size: 13.5px;
+  max-width: 560px;
+  min-height: var(--tap-min);
+  padding: 0 var(--space-4);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
   font-weight: 500;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-btn);
   border: 1px solid var(--color-border);
-  background-color: var(--color-bg-surface);
+  background-color: var(--color-card-base);
   color: var(--color-text-primary);
+  cursor: pointer;
+}
+
+.reservation-device-select:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  border-color: var(--color-accent-cyan);
 }
 
 /* Card tổng quan kho của thiết bị đang chọn */
-.reservation-device-card {
-  background-color: var(--color-bg-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  padding: 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  box-shadow: var(--shadow-sm);
+.bento-card.reservation-device-card {
+  height: auto;
+  padding: var(--space-5);
+  gap: var(--space-4);
+}
+
+.reservation-skeleton-title { width: 40%; }
+.reservation-skeleton-text { width: 80%; }
+.reservation-skeleton-bar {
+  height: 10px;
+  width: 100%;
+  border-radius: var(--radius-full);
 }
 
 .reservation-device-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--space-3);
   flex-wrap: wrap;
 }
 
 .reservation-device-title-box {
   display: flex;
   align-items: center;
-  gap: 12px;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.reservation-device-thumb {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-btn);
+  background-color: var(--color-primary-soft);
+  border: 1px solid var(--color-primary-border);
+  color: var(--color-primary-text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.reservation-device-thumb svg {
+  width: 26px;
+  height: 26px;
+}
+
+.reservation-device-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 
 .reservation-device-name {
-  font-size: 18px;
+  font-size: var(--text-lg);
   font-weight: 700;
   color: var(--color-text-primary);
-}
-
-.reservation-device-code {
-  font-family: ui-monospace, Menlo, Consolas, monospace;
-  font-size: 13px;
-  font-weight: 600;
-  padding: 2px 8px;
-  border-radius: var(--radius-sm);
-  background-color: var(--color-bg-muted);
-  color: var(--color-text-secondary);
-  border: 1px solid var(--color-border);
 }
 
 .reservation-stock-chips {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-2);
 }
 
 .stock-chip {
@@ -3186,17 +3264,23 @@ html[data-fx="flat"] .bento-queue-ring-card {
   align-items: center;
   gap: 6px;
   padding: 5px 12px;
-  border-radius: var(--radius-md);
-  font-size: 12.5px;
+  border-radius: var(--radius-btn);
+  font-size: var(--text-xs);
   font-weight: 500;
   border: 1px solid var(--color-border);
   background-color: var(--color-bg-muted);
+  color: var(--color-text-secondary);
+}
+
+.stock-chip-icon {
+  width: 14px;
+  height: 14px;
 }
 
 .stock-chip-total {
   font-weight: 700;
   color: var(--color-text-primary);
-  background-color: var(--color-bg-surface);
+  background-color: var(--color-card-base);
 }
 
 .stock-chip-available {
@@ -3226,56 +3310,48 @@ html[data-fx="flat"] .bento-queue-ring-card {
 .stock-chip-queue {
   border-color: var(--color-primary-border);
   background-color: var(--color-primary-soft);
-  color: var(--color-primary);
+  color: var(--color-primary-text);
   font-weight: 600;
 }
 
 .stock-chip-val {
-  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
   font-weight: 700;
 }
 
 .reservation-device-progress-box {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .reservation-invariant-hint {
-  font-size: 11.5px;
-  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+  color: var(--color-muted-fg);
   display: flex;
   align-items: center;
   gap: 6px;
-}
-
-.reservation-invariant-hint code {
-  font-family: ui-monospace, Menlo, Consolas, monospace;
-  font-size: 11px;
-}
-
-/* Danh sách thẻ hàng đợi */
-.reservation-queue-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
   flex-wrap: wrap;
 }
 
-.reservation-queue-title {
-  font-size: 16px;
-  font-weight: 700;
-  color: var(--color-text-primary);
-  display: flex;
-  align-items: center;
-  gap: 8px;
+.reservation-invariant-icon {
+  width: 14px;
+  height: 14px;
+  color: var(--color-success-text);
+  flex-shrink: 0;
 }
 
+.reservation-invariant-hint code {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+}
+
+/* Danh sách thẻ hàng đợi */
 .reservation-queue-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr));
-  gap: 18px;
+  gap: var(--space-5);
   align-items: start;
   width: 100%;
   min-width: 0;
@@ -3287,16 +3363,29 @@ html[data-fx="flat"] .bento-queue-ring-card {
   }
 }
 
+.queue-skeleton {
+  height: 220px;
+}
+
+.reservation-empty-state,
+.reservation-error-state {
+  padding: 40px var(--space-5);
+}
+
+.reservation-error-state {
+  gap: var(--space-3);
+}
+
 /* Thẻ người chờ */
 .queue-card {
-  background-color: var(--color-bg-surface);
+  background-color: var(--color-card-base);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-bento);
   box-shadow: var(--shadow-sm);
-  padding: 18px 20px;
+  padding: 18px var(--space-5);
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--space-4);
   min-width: 0;
   height: auto;
   overflow: visible;
@@ -3312,9 +3401,7 @@ html[data-fx="flat"] .bento-queue-ring-card {
 
 /* Thẻ đang giữ hàng */
 .queue-card.queue-card-holding {
-  border: 2px solid var(--color-primary);
-  background-color: var(--color-bg-surface);
-  box-shadow: 0 2px 10px rgba(59, 130, 246, 0.12);
+  border: 2px solid var(--status-onhold-bar);
 }
 
 .queue-card.queue-card-holding::before {
@@ -3324,28 +3411,36 @@ html[data-fx="flat"] .bento-queue-ring-card {
   left: 0;
   right: 0;
   height: 4px;
-  background: linear-gradient(90deg, var(--color-primary), #60A5FA);
-  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  background: linear-gradient(90deg, var(--status-onhold-bar), var(--color-accent-cyan));
+  border-radius: var(--radius-bento) var(--radius-bento) 0 0;
 }
 
-/* Header của thẻ */
 .queue-card-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  flex-wrap: wrap;
+  gap: var(--space-2);
 }
 
 .queue-pos-pill {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 11.5px;
+  font-size: var(--text-xs);
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.4px;
-  padding: 3px 10px;
+  padding: 4px 10px;
   border-radius: var(--radius-full);
+}
+
+.queue-pos-pill svg {
+  width: 14px;
+  height: 14px;
+}
+
+.queue-pos-num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
 }
 
 .queue-card-holding .queue-pos-pill {
@@ -3364,15 +3459,15 @@ html[data-fx="flat"] .bento-queue-ring-card {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 11.5px;
+  font-size: var(--text-xs);
   font-weight: 600;
-  padding: 3px 8px;
+  padding: 4px 8px;
   border-radius: var(--radius-sm);
 }
 
 .queue-miss-badge.badge-clean {
   background-color: var(--color-bg-muted);
-  color: var(--color-text-muted);
+  color: var(--color-text-secondary);
   border: 1px solid var(--color-border);
 }
 
@@ -3381,6 +3476,12 @@ html[data-fx="flat"] .bento-queue-ring-card {
   color: var(--status-borrowed-text);
   border: 1px solid var(--status-borrowed-border);
   font-weight: 700;
+}
+
+.queue-inline-icon {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
 }
 
 /* Thân thẻ */
@@ -3394,7 +3495,7 @@ html[data-fx="flat"] .bento-queue-ring-card {
 .queue-student-box {
   display: flex;
   align-items: flex-start;
-  gap: 12px;
+  gap: var(--space-3);
 }
 
 .queue-avatar {
@@ -3406,41 +3507,46 @@ html[data-fx="flat"] .bento-queue-ring-card {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--color-primary);
+  color: var(--color-primary-text);
   flex-shrink: 0;
 }
 
 .queue-card-holding .queue-avatar {
-  background-color: var(--color-primary-soft);
-  color: var(--color-primary);
-  border-color: var(--color-primary-border);
+  background-color: var(--status-onhold-bg);
+  color: var(--status-onhold-text);
+  border-color: var(--status-onhold-border);
 }
 
 .queue-student-details {
   display: flex;
   flex-direction: column;
   gap: 3px;
+  min-width: 0;
 }
 
 .queue-student-name {
-  font-size: 15px;
+  font-size: var(--text-base);
   font-weight: 700;
   color: var(--color-text-primary);
   line-height: 1.25;
 }
 
 .queue-student-id {
-  font-family: ui-monospace, Menlo, Consolas, monospace;
-  font-size: 12.5px;
+  font-size: var(--text-xs);
   color: var(--color-text-secondary);
   display: flex;
   align-items: center;
   gap: 6px;
 }
 
+.queue-student-id code {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
 .queue-time-sub {
-  font-size: 11.5px;
-  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+  color: var(--color-muted-fg);
   display: flex;
   align-items: center;
   gap: 5px;
@@ -3454,8 +3560,8 @@ html[data-fx="flat"] .bento-queue-ring-card {
   gap: 14px;
   background-color: var(--color-bg-muted);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  padding: 12px 14px;
+  border-radius: var(--radius-btn);
+  padding: var(--space-3) 14px;
 }
 
 .queue-countdown-box.is-urgent {
@@ -3493,7 +3599,7 @@ html[data-fx="flat"] .bento-queue-ring-card {
   transition: stroke-dashoffset 0.4s ease, stroke 0.3s ease;
 }
 
-.queue-svg-bar.stroke-normal { stroke: var(--color-primary); }
+.queue-svg-bar.stroke-normal { stroke: var(--status-onhold-bar); }
 .queue-svg-bar.stroke-warning { stroke: var(--status-borrowed-bar); }
 .queue-svg-bar.stroke-danger { stroke: var(--color-danger); }
 
@@ -3504,28 +3610,31 @@ html[data-fx="flat"] .bento-queue-ring-card {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
   font-weight: 700;
-  font-size: 14px;
+  font-size: var(--text-sm);
   line-height: 1;
   color: var(--color-text-primary);
 }
 
 .queue-svg-number small {
-  font-size: 9px;
+  font-size: var(--text-xs);
   font-weight: 600;
-  color: var(--color-text-muted);
+  color: var(--color-muted-fg);
   margin-top: 1px;
+  transform: scale(0.92);
 }
 
 .queue-countdown-details {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  min-width: 0;
 }
 
 .queue-countdown-title {
-  font-size: 13.5px;
+  font-size: var(--text-sm);
   font-weight: 700;
   color: var(--color-text-primary);
   display: flex;
@@ -3533,15 +3642,22 @@ html[data-fx="flat"] .bento-queue-ring-card {
   gap: 6px;
 }
 
+.queue-countdown-icon {
+  width: 15px;
+  height: 15px;
+  color: var(--status-onhold-text);
+  flex-shrink: 0;
+}
+
 .queue-countdown-deadline {
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: var(--color-text-secondary);
 }
 
 .queue-countdown-urgent-badge {
-  font-size: 11px;
+  font-size: var(--text-xs);
   font-weight: 700;
-  color: var(--color-danger);
+  color: var(--color-danger-text);
   display: flex;
   align-items: center;
   gap: 4px;
@@ -3551,18 +3667,20 @@ html[data-fx="flat"] .bento-queue-ring-card {
 .queue-waiting-box {
   background-color: var(--color-bg-muted);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  padding: 12px 14px;
-  font-size: 12px;
+  border-radius: var(--radius-btn);
+  padding: var(--space-3) 14px;
+  font-size: var(--text-xs);
   color: var(--color-text-secondary);
-  line-height: 1.45;
+  line-height: 1.5;
   display: flex;
   align-items: flex-start;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
-.queue-waiting-box i {
-  color: var(--color-primary);
+.queue-waiting-icon {
+  width: 16px;
+  height: 16px;
+  color: var(--color-primary-text);
   flex-shrink: 0;
   margin-top: 1px;
 }
@@ -3571,74 +3689,79 @@ html[data-fx="flat"] .bento-queue-ring-card {
 .queue-card-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  flex-wrap: wrap;
+  gap: var(--space-2);
   padding-top: 6px;
   border-top: 1px dashed var(--color-border);
   margin-top: auto;
 }
 
 .queue-card-actions .btn {
-  flex: 1;
+  flex: 1 1 120px;
 }
 
-/* Form đăng ký người mới */
-.reservation-register-card {
-  background-color: var(--color-bg-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  padding: 22px;
-  box-shadow: var(--shadow-sm);
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+/* Đăng ký người mới (bento-card có card-header + card-body) */
+.bento-card.reservation-register-card {
+  height: auto;
 }
 
-.reservation-register-header {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.reservation-register-title {
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--color-text-primary);
-  display: flex;
-  align-items: center;
-  gap: 8px;
+.reservation-register-body {
+  gap: var(--space-4);
 }
 
 .reservation-register-desc {
-  font-size: 12.5px;
+  font-size: var(--text-sm);
   color: var(--color-text-secondary);
+  line-height: 1.5;
 }
 
 .reservation-register-form {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
   gap: 14px;
-  align-items: flex-end;
+  align-items: start;
+}
+
+.reservation-form-group {
+  margin-bottom: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.reservation-form-submit {
+  padding-top: 26px;
+}
+
+.reservation-form-submit .btn {
+  width: 100%;
+  white-space: nowrap;
 }
 
 @media (max-width: 768px) {
   .reservation-register-form {
     grid-template-columns: minmax(0, 1fr);
   }
+
+  .reservation-form-submit {
+    padding-top: 0;
+  }
 }
 
 .reservation-alert-available {
   background-color: var(--status-available-bg);
   border: 1px solid var(--status-available-border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-btn);
   padding: 14px 18px;
   display: flex;
   align-items: flex-start;
-  gap: 12px;
-  font-size: 13px;
+  gap: var(--space-3);
+  font-size: var(--text-sm);
   color: var(--status-available-text);
 }
 
-.reservation-alert-available i {
+.reservation-alert-available > svg {
   color: var(--status-available-bar);
   width: 20px;
   height: 20px;
@@ -3652,60 +3775,100 @@ html[data-fx="flat"] .bento-queue-ring-card {
   gap: 6px;
 }
 
-.reservation-alert-content a:not(.btn):not(.btn-jump-borrow) {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  font-weight: 600;
-  color: var(--color-primary);
-  text-decoration: underline;
-}
-
 /* Nút chuyển sang Lập phiếu mượn từ thông báo M12 */
 .btn-jump-borrow {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
-  padding: 8px 16px;
-  font-size: 13px;
+  min-height: var(--tap-min);
+  padding: 0 var(--space-4);
+  font-size: var(--text-sm);
   font-weight: 600;
-  border-radius: var(--radius-md);
-  background-color: var(--color-primary);
-  color: #FFFFFF !important;
-  text-decoration: none !important;
+  border-radius: var(--radius-btn);
+  background-color: var(--color-primary-solid);
+  color: var(--color-on-primary);
+  text-decoration: none;
   border: 1px solid transparent;
-  transition: all 0.15s ease;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
   box-shadow: var(--shadow-sm);
   margin-top: 4px;
 }
 
+.btn-jump-borrow svg {
+  width: 16px;
+  height: 16px;
+}
+
 .btn-jump-borrow:hover {
   background-color: var(--color-primary-hover);
-  color: #FFFFFF !important;
+  color: var(--color-on-primary);
   transform: translateY(-1px);
   box-shadow: var(--shadow-md);
 }
 
-[data-theme="dark"] .btn-jump-borrow {
-  background-color: var(--color-primary);
-  color: #0F172A !important;
-  font-weight: 700;
+.btn-jump-borrow:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 
-[data-theme="dark"] .btn-jump-borrow:hover {
-  background-color: var(--color-primary-hover);
-  color: #FFFFFF !important;
+/* Modal Nhận / Huỷ */
+.reservation-modal-strong {
+  font-size: var(--text-base);
+  font-weight: 700;
+  color: var(--color-text-primary);
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.reservation-cancel-modal {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.reservation-cancel-text {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.reservation-cancel-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background-color: var(--color-danger-bg);
+  border: 1px solid var(--color-danger-border);
+  color: var(--color-danger-text);
+  padding: var(--space-3) 14px;
+  border-radius: var(--radius-btn);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+}
+
+.reservation-cancel-warning svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.reservation-cancel-warning-title {
+  font-weight: 700;
+  margin-bottom: 3px;
 }
 
 /* ==========================================================================
-   Màn hình 6: Quá hạn & Lịch sử (#/records)
+   Màn hình 6: Quá hạn & Lịch sử (#/records) — UI v2 (chỉ dùng token)
    ========================================================================== */
 
-.records-control-panel {
-  background-color: var(--color-bg-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
+.col-right {
+  text-align: right;
+}
+
+.bento-card.records-control-panel {
+  height: auto;
   width: 100%;
   max-width: 100%;
   min-width: 0;
@@ -3715,9 +3878,9 @@ html[data-fx="flat"] .bento-queue-ring-card {
 /* Thanh Tab lọc 4 trạng thái */
 .records-tabs-bar {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   gap: 6px;
-  padding: 12px 16px 0;
+  padding: var(--space-3) var(--space-4) 0;
   border-bottom: 1px solid var(--color-border);
   background-color: var(--color-bg-muted);
   overflow-x: auto;
@@ -3727,39 +3890,46 @@ html[data-fx="flat"] .bento-queue-ring-card {
   position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 16px;
-  font-size: 13.5px;
+  gap: var(--space-2);
+  min-height: var(--tap-min);
+  padding: 0 var(--space-4);
+  font-size: var(--text-sm);
   font-weight: 600;
   color: var(--color-text-secondary);
-  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  border-radius: var(--radius-btn) var(--radius-btn) 0 0;
   border: 1px solid transparent;
   border-bottom: none;
   background: transparent;
   white-space: nowrap;
+  cursor: pointer;
   transition: color 0.15s ease, background-color 0.15s ease;
   margin-bottom: -1px;
 }
 
 .records-tab-btn:hover:not(.active) {
   color: var(--color-text-primary);
-  background-color: rgba(148, 163, 184, 0.12);
+  background-color: var(--color-bg-hover);
+}
+
+.records-tab-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 
 .records-tab-btn.active {
-  color: var(--color-primary);
-  background-color: var(--color-bg-surface);
+  color: var(--color-primary-text);
+  background-color: var(--color-card-base);
   border-color: var(--color-border);
-  border-bottom-color: var(--color-bg-surface);
+  border-bottom-color: var(--color-card-base);
 }
 
 .records-tab-btn.tab-overdue.active {
-  color: var(--color-danger);
+  color: var(--color-danger-text);
 }
 
 .records-tab-icon {
-  width: 15px;
-  height: 15px;
+  width: 16px;
+  height: 16px;
   flex-shrink: 0;
 }
 
@@ -3768,26 +3938,26 @@ html[data-fx="flat"] .bento-queue-ring-card {
   align-items: center;
   justify-content: center;
   min-width: 24px;
-  height: 20px;
+  height: 22px;
   padding: 0 7px;
-  font-size: 11.5px;
+  font-size: var(--text-xs);
   font-weight: 700;
   border-radius: var(--radius-full);
-  background-color: var(--color-bg-surface);
+  background-color: var(--color-card-base);
   color: var(--color-text-secondary);
   border: 1px solid var(--color-border);
-  transition: all 0.15s ease;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
 
 .records-tab-btn.active .records-tab-count {
   background-color: var(--color-primary-soft);
-  color: var(--color-primary);
+  color: var(--color-primary-text);
   border-color: var(--color-primary-border);
 }
 
 .records-tab-btn.tab-overdue .records-tab-count.has-overdue {
   background-color: var(--color-danger-bg);
-  color: var(--color-danger);
+  color: var(--color-danger-text);
   border-color: var(--color-danger-border);
 }
 
@@ -3806,21 +3976,27 @@ html[data-fx="flat"] .bento-queue-ring-card {
 /* Thanh tìm kiếm & ghi chú quy ước */
 .records-toolbar {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
   flex-wrap: wrap;
-  gap: 12px;
-  padding: 14px 16px;
-  background-color: var(--color-bg-surface);
+  gap: var(--space-3);
+  padding: 14px var(--space-4);
+}
+
+.records-search-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1 1 280px;
+  min-width: min(280px, 100%);
+  max-width: 460px;
 }
 
 .records-search-box {
   position: relative;
   display: flex;
   align-items: center;
-  flex: 1 1 260px;
-  min-width: min(260px, 100%);
-  max-width: 440px;
+  width: 100%;
 }
 
 .records-search-box .records-search-icon {
@@ -3828,41 +4004,51 @@ html[data-fx="flat"] .bento-queue-ring-card {
   left: 12px;
   width: 16px;
   height: 16px;
-  color: var(--color-text-muted);
+  color: var(--color-muted-fg);
   pointer-events: none;
 }
 
 .records-search-input {
   width: 100%;
-  padding: 8px 34px 8px 36px;
-  border-radius: var(--radius-md);
+  min-height: var(--tap-min);
+  padding: 0 calc(var(--tap-min) - 4px) 0 38px;
+  border-radius: var(--radius-btn);
   border: 1px solid var(--color-border);
   background-color: var(--color-bg-canvas);
   color: var(--color-text-primary);
-  font-size: 13.5px;
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
   transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
 }
 
 .records-search-input:focus {
   outline: none;
-  background-color: var(--color-bg-surface);
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.16);
+  background-color: var(--color-card-base);
+  border-color: var(--color-accent-cyan);
+  box-shadow: var(--focus-ring);
 }
 
 .records-search-clear {
   position: absolute;
-  right: 8px;
-  width: 22px;
-  height: 22px;
-  border-radius: var(--radius-full);
+  right: 2px;
+  width: var(--tap-min);
+  height: var(--tap-min);
+  border-radius: var(--radius-btn);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
-  line-height: 1;
-  color: var(--color-text-muted);
+  color: var(--color-muted-fg);
+  cursor: pointer;
   transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.records-search-clear[hidden] {
+  display: none;
+}
+
+.records-search-clear svg {
+  width: 16px;
+  height: 16px;
 }
 
 .records-search-clear:hover {
@@ -3870,31 +4056,33 @@ html[data-fx="flat"] .bento-queue-ring-card {
   color: var(--color-text-primary);
 }
 
+.records-search-clear:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
 .records-toolbar-hint {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: var(--color-text-secondary);
   background-color: var(--color-bg-muted);
   border: 1px solid var(--color-border);
-  padding: 6px 12px;
+  padding: 6px var(--space-3);
   border-radius: var(--radius-full);
 }
 
-.records-toolbar-hint i {
+.records-toolbar-hint svg {
   width: 14px;
   height: 14px;
-  color: var(--color-primary);
+  color: var(--color-primary-text);
   flex-shrink: 0;
 }
 
 /* Khung bảng & chân trang phân trang */
-.records-table-panel {
-  background-color: var(--color-bg-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
+.bento-card.records-table-panel {
+  height: auto;
   width: 100%;
   max-width: 100%;
   min-width: 0;
@@ -3910,7 +4098,7 @@ html[data-fx="flat"] .bento-queue-ring-card {
 
 .records-table th,
 .records-table td {
-  padding: 12px 10px;
+  padding: var(--space-3) 10px;
 }
 
 .records-table th:first-child,
@@ -3923,9 +4111,31 @@ html[data-fx="flat"] .bento-queue-ring-card {
   padding-right: 14px;
 }
 
-/* Dòng quá hạn tô nhạt đỏ */
+.records-col-id { width: 120px; }
+.records-col-student { min-width: 160px; }
+.records-col-devices { min-width: 220px; }
+.records-col-borrow { width: 140px; }
+.records-col-due { width: 150px; }
+.records-col-late { width: 130px; }
+.records-col-fine { width: 130px; }
+
+/* Skeleton của bảng */
+.records-sk { display: block; }
+.records-sk-id { width: 68px; height: 16px; margin-bottom: 4px; }
+.records-sk-sub-s { width: 52px; height: 12px; }
+.records-sk-name { width: 135px; height: 15px; margin-bottom: 5px; }
+.records-sk-sub-m { width: 85px; height: 12px; }
+.records-sk-chips { display: flex; gap: 6px; }
+.records-sk-chip-a { width: 105px; height: 22px; border-radius: var(--radius-xs); }
+.records-sk-chip-b { width: 90px; height: 22px; border-radius: var(--radius-xs); }
+.records-sk-time { width: 112px; height: 15px; }
+.records-sk-gap { margin-bottom: 4px; }
+.records-sk-pill { width: 78px; height: 22px; border-radius: var(--radius-full); }
+.records-sk-fine { width: 84px; height: 16px; margin-left: auto; }
+
+/* Dòng quá hạn tô nhạt đỏ (token) */
 .records-table tbody tr.record-row-overdue td {
-  background-color: #FEF2F2;
+  background-color: var(--color-danger-bg);
 }
 
 .records-table tbody tr.record-row-overdue td:first-child {
@@ -3933,24 +4143,16 @@ html[data-fx="flat"] .bento-queue-ring-card {
 }
 
 .records-table tbody tr.record-row-overdue.clickable-row:hover td {
-  background-color: #FEE2E2;
-}
-
-[data-theme="dark"] .records-table tbody tr.record-row-overdue td {
-  background-color: rgba(127, 29, 29, 0.24);
-}
-
-[data-theme="dark"] .records-table tbody tr.record-row-overdue.clickable-row:hover td {
-  background-color: rgba(153, 27, 27, 0.36);
+  background-color: var(--color-danger-border);
 }
 
 /* Dòng đang mở (chưa quá hạn) có hover nhẹ + viền trái khi rê chuột */
 .records-table tbody tr.record-row-open:not(.record-row-overdue):hover td:first-child {
-  box-shadow: inset 3px 0 0 var(--color-primary);
+  box-shadow: inset 3px 0 0 var(--status-onhold-bar);
 }
 
 .records-table tbody tr.record-row-open:focus-visible {
-  outline: 2px solid var(--color-primary);
+  outline: 2px solid var(--color-accent-cyan);
   outline-offset: -2px;
 }
 
@@ -3959,6 +4161,16 @@ html[data-fx="flat"] .bento-queue-ring-card {
 }
 
 /* Các thành phần ô dữ liệu trong bảng phiếu mượn */
+.record-mini-icon {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+}
+
+.record-mini-icon.is-success {
+  color: var(--status-available-text);
+}
+
 .record-id-cell {
   display: flex;
   flex-direction: column;
@@ -3968,15 +4180,15 @@ html[data-fx="flat"] .bento-queue-ring-card {
 
 .record-id-code {
   font-weight: 700;
-  font-size: 13.5px;
-  color: var(--color-primary);
+  font-size: var(--text-sm);
+  color: var(--color-primary-text);
   display: inline-flex;
   align-items: center;
   gap: 4px;
 }
 
 .record-row-overdue .record-id-code {
-  color: var(--color-danger);
+  color: var(--color-danger-text);
 }
 
 .record-row-returned .record-id-code {
@@ -3987,19 +4199,17 @@ html[data-fx="flat"] .bento-queue-ring-card {
   display: inline-flex;
   align-items: center;
   gap: 3px;
-  font-size: 11px;
+  font-size: var(--text-xs);
   font-weight: 600;
-  color: var(--color-primary);
-  opacity: 0.78;
-  transition: opacity 0.15s ease, transform 0.15s ease;
+  color: var(--color-primary-text);
+  transition: transform 0.15s ease;
 }
 
 .record-row-overdue .record-jump-hint {
-  color: var(--color-danger);
+  color: var(--color-danger-text);
 }
 
 .record-row-open:hover .record-jump-hint {
-  opacity: 1;
   transform: translateX(2px);
 }
 
@@ -4016,7 +4226,7 @@ html[data-fx="flat"] .bento-queue-ring-card {
 }
 
 .record-student-id {
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: var(--color-text-secondary);
 }
 
@@ -4025,31 +4235,54 @@ html[data-fx="flat"] .bento-queue-ring-card {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  max-width: 320px;
+  max-width: 340px;
+}
+
+.record-no-devices {
+  font-size: var(--text-xs);
+  color: var(--color-muted-fg);
 }
 
 .record-device-chip {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 3px 8px;
+  gap: 6px;
+  padding: 3px 8px 3px 4px;
   border-radius: var(--radius-sm);
   background-color: var(--color-bg-muted);
   border: 1px solid var(--color-border);
-  font-size: 12px;
+  font-size: var(--text-xs);
   line-height: 1.25;
-  max-width: 240px;
+  max-width: 260px;
 }
 
 .record-row-overdue .record-device-chip {
-  background-color: var(--color-bg-surface);
+  background-color: var(--color-card-base);
 }
 
-.record-device-chip code {
-  font-weight: 700;
-  font-size: 11.5px;
-  color: var(--color-primary);
+/* Khung ảnh thiết bị nhỏ chừa sẵn (Đợt 7 gắn SVG) */
+.record-device-thumb {
+  width: 22px;
+  height: 22px;
+  border-radius: var(--radius-xs);
+  background-color: var(--color-primary-soft);
+  color: var(--color-primary-text);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
+  overflow: hidden;
+}
+
+.record-device-thumb svg {
+  width: 14px;
+  height: 14px;
+}
+
+.record-device-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 
 .record-device-chip-name {
@@ -4060,19 +4293,17 @@ html[data-fx="flat"] .bento-queue-ring-card {
 }
 
 .record-device-chip.is-deleted {
-  background-color: var(--color-bg-muted);
+  padding-left: 8px;
   border-style: dashed;
-  color: var(--color-text-muted);
 }
 
-.record-device-chip.is-deleted code {
-  color: var(--color-text-muted);
+.record-device-chip.is-deleted .device-code-chip {
   text-decoration: line-through;
+  color: var(--color-muted-fg);
 }
 
-.record-device-chip-deleted {
-  font-style: italic;
-  color: var(--color-text-muted);
+.record-deleted-badge {
+  font-size: var(--text-xs);
 }
 
 /* Cột ngày mượn & hạn trả / ngày trả */
@@ -4084,18 +4315,18 @@ html[data-fx="flat"] .bento-queue-ring-card {
 }
 
 .record-time-main {
-  font-size: 13px;
+  font-size: var(--text-sm);
   font-weight: 500;
   color: var(--color-text-primary);
 }
 
 .record-time-main.is-overdue-due {
-  color: var(--color-danger);
+  color: var(--color-danger-text);
   font-weight: 700;
 }
 
 .record-time-sub {
-  font-size: 11.5px;
+  font-size: var(--text-xs);
   color: var(--color-text-secondary);
   display: inline-flex;
   align-items: center;
@@ -4109,10 +4340,10 @@ html[data-fx="flat"] .bento-queue-ring-card {
   gap: 5px;
   padding: 3px 9px;
   border-radius: var(--radius-full);
-  font-size: 12px;
+  font-size: var(--text-xs);
   font-weight: 700;
   background-color: var(--color-danger-bg);
-  color: var(--color-danger);
+  color: var(--color-danger-text);
   border: 1px solid var(--color-danger-border);
   white-space: nowrap;
 }
@@ -4127,17 +4358,10 @@ html[data-fx="flat"] .bento-queue-ring-card {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  font-size: 12px;
+  font-size: var(--text-xs);
   font-weight: 500;
   color: var(--color-text-secondary);
   white-space: nowrap;
-}
-
-.record-ontime-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: var(--radius-full);
-  background-color: var(--status-available-bar);
 }
 
 /* Cột tiền phạt */
@@ -4150,13 +4374,13 @@ html[data-fx="flat"] .bento-queue-ring-card {
 }
 
 .record-fine-amount {
-  font-size: 13.5px;
+  font-size: var(--text-sm);
   font-weight: 700;
   color: var(--color-text-primary);
 }
 
 .record-fine-amount.has-fine-temp {
-  color: var(--color-danger);
+  color: var(--color-danger-text);
 }
 
 .record-fine-amount.has-fine-final {
@@ -4165,28 +4389,28 @@ html[data-fx="flat"] .bento-queue-ring-card {
 
 .record-fine-amount.zero-fine {
   font-weight: 500;
-  color: var(--color-text-muted);
+  color: var(--color-muted-fg);
 }
 
 .record-fine-asterisk {
   font-weight: 800;
   margin-left: 1px;
-  color: var(--color-danger);
+  color: var(--color-danger-text);
 }
 
 .record-fine-amount.zero-fine .record-fine-asterisk {
-  color: var(--color-text-muted);
+  color: var(--color-muted-fg);
   font-weight: 600;
 }
 
 .record-fine-tag {
-  font-size: 10.5px;
+  font-size: var(--text-xs);
   font-weight: 600;
-  color: var(--color-text-muted);
+  color: var(--color-muted-fg);
 }
 
 .record-fine-tag.is-temp {
-  color: var(--color-danger);
+  color: var(--color-danger-text);
 }
 
 /* Chân bảng: Chú thích * & Phân trang */
@@ -4195,8 +4419,8 @@ html[data-fx="flat"] .bento-queue-ring-card {
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
-  gap: 12px;
-  padding: 12px 16px;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
   border-top: 1px solid var(--color-border);
   background-color: var(--color-bg-muted);
 }
@@ -4205,7 +4429,7 @@ html[data-fx="flat"] .bento-queue-ring-card {
   display: flex;
   flex-direction: column;
   gap: 3px;
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: var(--color-text-secondary);
 }
 
@@ -4213,12 +4437,12 @@ html[data-fx="flat"] .bento-queue-ring-card {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: var(--color-text-secondary);
 }
 
 .records-temp-note strong {
-  color: var(--color-danger);
+  color: var(--color-danger-text);
   font-weight: 700;
 }
 
@@ -4230,7 +4454,7 @@ html[data-fx="flat"] .bento-queue-ring-card {
 }
 
 .records-page-info {
-  font-size: 12.5px;
+  font-size: var(--text-xs);
   color: var(--color-text-secondary);
   margin-right: 6px;
   white-space: nowrap;
@@ -4241,32 +4465,39 @@ html[data-fx="flat"] .bento-queue-ring-card {
   align-items: center;
   justify-content: center;
   gap: 4px;
-  min-width: 32px;
-  height: 32px;
-  padding: 0 10px;
-  font-size: 12.5px;
+  min-width: var(--tap-min);
+  min-height: var(--tap-min);
+  padding: 0 var(--space-3);
+  font-size: var(--text-sm);
   font-weight: 600;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-btn);
   border: 1px solid var(--color-border);
-  background-color: var(--color-bg-surface);
+  background-color: var(--color-card-base);
   color: var(--color-text-primary);
-  transition: all 0.15s ease;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.records-page-btn svg {
+  width: 14px;
+  height: 14px;
 }
 
 .records-page-btn:hover:not(:disabled):not(.active) {
   background-color: var(--color-bg-hover);
   border-color: var(--color-border-hover);
-  color: var(--color-primary);
+  color: var(--color-primary-text);
+}
+
+.records-page-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 
 .records-page-btn.active {
-  background-color: var(--color-primary);
-  border-color: var(--color-primary);
-  color: #FFFFFF;
-}
-
-[data-theme="dark"] .records-page-btn.active {
-  color: #0B0F17;
+  background-color: var(--color-primary-solid);
+  border-color: var(--color-primary-solid);
+  color: var(--color-on-primary);
   font-weight: 700;
 }
 
@@ -4277,8 +4508,8 @@ html[data-fx="flat"] .bento-queue-ring-card {
 
 .records-page-ellipsis {
   padding: 0 4px;
-  color: var(--color-text-muted);
-  font-size: 13px;
+  color: var(--color-muted-fg);
+  font-size: var(--text-sm);
   user-select: none;
 }
 

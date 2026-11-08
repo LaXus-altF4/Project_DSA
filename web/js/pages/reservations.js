@@ -65,6 +65,101 @@ function escapeHtml(str) {
 }
 
 /**
+ * Helper hiển thị / xoá lỗi trực tiếp cạnh ô nhập liệu (cùng mẫu với màn Mượn)
+ */
+function clearFieldErrors(root) {
+  if (!root) return;
+  root.querySelectorAll('.is-invalid').forEach((el) => {
+    el.classList.remove('is-invalid');
+    el.removeAttribute('aria-invalid');
+  });
+  root.querySelectorAll('.form-error-inline').forEach((el) => {
+    el.textContent = '';
+  });
+}
+
+function setFieldError(root, inputId, errorId, message, shouldFocus = false) {
+  if (!root) return;
+  const input = root.querySelector(`#${inputId}`);
+  const errEl = root.querySelector(`#${errorId}`);
+  if (input) {
+    input.classList.add('is-invalid');
+    input.setAttribute('aria-invalid', 'true');
+    if (shouldFocus) input.focus();
+  }
+  if (errEl) errEl.textContent = message;
+}
+
+function bindClearErrorsOnInput(root, pairs) {
+  if (!root) return;
+  pairs.forEach(([inputId, errorId]) => {
+    const input = root.querySelector(`#${inputId}`);
+    const errEl = root.querySelector(`#${errorId}`);
+    if (input && errEl) {
+      input.addEventListener('input', () => {
+        input.classList.remove('is-invalid');
+        input.removeAttribute('aria-invalid');
+        errEl.textContent = '';
+      });
+    }
+  });
+}
+
+/**
+ * Khung ảnh thiết bị chừa sẵn (Đợt 7 sẽ thay icon bằng SVG theo mã thiết bị)
+ */
+function deviceThumbHtml(deviceId) {
+  return `<div class="reservation-device-thumb" data-device-id="${escapeHtml(deviceId)}" aria-hidden="true"><i data-lucide="cpu"></i></div>`;
+}
+
+/**
+ * Khung minh hoạ trạng thái chừa sẵn (Đợt 7 sẽ gắn SVG theo data-illustration)
+ */
+function illustrationHtml(name, iconName, extraClass = '') {
+  return `<div class="empty-illustration ${extraClass}" data-illustration="${name}" aria-hidden="true"><i data-lucide="${iconName}"></i></div>`;
+}
+
+/**
+ * Badge trạng thái thiết bị: màu token + icon Lucide + chữ tiếng Việt (quy tắc M1)
+ */
+function buildStatusBadgeHtml(status) {
+  if (status === 'available') {
+    return `<span class="badge badge-available"><i data-lucide="check-circle-2" class="badge-icon"></i><span>Sẵn sàng mượn</span></span>`;
+  }
+  if (status === 'borrowed') {
+    return `<span class="badge badge-borrowed"><i data-lucide="clock" class="badge-icon"></i><span>Đang mượn hết</span></span>`;
+  }
+  if (status === 'maintenance') {
+    return `<span class="badge badge-maintenance"><i data-lucide="wrench" class="badge-icon"></i><span>Đang bảo trì</span></span>`;
+  }
+  return '';
+}
+
+/**
+ * Hiện trạng thái toàn trang (trống / lỗi nạp thiết bị) mà không xoá khung chính,
+ * để nút "Thử lại" nạp xong vẫn có chỗ vẽ lại selector, tổng quan, hàng đợi.
+ */
+function showStateView(html) {
+  const main = document.getElementById('reservation-main');
+  const state = document.getElementById('reservation-state-root');
+  if (main) main.hidden = true;
+  if (state) {
+    state.hidden = false;
+    state.innerHTML = html;
+  }
+}
+
+function hideStateView() {
+  const main = document.getElementById('reservation-main');
+  const state = document.getElementById('reservation-state-root');
+  if (main) main.hidden = false;
+  if (state) {
+    state.hidden = true;
+    state.innerHTML = '';
+  }
+}
+
+/**
  * Lấy tham số id từ Hash URL (VD: #/reservations?id=VR01)
  */
 function getDeviceIdFromHash() {
@@ -98,6 +193,7 @@ async function loadDevices(preferredId = null) {
   try {
     const res = await api.get('/devices');
     allDevices = res.devices || [];
+    hideStateView();
 
     // Ưu tiên thiết bị có người đang chờ (queueLength > 0) lên đầu
     sortDevicesByQueuePriority(allDevices);
@@ -246,7 +342,7 @@ function renderDeviceSelector() {
     if (d.status === 'borrowed') statusLabel = 'Đang mượn';
     if (d.status === 'maintenance') statusLabel = 'Bảo trì';
 
-    let queueLabel = qCount > 0 ? `🔥 [Đang chờ: ${qCount}]` : `[0 chờ]`;
+    const queueLabel = `[${qCount} chờ]`;
     let stockLabel = `Còn: ${d.available}/${d.total}`;
 
     return `<option value="${escapeHtml(d.id)}" ${isSelected}>
@@ -281,20 +377,14 @@ function renderDeviceOverview() {
   const pctHold = total > 0 ? (onHold / total * 100) : 0;
   const pctMaint = total > 0 ? (maint / total * 100) : 0;
 
-  let statusBadgeHtml = '';
-  if (d.status === 'available') {
-    statusBadgeHtml = `<span class="badge badge-available"><span class="badge-dot"></span> Sẵn sàng mượn</span>`;
-  } else if (d.status === 'borrowed') {
-    statusBadgeHtml = `<span class="badge badge-borrowed"><span class="badge-dot"></span> Đang mượn hết</span>`;
-  } else if (d.status === 'maintenance') {
-    statusBadgeHtml = `<span class="badge badge-maintenance"><span class="badge-dot"></span> Đang bảo trì</span>`;
-  }
+  const statusBadgeHtml = buildStatusBadgeHtml(d.status);
 
   container.setAttribute('data-glow', d.status || 'available');
   container.innerHTML = `
     <div class="reservation-device-header">
       <div class="reservation-device-title-box">
-        <span class="reservation-device-code">${escapeHtml(d.id)}</span>
+        ${deviceThumbHtml(d.id)}
+        <code class="device-code-chip">${escapeHtml(d.id)}</code>
         <h2 class="reservation-device-name">${escapeHtml(d.name)}</h2>
         ${statusBadgeHtml}
       </div>
@@ -320,7 +410,7 @@ function renderDeviceOverview() {
           <span class="stock-chip-val">${maint}</span>
         </div>
         <div class="stock-chip stock-chip-queue" title="Tổng số sinh viên đang chờ trong hàng đợi">
-          <i data-lucide="users" style="width: 14px; height: 14px;"></i>
+          <i data-lucide="users" class="stock-chip-icon" aria-hidden="true"></i>
           <span>Hàng đợi:</span>
           <span class="stock-chip-val">${qLen} người</span>
         </div>
@@ -335,7 +425,7 @@ function renderDeviceOverview() {
         <div class="progress-segment segment-maintenance" style="width: ${pctMaint}%;"></div>
       </div>
       <div class="reservation-invariant-hint">
-        <i data-lucide="shield-check" style="width: 13px; height: 13px; color: var(--color-success);"></i>
+        <i data-lucide="shield-check" class="reservation-invariant-icon" aria-hidden="true"></i>
         <span>Bất biến kho: <code>available (${avail}) + borrowed (${borrowed}) + onHold (${onHold}) + maintenance (${maint}) == total (${total})</code></span>
       </div>
     </div>
@@ -360,11 +450,8 @@ function renderQueueList(animatedEvents = {}) {
   // Trường hợp hàng đợi rỗng
   if (count === 0) {
     container.innerHTML = `
-      <div class="empty-state" style="padding: 48px 20px; background-color: var(--color-bg-surface); border: 1px dashed var(--color-border); border-radius: var(--radius-lg); width: 100%;">
-        <svg class="empty-state-icon svg-draw-check" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="10"></circle>
-          <polyline points="9 12 11 14 15 10"></polyline>
-        </svg>
+      <div class="empty-state reservation-empty-state">
+        ${illustrationHtml('empty-queue', 'hourglass')}
         <div class="empty-state-title">Hàng đợi đang trống</div>
         <div class="empty-state-desc">
           Hiện tại không có sinh viên nào đăng ký chờ thiết bị <strong>${escapeHtml(currentDevice?.name || selectedDeviceId)}</strong>.
@@ -401,7 +488,7 @@ function renderQueueList(animatedEvents = {}) {
     if (hoursLeft <= 6) {
       strokeClass = 'stroke-danger';
       urgencyClass = 'is-urgent';
-      urgentBadgeHtml = `<div class="queue-countdown-urgent-badge"><i data-lucide="alert-circle" style="width: 12px; height: 12px;"></i> Sắp hết hạn nhận!</div>`;
+      urgentBadgeHtml = `<div class="queue-countdown-urgent-badge"><i data-lucide="alert-circle" class="queue-inline-icon" aria-hidden="true"></i> Sắp hết hạn nhận!</div>`;
     } else if (hoursLeft <= 12) {
       strokeClass = 'stroke-warning';
       urgencyClass = 'is-warning';
@@ -410,7 +497,7 @@ function renderQueueList(animatedEvents = {}) {
     // Badge lỡ hẹn
     let missBadgeHtml = `<span class="queue-miss-badge badge-clean">0/2 lần lỡ</span>`;
     if (missCount === 1) {
-      missBadgeHtml = `<span class="queue-miss-badge badge-missed" title="Đã lỡ hạn nhận 1 lần, nếu lỡ lần 2 sẽ bị loại khỏi hàng đợi"><i data-lucide="alert-triangle" style="width: 12px; height: 12px;"></i> Lỡ hạn 1 lần</span>`;
+      missBadgeHtml = `<span class="queue-miss-badge badge-missed" title="Đã lỡ hạn nhận 1 lần, nếu lỡ lần 2 sẽ bị loại khỏi hàng đợi"><i data-lucide="alert-triangle" class="queue-inline-icon" aria-hidden="true"></i> Lỡ hạn 1 lần</span>`;
     }
 
     // Hiệu ứng phát sáng nếu sinh viên này vừa được trao quyền giữ
@@ -426,15 +513,15 @@ function renderQueueList(animatedEvents = {}) {
         
         <div class="queue-card-header">
           <span class="queue-pos-pill">
-            <i data-lucide="${isHold ? 'crown' : 'user'}"></i>
-            Vị trí #${pos} • ${isHold ? 'Đang giữ hàng' : 'Đang chờ'}
+            <i data-lucide="${isHold ? 'crown' : 'user'}" aria-hidden="true"></i>
+            <span>Vị trí <span class="queue-pos-num">#${pos}</span> • ${isHold ? 'Đang giữ hàng' : 'Đang chờ'}</span>
           </span>
           ${missBadgeHtml}
         </div>
 
         <div class="queue-card-body">
           <div class="queue-student-box">
-            <div class="queue-avatar">
+            <div class="queue-avatar" aria-hidden="true">
               <i data-lucide="${isHold ? 'sparkles' : 'user'}"></i>
             </div>
             <div class="queue-student-details">
@@ -444,8 +531,8 @@ function renderQueueList(animatedEvents = {}) {
                 <code>${escapeHtml(item.studentId)}</code>
               </div>
               <div class="queue-time-sub">
-                <i data-lucide="calendar" style="width: 11px; height: 11px;"></i>
-                <span>Đăng ký: ${escapeHtml(item.enqueueText || 'N/A')}</span>
+                <i data-lucide="calendar" class="queue-inline-icon" aria-hidden="true"></i>
+                <span>Đăng ký: <span class="mono">${escapeHtml(item.enqueueText || 'N/A')}</span></span>
               </div>
             </div>
           </div>
@@ -453,32 +540,32 @@ function renderQueueList(animatedEvents = {}) {
           ${isHold ? `
             <div class="queue-countdown-box ${urgencyClass}">
               <div class="queue-svg-gauge">
-                <svg class="queue-svg-circle" width="64" height="64" viewBox="0 0 64 64">
+                <svg class="queue-svg-circle" width="64" height="64" viewBox="0 0 64 64" role="img" aria-label="Còn ${hoursLeft} giờ trên tổng 24 giờ để nhận thiết bị">
                   <circle class="queue-svg-track" cx="32" cy="32" r="${radius}"></circle>
                   <circle class="queue-svg-bar ${strokeClass}" 
                           cx="32" cy="32" r="${radius}" 
                           data-target-offset="${strokeDashoffset}"
                           style="stroke-dasharray: ${circumference}; stroke-dashoffset: ${initialDashoffset};"></circle>
                 </svg>
-                <div class="queue-svg-number">
+                <div class="queue-svg-number" aria-hidden="true">
                   <span>${hoursLeft}h</span>
                   <small>/24h</small>
                 </div>
               </div>
               <div class="queue-countdown-details">
                 <div class="queue-countdown-title">
-                  <i data-lucide="timer" style="width: 15px; height: 15px; color: var(--color-primary);"></i>
-                  <span>Còn lại ${hoursLeft} giờ</span>
+                  <i data-lucide="timer" class="queue-countdown-icon" aria-hidden="true"></i>
+                  <span>Còn lại <span class="mono">${hoursLeft}</span> giờ</span>
                 </div>
                 <div class="queue-countdown-deadline">
-                  Hạn nhận: <strong>${escapeHtml(item.holdUntilText || 'Trong 24 giờ')}</strong>
+                  Hạn nhận: <strong class="mono">${escapeHtml(item.holdUntilText || 'Trong 24 giờ')}</strong>
                 </div>
                 ${urgentBadgeHtml}
               </div>
             </div>
           ` : `
             <div class="queue-waiting-box">
-              <i data-lucide="hourglass" style="width: 16px; height: 16px;"></i>
+              <i data-lucide="hourglass" class="queue-waiting-icon" aria-hidden="true"></i>
               <div>
                 Đang chờ lượt giữ chỗ 24 giờ ngay khi có thiết bị được trả vào kho hoặc người trước hết hạn giữ (Quy tắc M11).
               </div>
@@ -569,26 +656,32 @@ function renderRegisterCard() {
   if (isAvailable) {
     // Quy tắc M12: Thiết bị còn hàng thì PHẢI mượn trực tiếp, không cho vào hàng đợi
     container.innerHTML = `
-      <div class="reservation-register-card">
-        <div class="reservation-register-header">
-          <h3 class="reservation-register-title">
-            <i data-lucide="user-plus"></i> Đăng ký hàng đợi đặt trước
-          </h3>
-          <div class="reservation-register-desc">
-            Đăng ký vị trí chờ nhận máy khi thiết bị hết hàng sẵn có trong kho (Quy tắc M12).
-          </div>
+      <div class="card-header">
+        <div class="card-title">
+          <i data-lucide="user-plus"></i>
+          <span>Đăng ký hàng đợi đặt trước</span>
+        </div>
+        <span class="badge badge-available">
+          <i data-lucide="check-circle-2" class="badge-icon"></i>
+          <span>Còn <span class="tabular-nums">${d.available}</span> đơn vị</span>
+        </span>
+      </div>
+      <div class="card-body reservation-register-body">
+        <div class="reservation-register-desc">
+          Đăng ký vị trí chờ nhận máy khi thiết bị hết hàng sẵn có trong kho (Quy tắc M12).
         </div>
 
-        <div class="reservation-alert-available">
-          <i data-lucide="check-circle-2"></i>
+        <div class="reservation-alert-available" role="status">
+          <i data-lucide="check-circle-2" aria-hidden="true"></i>
           <div class="reservation-alert-content">
-            <div><strong>Thiết bị hiện còn ${d.available} đơn vị sẵn sàng trong kho!</strong></div>
+            <div><strong>Thiết bị hiện còn ${d.available} đơn vị sẵn sàng trong kho.</strong></div>
             <div>
-              Theo quy định nghiệp vụ <strong>Quy tắc M12</strong>, sinh viên phải mượn trực tiếp và không được phép đặt trước khi thiết bị vẫn còn hàng.
+              Theo <strong>Quy tắc M12</strong>, sinh viên phải mượn trực tiếp và không được đặt trước khi thiết bị vẫn còn hàng.
             </div>
             <div>
               <a href="#/borrow?id=${encodeURIComponent(d.id)}" class="btn-jump-borrow" title="Chuyển sang Lập phiếu mượn và thêm sẵn ${escapeHtml(d.name)} vào giỏ">
-                <span>Chuyển sang Lập phiếu mượn →</span>
+                <span>Chuyển sang Lập phiếu mượn</span>
+                <i data-lucide="arrow-right" aria-hidden="true"></i>
               </a>
             </div>
           </div>
@@ -598,32 +691,40 @@ function renderRegisterCard() {
   } else {
     // Thiết bị hết hàng: Bật form đăng ký người mới
     container.innerHTML = `
-      <div class="reservation-register-card">
-        <div class="reservation-register-header">
-          <h3 class="reservation-register-title">
-            <i data-lucide="user-plus"></i> Đăng ký vào hàng đợi đặt trước cho ${escapeHtml(d.name)}
-          </h3>
-          <div class="reservation-register-desc">
-            Thiết bị hiện đã hết hàng có sẵn (${d.available} sẵn sàng / ${d.total} tổng số). Nhập thông tin sinh viên để xếp hàng FIFO:
-          </div>
+      <div class="card-header">
+        <div class="card-title">
+          <i data-lucide="user-plus"></i>
+          <span>Đăng ký vào hàng đợi cho ${escapeHtml(d.name)}</span>
+        </div>
+        <span class="badge badge-maintenance">
+          <i data-lucide="alert-circle" class="badge-icon"></i>
+          <span>Hết hàng (<span class="tabular-nums">${d.available}</span>/<span class="tabular-nums">${d.total}</span>)</span>
+        </span>
+      </div>
+      <div class="card-body reservation-register-body">
+        <div class="reservation-register-desc">
+          Thiết bị hiện đã hết hàng có sẵn. Nhập thông tin sinh viên để xếp hàng FIFO.
         </div>
 
-        <form id="form-register-queue" class="reservation-register-form">
-          <div class="form-group" style="margin-bottom: 0;">
-            <label class="form-label" for="reg-student-id">Mã số sinh viên (MSSV): *</label>
-            <input type="text" id="reg-student-id" class="form-input" placeholder="VD: 25120188" required maxlength="20">
-            <div class="form-helper">Mỗi sinh viên chỉ được đứng 1 lần trong hàng đợi này (M12).</div>
+        <form id="form-register-queue" class="reservation-register-form" novalidate>
+          <div class="form-group reservation-form-group">
+            <label class="form-label" for="reg-student-id">Mã số sinh viên (MSSV) <span class="borrow-required-mark">*</span></label>
+            <input type="text" id="reg-student-id" class="form-input mono" placeholder="VD: 25120188" maxlength="20" autocomplete="off" aria-describedby="err-reg-student-id hint-reg-student-id">
+            <div id="hint-reg-student-id" class="form-helper">Mỗi sinh viên chỉ được đứng 1 lần trong hàng đợi này (M12).</div>
+            <div id="err-reg-student-id" class="form-error-inline" role="alert"></div>
           </div>
 
-          <div class="form-group" style="margin-bottom: 0;">
-            <label class="form-label" for="reg-student-name">Họ và tên sinh viên: *</label>
-            <input type="text" id="reg-student-name" class="form-input" placeholder="VD: Hoàng Nhật Minh" required maxlength="100">
-            <div class="form-helper">Không chứa dấu phẩy, sổ đứng hoặc xuống dòng (M5).</div>
+          <div class="form-group reservation-form-group">
+            <label class="form-label" for="reg-student-name">Họ và tên sinh viên <span class="borrow-required-mark">*</span></label>
+            <input type="text" id="reg-student-name" class="form-input" placeholder="VD: Hoàng Nhật Minh" maxlength="100" autocomplete="off" aria-describedby="err-reg-student-name hint-reg-student-name">
+            <div id="hint-reg-student-name" class="form-helper">Không chứa dấu phẩy, gạch đứng hoặc xuống dòng (M5).</div>
+            <div id="err-reg-student-name" class="form-error-inline" role="alert"></div>
           </div>
 
-          <div>
-            <button type="submit" id="btn-submit-reg" class="btn btn-primary" style="height: 38px; width: 100%;">
-              <i data-lucide="plus-circle"></i> Đăng ký giữ chỗ
+          <div class="reservation-form-submit">
+            <button type="submit" id="btn-submit-reg" class="btn btn-primary">
+              <i data-lucide="plus-circle"></i>
+              <span>Đăng ký giữ chỗ</span>
             </button>
           </div>
         </form>
@@ -633,6 +734,10 @@ function renderRegisterCard() {
     const form = container.querySelector('#form-register-queue');
     if (form) {
       form.addEventListener('submit', handleRegisterSubmit);
+      bindClearErrorsOnInput(form, [
+        ['reg-student-id', 'err-reg-student-id'],
+        ['reg-student-name', 'err-reg-student-name'],
+      ]);
     }
   }
 
@@ -652,17 +757,33 @@ async function handleRegisterSubmit(e) {
 
   const studentId = stIdInput?.value?.trim();
   const studentName = stNameInput?.value?.trim();
+  const formEl = e.currentTarget || document.getElementById('form-register-queue');
 
-  if (!studentId || !studentName) {
-    showToast('Vui lòng nhập đầy đủ MSSV và Họ tên sinh viên', 'warning');
-    return;
+  clearFieldErrors(formEl);
+
+  // Lỗi hiện ngay cạnh ô nhập (không chỉ toast)
+  let hasError = false;
+  if (!studentId) {
+    setFieldError(formEl, 'reg-student-id', 'err-reg-student-id', 'Vui lòng nhập MSSV.', !hasError);
+    hasError = true;
   }
+  if (!studentName) {
+    setFieldError(formEl, 'reg-student-name', 'err-reg-student-name', 'Vui lòng nhập họ và tên sinh viên.', !hasError);
+    hasError = true;
+  }
+  if (hasError) return;
 
   // Quy tắc M5: Không chứa dấu phẩy, gạch đứng hoặc xuống dòng
-  if (/[,|\n\r]/.test(studentId) || /[,|\n\r]/.test(studentName)) {
-    showToast('Mã SV và Họ tên không được chứa dấu phẩy (,), gạch đứng (|) hoặc xuống dòng', 'warning');
-    return;
+  const M5_MSG = 'Không được chứa dấu phẩy (,), gạch đứng (|) hoặc xuống dòng.';
+  if (/[,|\n\r]/.test(studentId)) {
+    setFieldError(formEl, 'reg-student-id', 'err-reg-student-id', M5_MSG, !hasError);
+    hasError = true;
   }
+  if (/[,|\n\r]/.test(studentName)) {
+    setFieldError(formEl, 'reg-student-name', 'err-reg-student-name', M5_MSG, !hasError);
+    hasError = true;
+  }
+  if (hasError) return;
 
   if (submitBtn) submitBtn.disabled = true;
 
@@ -679,7 +800,11 @@ async function handleRegisterSubmit(e) {
   } catch (err) {
     console.error('Lỗi đăng ký hàng đợi:', err);
     // Hiển thị trực tiếp lỗi từ server (ALREADY_QUEUED, CAN_BORROW_DIRECTLY, INVALID_INPUT...)
-    showToast(err.message || 'Lỗi khi đăng ký vào hàng đợi', 'error', 'Không thể đăng ký');
+    const serverMsg = err.message || 'Lỗi khi đăng ký vào hàng đợi';
+    if (err.code === 'ALREADY_QUEUED') {
+      setFieldError(formEl, 'reg-student-id', 'err-reg-student-id', serverMsg, true);
+    }
+    showToast(serverMsg, 'error', 'Không thể đăng ký');
   } finally {
     if (submitBtn) submitBtn.disabled = false;
   }
@@ -692,24 +817,26 @@ function openClaimModal(deviceId, studentId, studentName) {
   const content = document.createElement('div');
   content.innerHTML = `
     <div class="form-group">
-      <label class="form-label">Thiết bị nhận:</label>
-      <div style="font-size: 14.5px; font-weight: 700; color: var(--color-text-primary);">
-        ${escapeHtml(currentDevice?.name || deviceId)} (<code class="mono">${escapeHtml(deviceId)}</code>)
+      <div class="form-label">Thiết bị nhận</div>
+      <div class="reservation-modal-strong">
+        ${escapeHtml(currentDevice?.name || deviceId)} <code class="device-code-chip">${escapeHtml(deviceId)}</code>
       </div>
     </div>
     <div class="form-group">
-      <label class="form-label">Sinh viên nhận thiết bị:</label>
-      <div style="font-weight: 600; color: var(--color-text-primary);">
+      <div class="form-label">Sinh viên nhận thiết bị</div>
+      <div class="reservation-modal-strong">
         ${escapeHtml(studentName)} — MSSV: <code class="mono">${escapeHtml(studentId)}</code>
       </div>
       <div class="form-helper">Sinh viên hiện đang giữ chỗ hợp lệ trong thời hạn 24 giờ.</div>
     </div>
     <div class="form-group">
-      <label class="form-label" for="claim-days">Số ngày mượn (1 – 30 ngày):</label>
-      <input type="number" id="claim-days" class="form-input" min="1" max="30" value="7" required autofocus>
-      <div class="form-helper">Mặc định: 7 ngày (Quy tắc M13). Hệ thống sẽ tạo phiếu mượn 1 thiết bị và hoàn tất lượt giữ hàng.</div>
+      <label class="form-label" for="claim-days">Số ngày mượn (1 – 30 ngày)</label>
+      <input type="number" id="claim-days" class="form-input mono" min="1" max="30" value="7" required autofocus aria-describedby="err-claim-days hint-claim-days">
+      <div id="hint-claim-days" class="form-helper">Mặc định: 7 ngày (Quy tắc M13). Hệ thống sẽ tạo phiếu mượn 1 thiết bị và hoàn tất lượt giữ hàng.</div>
+      <div id="err-claim-days" class="form-error-inline" role="alert"></div>
     </div>
   `;
+  bindClearErrorsOnInput(content, [['claim-days', 'err-claim-days']]);
 
   openModal({
     title: 'Xác nhận Nhận thiết bị từ Hàng đợi',
@@ -719,8 +846,9 @@ function openClaimModal(deviceId, studentId, studentName) {
     onConfirm: async () => {
       const daysInput = content.querySelector('#claim-days');
       const days = parseInt(daysInput.value, 10);
+      clearFieldErrors(content);
       if (isNaN(days) || days < 1 || days > 30) {
-        showToast('Số ngày mượn phải nằm trong khoảng từ 1 đến 30 ngày', 'warning');
+        setFieldError(content, 'claim-days', 'err-claim-days', 'Số ngày mượn phải nằm trong khoảng từ 1 đến 30 ngày.', true);
         throw new Error('Invalid days');
       }
 
@@ -760,14 +888,17 @@ function openClaimModal(deviceId, studentId, studentName) {
 function openCancelModal(deviceId, studentId, studentName, isHolding) {
   const content = document.createElement('div');
   content.innerHTML = `
-    <div style="display: flex; flex-direction: column; gap: 12px;">
-      <p style="margin: 0; line-height: 1.5;">
+    <div class="reservation-cancel-modal">
+      <p class="reservation-cancel-text">
         Bạn có chắc chắn muốn huỷ đăng ký của sinh viên <strong>${escapeHtml(studentName)}</strong> (MSSV: <code class="mono">${escapeHtml(studentId)}</code>) khỏi hàng đợi thiết bị <strong>${escapeHtml(currentDevice?.name || deviceId)}</strong>?
       </p>
       ${isHolding ? `
-        <div class="alert-box alert-warning" style="background-color: var(--color-danger-bg); border: 1px solid var(--color-danger-border); color: var(--color-danger-text); padding: 12px 14px; border-radius: var(--radius-md); font-size: 12.5px;">
-          <div style="font-weight: 700; margin-bottom: 3px;">⚠️ Lưu ý quan trọng (Quy tắc M16):</div>
-          Sinh viên này hiện đang được giữ chỗ thiết bị. Khi huỷ đăng ký, quyền nhận thiết bị trong 24 giờ sẽ tự động được chuyển cho người kế tiếp trong hàng đợi!
+        <div class="reservation-cancel-warning" role="alert">
+          <i data-lucide="alert-triangle" aria-hidden="true"></i>
+          <div>
+            <div class="reservation-cancel-warning-title">Lưu ý quan trọng (Quy tắc M16)</div>
+            Sinh viên này hiện đang được giữ chỗ thiết bị. Khi huỷ đăng ký, quyền nhận thiết bị trong 24 giờ sẽ tự động được chuyển cho người kế tiếp trong hàng đợi.
+          </div>
         </div>
       ` : `
         <div class="form-helper">Thao tác này sẽ xoá vị trí chờ của sinh viên khỏi hàng đợi FIFO.</div>
@@ -803,6 +934,7 @@ function openCancelModal(deviceId, studentId, studentName, isHolding) {
       }
     }
   });
+  if (window.lucide) window.lucide.createIcons();
 }
 
 /**
@@ -885,16 +1017,16 @@ export async function onTimeAdvanced(detail) {
             [
               { transform: 'perspective(800px) rotateX(0deg) scale(1)', opacity: 1 },
               {
-                transform: 'perspective(800px) translateY(14px) rotateX(-18deg) scale(0.85)',
+                transform: 'perspective(800px) translateY(14px) rotateX(-18deg) scale(0.88)',
                 opacity: 0,
               },
             ],
-            { duration: 340, easing: 'cubic-bezier(0.4, 0, 0.2, 1)', fill: 'forwards' }
+            { duration: 300, easing: 'cubic-bezier(0.4, 0, 0.2, 1)', fill: 'forwards' }
           );
           phase1Anims.push(anim.finished.catch(() => {}));
         } else {
           card.classList.add('card-shrink-remove');
-          phase1Anims.push(new Promise(r => setTimeout(r, 340)));
+          phase1Anims.push(new Promise(r => setTimeout(r, 300)));
         }
       });
 
@@ -916,7 +1048,7 @@ export async function onTimeAdvanced(detail) {
           card.classList.add('card-shrink-remove');
         }
       });
-      await new Promise(r => setTimeout(r, 360));
+      await new Promise(r => setTimeout(r, 320));
     }
   }
 
@@ -937,9 +1069,9 @@ function renderQueueSkeleton() {
 
   container.innerHTML = `
     <div class="reservation-queue-grid">
-      <div class="queue-card skeleton-card skeleton" style="height: 220px;"></div>
-      <div class="queue-card skeleton-card skeleton" style="height: 220px;"></div>
-      <div class="queue-card skeleton-card skeleton" style="height: 220px;"></div>
+      <div class="queue-card skeleton-card skeleton queue-skeleton"></div>
+      <div class="queue-card skeleton-card skeleton queue-skeleton"></div>
+      <div class="queue-card skeleton-card skeleton queue-skeleton"></div>
     </div>
   `;
 }
@@ -952,12 +1084,13 @@ function renderQueueError(msg) {
   if (!container) return;
 
   container.innerHTML = `
-    <div class="error-state" style="padding: 40px 20px; background-color: var(--color-bg-surface); border: 1px solid var(--color-danger-border); border-radius: var(--radius-lg); width: 100%;">
-      <i data-lucide="alert-octagon" class="error-state-icon"></i>
+    <div class="error-state reservation-error-state" role="alert">
+      ${illustrationHtml('connection-error', 'alert-octagon', 'is-error')}
       <div class="error-state-title">Không thể tải thông tin hàng đợi</div>
       <div class="error-state-desc">${escapeHtml(msg)}</div>
-      <button id="btn-retry-queue" class="btn btn-secondary btn-sm" style="margin-top: 8px;">
-        <i data-lucide="rotate-cw"></i> Thử lại
+      <button id="btn-retry-queue" type="button" class="btn btn-secondary btn-sm">
+        <i data-lucide="refresh-cw"></i>
+        <span>Thử lại</span>
       </button>
     </div>
   `;
@@ -973,19 +1106,19 @@ function renderQueueError(msg) {
  * Hiển thị trạng thái không có thiết bị nào trong toàn hệ thống
  */
 function renderEmptyAllDevices() {
-  const container = document.getElementById('reservation-content-root');
-  if (!container) return;
-
-  container.innerHTML = `
-    <div class="empty-state" style="padding: 60px 20px; background-color: var(--color-bg-surface); border: 1px dashed var(--color-border); border-radius: var(--radius-lg);">
-      <i data-lucide="package" class="empty-state-icon"></i>
-      <div class="empty-state-title">Chưa có thiết bị nào trong hệ thống</div>
-      <div class="empty-state-desc">Vui lòng sang màn hình Danh mục Thiết bị để thêm mới thiết bị vào phòng thực hành.</div>
-      <a href="#/devices" class="btn btn-primary" style="margin-top: 10px;">
-        <i data-lucide="plus"></i> Thêm thiết bị mới
-      </a>
-    </div>
-  `;
+  showStateView(`
+    <section class="bento-card stagger-item">
+      <div class="empty-state reservation-empty-state">
+        ${illustrationHtml('no-results', 'package')}
+        <div class="empty-state-title">Chưa có thiết bị nào trong hệ thống</div>
+        <div class="empty-state-desc">Vui lòng sang màn hình Danh mục Thiết bị để thêm mới thiết bị vào phòng thực hành.</div>
+        <a href="#/devices" class="btn btn-primary">
+          <i data-lucide="plus"></i>
+          <span>Thêm thiết bị mới</span>
+        </a>
+      </div>
+    </section>
+  `);
   if (window.lucide) window.lucide.createIcons();
 }
 
@@ -993,22 +1126,22 @@ function renderEmptyAllDevices() {
  * Hiển thị lỗi nạp danh mục thiết bị
  */
 function renderErrorAllDevices(msg) {
-  const container = document.getElementById('reservation-content-root');
-  if (!container) return;
-
-  container.innerHTML = `
-    <div class="error-state" style="padding: 60px 20px; background-color: var(--color-bg-surface); border: 1px solid var(--color-danger-border); border-radius: var(--radius-lg);">
-      <i data-lucide="alert-triangle" class="error-state-icon"></i>
-      <div class="error-state-title">Không thể nạp danh sách thiết bị</div>
-      <div class="error-state-desc">${escapeHtml(msg)}</div>
-      <button id="btn-retry-all-devices" class="btn btn-secondary" style="margin-top: 10px;">
-        <i data-lucide="rotate-cw"></i> Thử lại
-      </button>
-    </div>
-  `;
+  showStateView(`
+    <section class="bento-card stagger-item">
+      <div class="error-state reservation-error-state" role="alert">
+        ${illustrationHtml('connection-error', 'alert-triangle', 'is-error')}
+        <div class="error-state-title">Không thể nạp danh sách thiết bị</div>
+        <div class="error-state-desc">${escapeHtml(msg)}</div>
+        <button id="btn-retry-all-devices" type="button" class="btn btn-secondary btn-sm">
+          <i data-lucide="refresh-cw"></i>
+          <span>Thử lại</span>
+        </button>
+      </div>
+    </section>
+  `);
   if (window.lucide) window.lucide.createIcons();
 
-  const retryBtn = container.querySelector('#btn-retry-all-devices');
+  const retryBtn = document.querySelector('#btn-retry-all-devices');
   if (retryBtn) {
     retryBtn.addEventListener('click', () => loadDevices());
   }
@@ -1033,53 +1166,59 @@ export async function render(container) {
           </div>
         </div>
         <div class="page-actions">
-          <button id="btn-refresh-reservations" class="btn btn-secondary" title="Làm mới dữ liệu hàng đợi">
-            <i data-lucide="rotate-cw"></i> Làm mới
+          <button id="btn-refresh-reservations" type="button" class="btn btn-secondary btn-sm" title="Làm mới dữ liệu hàng đợi">
+            <i data-lucide="refresh-cw"></i>
+            <span>Làm mới</span>
           </button>
         </div>
       </div>
 
+      <!-- Trạng thái toàn trang (trống / lỗi nạp thiết bị) -->
+      <div id="reservation-state-root" hidden></div>
+
       <!-- Vùng nội dung chính -->
-      <div id="reservation-content-root" style="display: flex; flex-direction: column; gap: 20px;">
-        <!-- Thanh chọn thiết bị -->
-        <div class="reservation-selector-card">
+      <div id="reservation-main" class="reservation-main">
+        <!-- 1. Thanh chọn thiết bị -->
+        <section class="bento-card reservation-selector-card stagger-item stagger-delay-1" aria-label="Chọn thiết bị xem hàng đợi">
           <div class="reservation-selector-group">
             <label class="reservation-select-label" for="select-reservation-device">
-              <i data-lucide="layers" style="color: var(--color-primary);"></i>
-              <span>Chọn thiết bị xem hàng đợi:</span>
+              <i data-lucide="layers" aria-hidden="true"></i>
+              <span>Chọn thiết bị xem hàng đợi</span>
             </label>
             <select id="select-reservation-device" class="reservation-device-select">
               <option value="">Đang tải danh sách thiết bị...</option>
             </select>
           </div>
-        </div>
+        </section>
 
-        <!-- Khung tổng quan kho của thiết bị đang chọn -->
-        <div id="reservation-device-overview" class="reservation-device-card">
-          <div class="skeleton skeleton-title" style="width: 40%;"></div>
-          <div class="skeleton skeleton-text" style="width: 80%;"></div>
-          <div class="skeleton" style="height: 10px; width: 100%; border-radius: var(--radius-full);"></div>
-        </div>
+        <!-- 2. Tổng quan kho của thiết bị đang chọn -->
+        <section id="reservation-device-overview" class="bento-card reservation-device-card stagger-item stagger-delay-2" aria-label="Tổng quan kho thiết bị">
+          <div class="skeleton skeleton-title reservation-skeleton-title"></div>
+          <div class="skeleton skeleton-text reservation-skeleton-text"></div>
+          <div class="skeleton reservation-skeleton-bar"></div>
+        </section>
 
-        <!-- Tiêu đề mục hàng đợi -->
-        <div class="reservation-queue-header">
-          <div class="reservation-queue-title">
-            <i data-lucide="users" style="color: var(--color-primary);"></i>
-            <span>Dãy sinh viên đang xếp hàng (FIFO)</span>
-            <span id="reservation-queue-count" class="badge badge-subtle" style="font-size: 12px;">Đang tải...</span>
+        <!-- 3. Dãy sinh viên xếp hàng FIFO -->
+        <section class="bento-card bento-table-card stagger-item stagger-delay-3" aria-label="Dãy sinh viên đang xếp hàng">
+          <div class="card-header">
+            <div class="card-title">
+              <i data-lucide="users"></i>
+              <span>Dãy sinh viên đang xếp hàng (FIFO)</span>
+            </div>
+            <span id="reservation-queue-count" class="badge badge-onhold tabular-nums" aria-live="polite">Đang tải...</span>
           </div>
-        </div>
-
-        <!-- Danh sách thẻ người chờ -->
-        <div id="reservation-queue-container">
-          <div class="reservation-queue-grid">
-            <div class="queue-card skeleton-card skeleton" style="height: 220px;"></div>
-            <div class="queue-card skeleton-card skeleton" style="height: 220px;"></div>
+          <div class="card-body">
+            <div id="reservation-queue-container">
+              <div class="reservation-queue-grid">
+                <div class="queue-card skeleton-card skeleton queue-skeleton"></div>
+                <div class="queue-card skeleton-card skeleton queue-skeleton"></div>
+              </div>
+            </div>
           </div>
-        </div>
+        </section>
 
-        <!-- Form đăng ký người mới vào hàng đợi -->
-        <div id="reservation-register-container"></div>
+        <!-- 4. Đăng ký người mới vào hàng đợi (M12) -->
+        <section id="reservation-register-container" class="bento-card bento-table-card reservation-register-card stagger-item stagger-delay-4" aria-label="Đăng ký vào hàng đợi"></section>
       </div>
     </div>
   `;
