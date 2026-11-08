@@ -1,8 +1,11 @@
 /**
- * devices.js - Màn hình 2: Danh mục Thiết bị (Devices)
- * Kết nối API thật: GET /api/devices, GET /api/devices/{id}, POST / PUT / DELETE...
- * Tích hợp Bảng tìm kiếm/lọc, thanh tỷ lệ 4 màu có tooltip, Panel trượt chi tiết,
- * Top 3 gợi ý mượn kèm, hàng đợi hiện tại và các modal quản lý.
+ * devices.js - Màn hình 2: Danh mục Thiết bị (Devices v2)
+ * Kết nối API thật: GET /api/devices, GET /api/devices/{id}, GET /api/devices/{id}/companions,
+ * POST / PUT / DELETE / maintenance...
+ * Bảo đảm chuẩn Dark-tech Glass + Checklist UI/UX:
+ * - Bảng dài cuộn ngang trong .table-responsive (không overshoot, không cuộn ngang trang)
+ * - Trạng thái thiết bị = Màu + Icon Lucide + Chữ (không emoji)
+ * - Label hiển thị rõ + lỗi form hiện ngay cạnh ô nhập
  */
 
 import { api } from '../api.js';
@@ -17,9 +20,79 @@ let activeDeviceId = null;
 let globalPanelListenersBound = false;
 
 function escapeHtml(str) {
-  return String(str || '').replace(/[&<>"']/g, c => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'
+  return String(str || '').replace(/[&<>"']/g, (c) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
   }[c]));
+}
+
+/**
+ * Tạo huy hiệu trạng thái thiết bị (luôn đủ 3 yếu tố: màu token + icon Lucide + chữ)
+ */
+function buildStatusBadgeHtml(status) {
+  if (status === 'borrowed') {
+    return `
+      <span class="badge badge-borrowed">
+        <i data-lucide="clock" class="badge-icon"></i>
+        <span>Đang mượn</span>
+      </span>
+    `;
+  }
+  if (status === 'maintenance') {
+    return `
+      <span class="badge badge-maintenance">
+        <i data-lucide="wrench" class="badge-icon"></i>
+        <span>Bảo trì</span>
+      </span>
+    `;
+  }
+  return `
+    <span class="badge badge-available">
+      <i data-lucide="check-circle-2" class="badge-icon"></i>
+      <span>Sẵn sàng</span>
+    </span>
+  `;
+}
+
+/**
+ * Helper hiển thị và xoá lỗi inline ngay cạnh ô nhập trong Modal
+ */
+function clearModalErrors(root) {
+  if (!root) return;
+  root.querySelectorAll('.is-invalid').forEach((el) => el.classList.remove('is-invalid'));
+  root.querySelectorAll('.form-error-inline').forEach((el) => {
+    el.textContent = '';
+  });
+}
+
+function setModalFieldError(root, inputId, errorId, message) {
+  if (!root) return;
+  const input = root.querySelector(`#${inputId}`);
+  const errEl = root.querySelector(`#${errorId}`);
+  if (input) {
+    input.classList.add('is-invalid');
+    input.focus();
+  }
+  if (errEl) {
+    errEl.textContent = message;
+  }
+}
+
+function bindClearErrorOnInput(root, pairs) {
+  if (!root) return;
+  pairs.forEach(([inputId, errorId]) => {
+    const input = root.querySelector(`#${inputId}`);
+    const errEl = root.querySelector(`#${errorId}`);
+    if (input && errEl) {
+      input.addEventListener('input', () => {
+        input.classList.remove('is-invalid');
+        errEl.textContent = '';
+      });
+    }
+  });
 }
 
 /**
@@ -29,7 +102,7 @@ async function drainAndToastNotifications(defaultTitle = 'Sự kiện hệ thố
   try {
     const notiRes = await api.get('/notifications');
     if (notiRes && Array.isArray(notiRes.notifications)) {
-      notiRes.notifications.forEach(n => {
+      notiRes.notifications.forEach((n) => {
         let type = 'info';
         let title = defaultTitle;
         if (n.type === 'hold_granted') {
@@ -57,13 +130,13 @@ function renderSkeletonTable() {
 
   tbody.innerHTML = Array(6).fill(0).map(() => `
     <tr>
-      <td><div class="skeleton" style="width: 50px; height: 16px;"></div></td>
-      <td><div class="skeleton" style="width: 180px; height: 16px;"></div></td>
-      <td><div class="skeleton" style="width: 80px; height: 20px; border-radius: 4px;"></div></td>
-      <td><div class="skeleton" style="width: 140px; height: 12px; border-radius: 6px;"></div></td>
-      <td><div class="skeleton" style="width: 30px; height: 16px;"></div></td>
-      <td><div class="skeleton" style="width: 30px; height: 16px;"></div></td>
-      <td><div class="skeleton" style="width: 60px; height: 28px; border-radius: 6px;"></div></td>
+      <td><div class="skeleton skeleton-w52"></div></td>
+      <td><div class="skeleton skeleton-w180"></div></td>
+      <td><div class="skeleton skeleton-w88"></div></td>
+      <td><div class="skeleton skeleton-w150"></div></td>
+      <td class="devices-col-count"><div class="skeleton skeleton-w34"></div></td>
+      <td class="devices-col-queue"><div class="skeleton skeleton-w34"></div></td>
+      <td class="devices-col-actions"><div class="skeleton skeleton-w72"></div></td>
     </tr>
   `).join('');
 }
@@ -79,10 +152,10 @@ function renderTableError(errorMsg) {
     <tr>
       <td colspan="7">
         <div class="error-state">
-          <i data-lucide="alert-octagon" class="error-state-icon"></i>
+          <i data-lucide="wifi-off" class="error-state-icon"></i>
           <div class="error-state-title">Lỗi tải danh sách thiết bị</div>
           <div class="error-state-desc">${escapeHtml(errorMsg)}</div>
-          <button id="btn-devices-retry" class="btn btn-primary btn-sm">
+          <button id="btn-devices-retry" type="button" class="btn btn-primary btn-sm">
             <i data-lucide="rotate-cw"></i> Thử lại
           </button>
         </div>
@@ -145,68 +218,84 @@ function renderDevicesList(devices) {
     return;
   }
 
-  tbody.innerHTML = devices.map(d => {
-    const total = d.total || 1;
-    const pAvail = Math.round((d.available / total) * 100);
-    const pBorrow = Math.round((d.borrowed / total) * 100);
-    const pHold = Math.round((d.onHold / total) * 100);
-    const pMaint = Math.round((d.maintenance / total) * 100);
+  tbody.innerHTML = devices.map((d) => {
+    const total = Number(d.total) || 1;
+    const available = Number(d.available) || 0;
+    const borrowed = Number(d.borrowed) || 0;
+    const onHold = Number(d.onHold) || 0;
+    const maintenance = Number(d.maintenance) || 0;
 
-    const tooltip = `Kho: Sẵn sàng: ${d.available} | Đang mượn: ${d.borrowed} | Đang giữ 24h: ${d.onHold} | Bảo trì: ${d.maintenance} (Tổng: ${total})`;
+    const pAvail = Math.round((available / total) * 100);
+    const pBorrow = Math.round((borrowed / total) * 100);
+    const pHold = Math.round((onHold / total) * 100);
+    const pMaint = Math.round((maintenance / total) * 100);
 
-    let badgeClass = 'badge-available';
-    let badgeText = 'Sẵn sàng';
-    if (d.status === 'borrowed') {
-      badgeClass = 'badge-borrowed';
-      badgeText = 'Đang mượn';
-    } else if (d.status === 'maintenance') {
-      badgeClass = 'badge-maintenance';
-      badgeText = 'Bảo trì';
-    }
+    const tooltip = `Kho: Sẵn sàng: ${available} | Đang mượn: ${borrowed} | Đang giữ 24h: ${onHold} | Bảo trì: ${maintenance} (Tổng: ${total})`;
 
-    const queueHtml = d.queueLength > 0
-      ? `<span class="badge badge-onhold tabular-nums font-semibold">${d.queueLength} chờ</span>`
-      : `<span style="color: var(--color-text-muted);">0</span>`;
+    const queueHtml = (d.queueLength || 0) > 0
+      ? `<span class="badge badge-onhold tabular-nums"><i data-lucide="users" class="badge-icon"></i><span>${d.queueLength} chờ</span></span>`
+      : '<span class="devices-empty-queue tabular-nums">0 chờ</span>';
 
     return `
-      <tr class="clickable-row" data-device-id="${escapeHtml(d.id)}">
-        <td><code class="mono" style="font-weight: 600; color: var(--color-primary);">${escapeHtml(d.id)}</code></td>
-        <td>
-          <div class="device-name-clamp" title="${escapeHtml(d.name)}" style="font-weight: 600; color: var(--color-text-primary); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis; line-height: 1.35; max-width: 340px; cursor: pointer;">
-            ${escapeHtml(d.name)}
+      <tr
+        class="clickable-row"
+        tabindex="0"
+        data-device-id="${escapeHtml(d.id)}"
+        aria-label="Xem chi tiết thiết bị ${escapeHtml(d.name)} (${escapeHtml(d.id)})"
+      >
+        <td class="devices-col-code">
+          <code class="device-code-chip">${escapeHtml(d.id)}</code>
+        </td>
+        <td class="devices-col-name">
+          <div class="device-name-cell">
+            <div class="device-row-thumb" aria-hidden="true">
+              <i data-lucide="cpu"></i>
+            </div>
+            <div class="device-name-clamp" title="${escapeHtml(d.name)}">
+              ${escapeHtml(d.name)}
+            </div>
           </div>
         </td>
-        <td>
-          <span class="badge ${badgeClass}">
-            <span class="badge-dot"></span>
-            <span>${badgeText}</span>
-          </span>
+        <td class="devices-col-status">
+          ${buildStatusBadgeHtml(d.status)}
         </td>
-        <td style="min-width: 260px;">
-          <!-- Thanh tỷ lệ kho 4 màu có tooltip trực quan -->
-          <div class="progress-bar-multi" title="${tooltip}">
+        <td class="devices-col-stock">
+          <div
+            class="progress-bar-multi"
+            title="${escapeHtml(tooltip)}"
+            role="img"
+            aria-label="${escapeHtml(tooltip)}"
+          >
             <div class="progress-segment segment-available" style="width: ${pAvail}%;"></div>
             <div class="progress-segment segment-borrowed" style="width: ${pBorrow}%;"></div>
             <div class="progress-segment segment-onhold" style="width: ${pHold}%;"></div>
             <div class="progress-segment segment-maintenance" style="width: ${pMaint}%;"></div>
           </div>
-          <!-- Nhãn hiển thị đầy đủ cả 4 chỉ số: Sẵn / Mượn / Giữ / Bảo trì -->
-          <div style="display: flex; align-items: center; justify-content: space-between; font-size: 11px; margin-top: 5px; flex-wrap: nowrap; gap: 4px;" class="tabular-nums">
-            <span style="color: var(--status-available-bar); font-weight: 600;" title="Sẵn sàng (${d.available}/${total})">Sẵn: ${d.available}</span>
-            <span style="color: var(--color-border);">•</span>
-            <span style="color: var(--status-borrowed-bar); font-weight: ${d.borrowed > 0 ? '600' : '400'};" title="Đang mượn">Mượn: ${d.borrowed}</span>
-            <span style="color: var(--color-border);">•</span>
-            <span style="color: var(--status-onhold-bar); font-weight: ${d.onHold > 0 ? '600' : '400'};" title="Đang giữ 24h cho hàng đợi">Giữ: ${d.onHold}</span>
-            <span style="color: var(--color-border);">•</span>
-            <span style="color: var(--status-maintenance-bar); font-weight: ${d.maintenance > 0 ? '600' : '400'};" title="Đang bảo trì">Bảo trì: ${d.maintenance}</span>
+          <div class="stock-metrics-row">
+            <span class="stock-metric-avail" title="Sẵn sàng (${available}/${total})">Sẵn: ${available}</span>
+            <span class="stock-metric-sep" aria-hidden="true">·</span>
+            <span class="stock-metric-borr ${borrowed > 0 ? 'is-nonzero' : ''}" title="Đang mượn">Mượn: ${borrowed}</span>
+            <span class="stock-metric-sep" aria-hidden="true">·</span>
+            <span class="stock-metric-hold ${onHold > 0 ? 'is-nonzero' : ''}" title="Đang giữ 24h cho hàng đợi">Giữ: ${onHold}</span>
+            <span class="stock-metric-sep" aria-hidden="true">·</span>
+            <span class="stock-metric-maint ${maintenance > 0 ? 'is-nonzero' : ''}" title="Đang bảo trì">B.trì: ${maintenance}</span>
           </div>
         </td>
-        <td style="text-align: center;"><span class="tabular-nums font-semibold">${d.timesBorrowed || 0}</span></td>
-        <td style="text-align: center;">${queueHtml}</td>
-        <td style="text-align: right;">
-          <button class="btn btn-secondary btn-sm btn-open-panel" data-device-id="${escapeHtml(d.id)}" title="Xem chi tiết và thao tác">
+        <td class="devices-col-count">
+          <span class="tabular-nums font-semibold">${d.timesBorrowed || 0}</span>
+        </td>
+        <td class="devices-col-queue">
+          ${queueHtml}
+        </td>
+        <td class="devices-col-actions">
+          <button
+            type="button"
+            class="btn btn-secondary btn-sm btn-open-panel"
+            data-device-id="${escapeHtml(d.id)}"
+            title="Xem chi tiết và thao tác"
+          >
             <span>Chi tiết</span>
-            <i data-lucide="chevron-right" style="width: 14px; height: 14px;"></i>
+            <i data-lucide="chevron-right" class="btn-action-icon-sm"></i>
           </button>
         </td>
       </tr>
@@ -215,15 +304,22 @@ function renderDevicesList(devices) {
 
   if (window.lucide) window.lucide.createIcons();
 
-  // Bắt sự kiện bấm vào từng dòng để mở Slide-over panel
-  tbody.querySelectorAll('.clickable-row').forEach(row => {
-    row.addEventListener('click', (e) => {
+  // Bắt sự kiện click & phím Enter/Space vào từng dòng để mở Slide-over panel
+  tbody.querySelectorAll('.clickable-row').forEach((row) => {
+    row.addEventListener('click', () => {
       const devId = row.dataset.deviceId;
       if (devId) openDevicePanel(devId);
     });
+    row.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        const devId = row.dataset.deviceId;
+        if (devId) openDevicePanel(devId);
+      }
+    });
   });
 
-  tbody.querySelectorAll('.btn-open-panel').forEach(btn => {
+  tbody.querySelectorAll('.btn-open-panel').forEach((btn) => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
       const devId = btn.dataset.deviceId;
@@ -241,7 +337,6 @@ export async function openDevicePanel(deviceId) {
   const backdrop = document.getElementById('side-panel-backdrop');
   if (!panel || !backdrop) return;
 
-  // Hiển thị trạng thái mở panel + loading
   backdrop.classList.add('active');
   panel.classList.add('open');
   panel.setAttribute('aria-hidden', 'false');
@@ -251,16 +346,16 @@ export async function openDevicePanel(deviceId) {
     <div class="side-panel-header">
       <div class="side-panel-title">
         <i data-lucide="layers"></i>
-        <span>Chi tiết thiết bị: <code class="mono" style="color: var(--color-primary);">${escapeHtml(deviceId)}</code></span>
+        <span>Chi tiết thiết bị <code class="device-code-chip">${escapeHtml(deviceId)}</code></span>
       </div>
-      <button id="btn-close-panel" class="btn-icon" aria-label="Đóng panel">
+      <button id="btn-close-panel" type="button" class="btn-icon" aria-label="Đóng panel chi tiết thiết bị" title="Đóng">
         <i data-lucide="x"></i>
       </button>
     </div>
     <div class="side-panel-body">
-      <div class="skeleton" style="width: 100%; height: 100px; border-radius: var(--radius-lg);"></div>
-      <div class="skeleton" style="width: 100%; height: 160px; border-radius: var(--radius-lg);"></div>
-      <div class="skeleton" style="width: 100%; height: 120px; border-radius: var(--radius-lg);"></div>
+      <div class="skeleton skeleton-panel-sm"></div>
+      <div class="skeleton skeleton-panel-lg"></div>
+      <div class="skeleton skeleton-panel-md"></div>
     </div>
   `;
   if (window.lucide) window.lucide.createIcons();
@@ -268,24 +363,36 @@ export async function openDevicePanel(deviceId) {
   panel.querySelector('#btn-close-panel').addEventListener('click', closeDevicePanel);
 
   try {
-    const res = await api.get(`/devices/${deviceId}`);
+    const res = await api.get(`/devices/${encodeURIComponent(deviceId)}`);
     renderPanelContent(panel, res);
   } catch (err) {
     panel.innerHTML = `
       <div class="side-panel-header">
-        <div class="side-panel-title">Chi tiết thiết bị</div>
-        <button id="btn-close-panel" class="btn-icon" aria-label="Đóng">&times;</button>
+        <div class="side-panel-title">
+          <i data-lucide="layers"></i>
+          <span>Chi tiết thiết bị</span>
+        </div>
+        <button id="btn-close-panel" type="button" class="btn-icon" aria-label="Đóng panel" title="Đóng">
+          <i data-lucide="x"></i>
+        </button>
       </div>
       <div class="side-panel-body">
         <div class="error-state">
-          <i data-lucide="alert-octagon" class="error-state-icon"></i>
+          <i data-lucide="wifi-off" class="error-state-icon"></i>
           <div class="error-state-title">Không thể tải thông tin thiết bị</div>
           <div class="error-state-desc">${escapeHtml(err.message || 'Lỗi kết nối')}</div>
+          <button id="btn-panel-retry" type="button" class="btn btn-primary btn-sm">
+            <i data-lucide="rotate-cw"></i> Thử lại
+          </button>
         </div>
       </div>
     `;
     if (window.lucide) window.lucide.createIcons();
     panel.querySelector('#btn-close-panel').addEventListener('click', closeDevicePanel);
+    const retryBtn = panel.querySelector('#btn-panel-retry');
+    if (retryBtn) {
+      retryBtn.addEventListener('click', () => openDevicePanel(deviceId));
+    }
   }
 }
 
@@ -307,107 +414,219 @@ export function closeDevicePanel() {
 }
 
 /**
+ * Mở modal xem toàn bộ láng giềng đồ thị (M17: gồm cả thiết bị bảo trì kèm trạng thái)
+ */
+async function openAllCompanionsModal(dev) {
+  try {
+    const res = await api.get(`/devices/${encodeURIComponent(dev.id)}/companions`);
+    const list = Array.isArray(res.companions) ? res.companions : [];
+
+    const content = document.createElement('div');
+    if (list.length === 0) {
+      content.innerHTML = `
+        <div class="panel-empty-box">
+          Thiết bị <strong>${escapeHtml(dev.name)}</strong> chưa có láng giềng nào trong đồ thị mượn kèm.
+        </div>
+      `;
+    } else {
+      content.innerHTML = `
+        <div class="all-companions-modal-list">
+          ${list.map((c) => `
+            <div class="companion-card" data-glow="${escapeHtml(c.status || 'available')}">
+              <div class="companion-left">
+                <div class="companion-thumb" aria-hidden="true">
+                  <i data-lucide="cpu"></i>
+                </div>
+                <div class="companion-info">
+                  <div class="companion-name">
+                    ${escapeHtml(c.name)} <code class="device-code-chip">${escapeHtml(c.id)}</code>
+                  </div>
+                  <div class="companion-weight">
+                    Mượn kèm: <strong class="tabular-nums">${c.weight}</strong> lần · Sẵn sàng: <strong class="tabular-nums">${c.available || 0}</strong>
+                  </div>
+                </div>
+              </div>
+              ${buildStatusBadgeHtml(c.status)}
+            </div>
+          `).join('')}
+        </div>
+      `;
+    }
+
+    openModal({
+      title: `Toàn bộ láng giềng đồ thị: ${dev.id}`,
+      content,
+      cancelText: 'Đóng',
+    });
+
+    if (window.lucide) window.lucide.createIcons();
+  } catch (err) {
+    showToast(
+      err.message || 'Endpoint /companions chưa khả dụng ở chế độ này — bạn có thể xem trực quan tại Đồ thị mượn kèm.',
+      'info',
+      'Thông tin láng giềng',
+      4500
+    );
+  }
+}
+
+/**
  * Điền nội dung chi tiết vào Slide-over panel
  */
 function renderPanelContent(panel, data) {
   const dev = data.device;
   const queue = data.queue || [];
   const suggestions = data.suggestions || [];
-  const total = dev.total || 1;
+  const total = Number(dev.total) || 1;
+  const available = Number(dev.available) || 0;
+  const borrowed = Number(dev.borrowed) || 0;
+  const onHold = Number(dev.onHold) || 0;
+  const maintenance = Number(dev.maintenance) || 0;
 
-  const pAvail = Math.round((dev.available / total) * 100);
-  const pBorrow = Math.round((dev.borrowed / total) * 100);
-  const pHold = Math.round((dev.onHold / total) * 100);
-  const pMaint = Math.round((dev.maintenance / total) * 100);
-  const tooltip = `Kho: Sẵn sàng: ${dev.available} | Đang mượn: ${dev.borrowed} | Đang giữ: ${dev.onHold} | Bảo trì: ${dev.maintenance} (Tổng: ${total})`;
-
-  let statusBadge = `<span class="badge badge-available"><span class="badge-dot"></span> Sẵn sàng</span>`;
-  if (dev.status === 'borrowed') statusBadge = `<span class="badge badge-borrowed"><span class="badge-dot"></span> Đang mượn</span>`;
-  if (dev.status === 'maintenance') statusBadge = `<span class="badge badge-maintenance"><span class="badge-dot"></span> Bảo trì</span>`;
+  const pAvail = Math.round((available / total) * 100);
+  const pBorrow = Math.round((borrowed / total) * 100);
+  const pHold = Math.round((onHold / total) * 100);
+  const pMaint = Math.round((maintenance / total) * 100);
+  const tooltip = `Kho: Sẵn sàng: ${available} | Đang mượn: ${borrowed} | Đang giữ: ${onHold} | Bảo trì: ${maintenance} (Tổng: ${total})`;
 
   panel.innerHTML = `
     <div class="side-panel-header">
       <div class="side-panel-title">
-        <i data-lucide="cpu"></i>
+        <i data-lucide="layers"></i>
         <span>${escapeHtml(dev.name)}</span>
       </div>
-      <button id="btn-close-panel" class="btn-icon" aria-label="Đóng panel">
+      <button id="btn-close-panel" type="button" class="btn-icon" aria-label="Đóng panel chi tiết thiết bị" title="Đóng">
         <i data-lucide="x"></i>
       </button>
     </div>
 
     <div class="side-panel-body">
+      <!-- 0. Khối nhận diện thiết bị trong Panel -->
+      <div class="panel-device-hero">
+        <div class="panel-device-thumb" aria-hidden="true">
+          <i data-lucide="cpu" class="panel-device-thumb-icon"></i>
+        </div>
+        <div class="panel-device-hero-meta">
+          <div class="panel-device-hero-name">${escapeHtml(dev.name)}</div>
+          <div class="panel-device-hero-badges">
+            <code class="device-code-chip">${escapeHtml(dev.id)}</code>
+            ${buildStatusBadgeHtml(dev.status)}
+          </div>
+          <div class="panel-device-hero-sub tabular-nums">
+            Đã mượn tích luỹ: <strong>${dev.timesBorrowed || 0}</strong> lượt · Hàng chờ: <strong>${queue.length}</strong> người
+          </div>
+        </div>
+      </div>
+
       <!-- 1. Tóm tắt tình trạng kho -->
       <div class="side-panel-section">
         <div class="side-panel-section-title">
           <i data-lucide="box"></i> Tình trạng kho (${escapeHtml(dev.id)})
         </div>
-        <div class="device-stock-summary-card" data-glow="${escapeHtml(dev.status || 'available')}" style="background-color: var(--color-bg-muted); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: 16px; display: flex; flex-direction: column; gap: 12px;">
-          <div style="display: flex; justify-content: space-between; align-items: center;">
-            <span style="font-size: 13px; color: var(--color-text-secondary);">Trạng thái hệ thống:</span>
-            ${statusBadge}
+        <div class="device-stock-summary-card" data-glow="${escapeHtml(dev.status || 'available')}">
+          <div class="panel-stock-header">
+            <span class="panel-stock-header-label">Trạng thái suy ra theo M1:</span>
+            ${buildStatusBadgeHtml(dev.status)}
           </div>
 
-          <!-- Thanh tỷ lệ 4 màu -->
-          <div>
-            <div class="progress-bar-multi" title="${tooltip}" style="height: 10px;">
-              <div class="progress-segment segment-available" style="width: ${pAvail}%;"></div>
-              <div class="progress-segment segment-borrowed" style="width: ${pBorrow}%;"></div>
-              <div class="progress-segment segment-onhold" style="width: ${pHold}%;"></div>
-              <div class="progress-segment segment-maintenance" style="width: ${pMaint}%;"></div>
+          <div
+            class="progress-bar-multi is-tall"
+            title="${escapeHtml(tooltip)}"
+            role="img"
+            aria-label="${escapeHtml(tooltip)}"
+          >
+            <div class="progress-segment segment-available" style="width: ${pAvail}%;"></div>
+            <div class="progress-segment segment-borrowed" style="width: ${pBorrow}%;"></div>
+            <div class="progress-segment segment-onhold" style="width: ${pHold}%;"></div>
+            <div class="progress-segment segment-maintenance" style="width: ${pMaint}%;"></div>
+          </div>
+
+          <div class="panel-stock-grid">
+            <div>Sẵn sàng: <strong class="tabular-nums stock-metric-avail">${available}</strong> món</div>
+            <div>Đang mượn: <strong class="tabular-nums stock-metric-borr is-nonzero">${borrowed}</strong> món</div>
+            <div>Đang giữ 24h: <strong class="tabular-nums stock-metric-hold is-nonzero">${onHold}</strong> món</div>
+            <div>Bảo trì: <strong class="tabular-nums stock-metric-maint is-nonzero">${maintenance}</strong> món</div>
+            <div class="panel-invariant-note tabular-nums">
+              Bất biến kho: ${available} + ${borrowed} + ${onHold} + ${maintenance} = ${total} đơn vị
             </div>
           </div>
 
-          <!-- Thống kê chi tiết từng loại đơn vị -->
-          <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; font-size: 12.5px;">
-            <div>Sẵn sàng: <strong class="tabular-nums" style="color: var(--status-available-bar);">${dev.available}</strong> món</div>
-            <div>Đang mượn: <strong class="tabular-nums" style="color: var(--status-borrowed-bar);">${dev.borrowed}</strong> món</div>
-            <div>Đang giữ 24h: <strong class="tabular-nums" style="color: var(--status-onhold-bar);">${dev.onHold}</strong> món</div>
-            <div>Bảo trì: <strong class="tabular-nums" style="color: var(--status-maintenance-bar);">${dev.maintenance}</strong> món</div>
-            <div style="grid-column: span 2; border-top: 1px solid var(--color-border); padding-top: 6px; font-weight: 600;">
-              Tổng cộng: <span class="tabular-nums">${total}</span> đơn vị kho (Đã mượn: ${dev.timesBorrowed || 0} lượt)
-            </div>
-          </div>
-
-          <!-- Nút thao tác quản lý kho -->
           <div class="side-panel-actions">
-            <button id="btn-panel-edit" class="btn btn-secondary btn-sm">
-              <i data-lucide="edit-3"></i> Sửa
+            <button id="btn-panel-edit" type="button" class="btn btn-secondary btn-sm">
+              <i data-lucide="edit-3" class="btn-action-icon-sm"></i> Sửa
             </button>
-            <button id="btn-panel-maintenance" class="btn btn-secondary btn-sm" ${dev.available === 0 ? 'disabled' : ''} title="${dev.available === 0 ? 'Hết hàng sẵn sàng để bảo trì' : 'Chuyển đơn vị sang bảo trì'}">
-              <i data-lucide="wrench"></i> Chuyển bảo trì
+            <button
+              id="btn-panel-maintenance"
+              type="button"
+              class="btn btn-secondary btn-sm"
+              ${available === 0 ? 'disabled' : ''}
+              title="${available === 0 ? 'Hết hàng sẵn sàng để bảo trì' : 'Chuyển đơn vị sang bảo trì'}"
+            >
+              <i data-lucide="wrench" class="btn-action-icon-sm"></i> Chuyển bảo trì
             </button>
-            <button id="btn-panel-finish-maintenance" class="btn btn-secondary btn-sm" ${dev.maintenance === 0 ? 'disabled' : ''} title="${dev.maintenance === 0 ? 'Không có món đang bảo trì' : 'Hoàn tất bảo trì'}">
-              <i data-lucide="check-circle-2"></i> Trả bảo trì
+            <button
+              id="btn-panel-finish-maintenance"
+              type="button"
+              class="btn btn-secondary btn-sm"
+              ${maintenance === 0 ? 'disabled' : ''}
+              title="${maintenance === 0 ? 'Không có món đang bảo trì' : 'Hoàn tất bảo trì'}"
+            >
+              <i data-lucide="check-circle-2" class="btn-action-icon-sm"></i> Trả bảo trì
             </button>
-            <button id="btn-panel-delete" class="btn btn-outline btn-sm" style="color: var(--color-danger); border-color: var(--color-danger-border);">
-              <i data-lucide="trash-2"></i> Xoá
+            <button id="btn-panel-delete" type="button" class="btn btn-outline btn-sm panel-btn-danger-outline">
+              <i data-lucide="trash-2" class="btn-action-icon-sm"></i> Xoá
             </button>
           </div>
         </div>
       </div>
 
-      <!-- 2. Top 3 gợi ý mượn kèm (Companion Suggestions) -->
+      <!-- 2. Top 3 gợi ý mượn kèm + Toàn bộ láng giềng Graph (M17) -->
       <div class="side-panel-section">
-        <div class="side-panel-section-title">
-          <i data-lucide="sparkles"></i> Top 3 thường được mượn kèm
+        <div class="panel-section-header">
+          <div class="side-panel-section-title">
+            <i data-lucide="sparkles"></i> Top 3 mượn kèm (M17)
+          </div>
+          <button
+            id="btn-panel-all-companions"
+            type="button"
+            class="btn btn-outline btn-sm"
+            title="Xem toàn bộ láng giềng trong đồ thị kèm trạng thái (gồm cả thiết bị bảo trì)"
+          >
+            <i data-lucide="network" class="btn-action-icon-sm"></i>
+            <span>Toàn bộ láng giềng</span>
+          </button>
         </div>
+
         ${suggestions.length === 0 ? `
-          <div style="font-size: 12.5px; color: var(--color-text-muted); padding: 12px; background-color: var(--color-bg-muted); border-radius: var(--radius-md); text-align: center;">
+          <div class="panel-empty-box">
             Chưa có ghi nhận thiết bị nào thường mượn kèm với ${escapeHtml(dev.name)}.
           </div>
         ` : `
-          <div style="display: flex; flex-direction: column; gap: 8px;">
-            ${suggestions.map(s => `
+          <div class="companion-list">
+            ${suggestions.map((s) => `
               <div class="companion-card" data-glow="${s.outOfStock ? 'borrowed' : 'available'}">
-                <div class="companion-info">
-                  <div class="companion-name">${escapeHtml(s.name)} <code class="mono" style="font-size: 11px;">${escapeHtml(s.id)}</code></div>
-                  <div class="companion-weight">
-                    Mượn kèm: <strong class="tabular-nums">${s.weight}</strong> lần • 
-                    ${s.outOfStock ? '<span style="color: var(--color-danger); font-weight: 600;">Hết hàng</span>' : `<span style="color: var(--color-success); font-weight: 500;">Còn ${s.available} sẵn sàng</span>`}
+                <div class="companion-left">
+                  <div class="companion-thumb" aria-hidden="true">
+                    <i data-lucide="cpu"></i>
+                  </div>
+                  <div class="companion-info">
+                    <div class="companion-name">
+                      ${escapeHtml(s.name)} <code class="device-code-chip">${escapeHtml(s.id)}</code>
+                    </div>
+                    <div class="companion-weight">
+                      Mượn kèm: <strong class="tabular-nums">${s.weight}</strong> lần ·
+                      ${s.outOfStock
+                        ? '<span class="companion-stock-out">Hết hàng</span>'
+                        : `<span class="companion-stock-ok">Còn ${s.available} sẵn sàng</span>`}
+                    </div>
                   </div>
                 </div>
-                <button class="btn btn-outline btn-sm btn-view-companion" data-id="${escapeHtml(s.id)}" title="Xem chi tiết thiết bị này">
+                <button
+                  type="button"
+                  class="btn btn-outline btn-sm btn-view-companion"
+                  data-id="${escapeHtml(s.id)}"
+                  title="Xem chi tiết thiết bị ${escapeHtml(s.id)}"
+                >
                   Xem
                 </button>
               </div>
@@ -418,61 +637,86 @@ function renderPanelContent(panel, data) {
 
       <!-- 3. Hàng đợi đặt trước hiện tại (Reservation Queue) -->
       <div class="side-panel-section">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div class="panel-section-header">
           <div class="side-panel-section-title">
             <i data-lucide="clock"></i> Hàng đợi đặt trước (${queue.length} người)
           </div>
-          <div style="display: flex; align-items: center; gap: 6px;">
-            <a href="#/reservations?id=${escapeHtml(dev.id)}" id="btn-panel-view-queue" class="btn btn-outline btn-sm" style="font-size: 11px; padding: 3px 8px; text-decoration: none;" title="Mở trang Hàng đợi đặt trước chi tiết">
-              <i data-lucide="external-link" style="width: 12px; height: 12px;"></i> Xem đầy đủ
+          <div class="panel-section-actions">
+            <a
+              href="#/reservations?id=${encodeURIComponent(dev.id)}"
+              id="btn-panel-view-queue"
+              class="btn btn-outline btn-sm"
+              title="Mở trang Hàng đợi đặt trước chi tiết"
+            >
+              <i data-lucide="external-link" class="btn-action-icon-sm"></i> Xem đầy đủ
             </a>
-            ${dev.available === 0 ? `
-              <button id="btn-panel-register-queue" class="btn btn-primary btn-sm" style="font-size: 11.5px; padding: 3px 8px;">
-                + Đăng ký
+            ${available === 0 ? `
+              <button id="btn-panel-register-queue" type="button" class="btn btn-primary btn-sm">
+                <i data-lucide="user-plus" class="btn-action-icon-sm"></i> Đăng ký
               </button>
             ` : `
-              <span style="font-size: 11px; color: var(--color-text-muted);" title="Thiết bị còn hàng, phải mượn trực tiếp">+ Đăng ký (chỉ khi hết hàng)</span>
+              <span class="panel-queue-hint" title="Thiết bị còn hàng, phải mượn trực tiếp">
+                Đặt trước mở khi hết hàng (M12)
+              </span>
             `}
           </div>
         </div>
 
         ${queue.length === 0 ? `
-          <div style="font-size: 12.5px; color: var(--color-text-muted); padding: 14px; background-color: var(--color-bg-muted); border-radius: var(--radius-md); text-align: center;">
+          <div class="panel-empty-box">
             Hàng đợi đang trống. Không có sinh viên nào đang chờ thiết bị này.
           </div>
         ` : `
           <div class="queue-mini-list">
-            ${queue.map(q => {
+            ${queue.map((q) => {
               const isHold = q.holding === true;
+              const hoursLeft = Math.max(0, Number(q.hoursLeft) || 0);
+              const isUrgentHold = isHold && hoursLeft <= 6;
               return `
                 <div class="queue-mini-item ${isHold ? 'is-holding' : ''}">
-                  <div style="display: flex; align-items: center; gap: 10px;">
+                  <div class="panel-queue-left">
                     <div class="queue-pos-badge tabular-nums">${q.position}</div>
-                    <div style="display: flex; flex-direction: column; gap: 2px;">
-                      <div style="font-size: 13px; font-weight: 600; color: var(--color-text-primary);">
-                        ${escapeHtml(q.studentName)} <span class="mono" style="font-size: 11px; font-weight: 400; color: var(--color-text-secondary);">(${escapeHtml(q.studentId)})</span>
+                    <div class="panel-queue-meta">
+                      <div class="panel-queue-student">
+                        ${escapeHtml(q.studentName)} <span class="panel-queue-sid">(${escapeHtml(q.studentId)})</span>
                       </div>
-                      <div style="font-size: 11px; color: var(--color-text-muted);">
+                      <div class="panel-queue-time">
                         Đăng ký: ${escapeHtml(q.enqueueText || '')}
-                        ${q.missCount > 0 ? `• <span style="color: var(--color-warning); font-weight: 600;">Lỡ hẹn: ${q.missCount}/2</span>` : ''}
+                        ${(q.missCount || 0) > 0
+                          ? ` · <span class="panel-queue-miss">Lỡ hẹn: ${q.missCount}/2</span>`
+                          : ''}
                       </div>
                       ${isHold ? `
-                        <div style="margin-top: 4px;">
-                          <span class="expiring-badge" style="font-size: 11px; padding: 2px 6px;">
-                            <i data-lucide="timer" style="width: 12px; height: 12px;"></i>
-                            Đang giữ: Còn ${q.hoursLeft} giờ (Hạn: ${escapeHtml(q.holdUntilText || '')})
+                        <div class="panel-queue-hold-row">
+                          <span class="expiring-badge ${isUrgentHold ? 'is-urgent' : ''}">
+                            <i data-lucide="hourglass" class="expiring-badge-icon"></i>
+                            <span>Còn ${hoursLeft}h (Hạn: ${escapeHtml(q.holdUntilText || '')})</span>
                           </span>
                         </div>
                       ` : ''}
                     </div>
                   </div>
-                  <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 6px;">
+                  <div class="panel-queue-btns">
                     ${isHold ? `
-                      <button class="btn btn-primary btn-sm btn-claim-queue" data-dev="${escapeHtml(dev.id)}" data-stuid="${escapeHtml(q.studentId)}" data-stuname="${escapeHtml(q.studentName)}" style="font-size: 11px; padding: 3px 8px;">
+                      <button
+                        type="button"
+                        class="btn btn-primary btn-sm btn-claim-queue"
+                        data-dev="${escapeHtml(dev.id)}"
+                        data-stuid="${escapeHtml(q.studentId)}"
+                        data-stuname="${escapeHtml(q.studentName)}"
+                      >
                         Nhận máy
                       </button>
                     ` : ''}
-                    <button class="btn btn-outline btn-sm btn-cancel-queue" data-dev="${escapeHtml(dev.id)}" data-devname="${escapeHtml(dev.name)}" data-stuid="${escapeHtml(q.studentId)}" data-stuname="${escapeHtml(q.studentName)}" data-holding="${isHold}" style="font-size: 10.5px; padding: 2px 6px; color: var(--color-text-muted);">
+                    <button
+                      type="button"
+                      class="btn btn-outline btn-sm btn-cancel-queue"
+                      data-dev="${escapeHtml(dev.id)}"
+                      data-devname="${escapeHtml(dev.name)}"
+                      data-stuid="${escapeHtml(q.studentId)}"
+                      data-stuname="${escapeHtml(q.studentName)}"
+                      data-holding="${isHold}"
+                    >
                       Huỷ
                     </button>
                   </div>
@@ -487,58 +731,53 @@ function renderPanelContent(panel, data) {
 
   if (window.lucide) window.lucide.createIcons();
 
-  // Đóng panel
   panel.querySelector('#btn-close-panel').addEventListener('click', closeDevicePanel);
 
-  // Xem chi tiết companion
-  panel.querySelectorAll('.btn-view-companion').forEach(btn => {
+  panel.querySelectorAll('.btn-view-companion').forEach((btn) => {
     btn.addEventListener('click', () => {
       openDevicePanel(btn.dataset.id);
     });
   });
 
-  // Nút Sửa thiết bị
+  const allCompanionsBtn = panel.querySelector('#btn-panel-all-companions');
+  if (allCompanionsBtn) {
+    allCompanionsBtn.addEventListener('click', () => openAllCompanionsModal(dev));
+  }
+
   const editBtn = panel.querySelector('#btn-panel-edit');
   if (editBtn) editBtn.addEventListener('click', () => openEditDeviceModal(dev));
 
-  // Nút Chuyển bảo trì
   const maintBtn = panel.querySelector('#btn-panel-maintenance');
-  if (maintBtn && dev.available > 0) {
+  if (maintBtn && available > 0) {
     maintBtn.addEventListener('click', () => openSendMaintenanceModal(dev));
   }
 
-  // Nút Trả bảo trì
   const finishMaintBtn = panel.querySelector('#btn-panel-finish-maintenance');
-  if (finishMaintBtn && dev.maintenance > 0) {
+  if (finishMaintBtn && maintenance > 0) {
     finishMaintBtn.addEventListener('click', () => openFinishMaintenanceModal(dev));
   }
 
-  // Nút Xoá thiết bị
   const deleteBtn = panel.querySelector('#btn-panel-delete');
   if (deleteBtn) deleteBtn.addEventListener('click', () => confirmDeleteDevice(dev));
 
-  // Đóng panel trượt khi bấm liên kết "Xem đầy đủ" sang #/reservations
   const viewQueueLink = panel.querySelector('#btn-panel-view-queue');
   if (viewQueueLink) {
     viewQueueLink.addEventListener('click', closeDevicePanel);
   }
 
-  // Nút Đăng ký hàng đợi từ panel
   const registerQueueBtn = panel.querySelector('#btn-panel-register-queue');
   if (registerQueueBtn) {
     const nextPos = data.nextQueuePosition || (queue.length + 1);
     registerQueueBtn.addEventListener('click', () => openRegisterQueueModal(dev.id, dev.name, nextPos));
   }
 
-  // Nút Nhận thiết bị trong queue
-  panel.querySelectorAll('.btn-claim-queue').forEach(btn => {
+  panel.querySelectorAll('.btn-claim-queue').forEach((btn) => {
     btn.addEventListener('click', () => {
       openClaimModal(btn.dataset.dev, btn.dataset.stuid, btn.dataset.stuname);
     });
   });
 
-  // Nút Huỷ đăng ký queue (mở Modal chuẩn kèm cảnh báo M16 & xả notifications)
-  panel.querySelectorAll('.btn-cancel-queue').forEach(btn => {
+  panel.querySelectorAll('.btn-cancel-queue').forEach((btn) => {
     btn.addEventListener('click', () => {
       const isHold = btn.dataset.holding === 'true';
       openCancelQueueFromPanelModal(
@@ -558,13 +797,16 @@ function renderPanelContent(panel, data) {
 function openCancelQueueFromPanelModal(deviceId, deviceName, studentId, studentName, isHolding) {
   const content = document.createElement('div');
   content.innerHTML = `
-    <div style="display: flex; flex-direction: column; gap: 10px;">
-      <p style="margin: 0; line-height: 1.5;">
-        Bạn có chắc chắn muốn huỷ đăng ký của sinh viên <strong>${escapeHtml(studentName)}</strong> (<code class="mono">${escapeHtml(studentId)}</code>) khỏi hàng đợi thiết bị <strong>${escapeHtml(deviceName)}</strong>?
+    <div class="companion-list">
+      <p>
+        Bạn có chắc chắn muốn huỷ đăng ký của sinh viên <strong>${escapeHtml(studentName)}</strong> (<code class="device-code-chip">${escapeHtml(studentId)}</code>) khỏi hàng đợi thiết bị <strong>${escapeHtml(deviceName)}</strong>?
       </p>
       ${isHolding ? `
-        <div style="background-color: var(--color-danger-bg); border: 1px solid var(--color-danger-border); color: var(--color-danger-text); padding: 10px 12px; border-radius: var(--radius-md); font-size: 12px;">
-          <strong>⚠️ Quy tắc M16:</strong> Sinh viên này đang giữ chỗ 24h. Khi huỷ, quyền giữ hàng sẽ tự động chuyển cho người kế tiếp trong hàng đợi.
+        <div class="panel-alert-danger">
+          <i data-lucide="alert-triangle" class="panel-alert-icon"></i>
+          <div>
+            <strong>Quy tắc M16:</strong> Sinh viên này đang giữ chỗ 24h. Khi huỷ, quyền giữ hàng sẽ tự động chuyển cho người kế tiếp trong hàng đợi.
+          </div>
         </div>
       ` : ''}
     </div>
@@ -577,7 +819,7 @@ function openCancelQueueFromPanelModal(deviceId, deviceName, studentId, studentN
     cancelText: 'Quay lại',
     onConfirm: async () => {
       try {
-        await api.delete(`/reservations/${deviceId}/${studentId}`);
+        await api.delete(`/reservations/${encodeURIComponent(deviceId)}/${encodeURIComponent(studentId)}`);
         showToast(`Đã huỷ đăng ký hàng đợi cho sinh viên ${studentName}.`, 'success');
         await drainAndToastNotifications('Chuyển quyền giữ hàng (M16)');
         openDevicePanel(deviceId);
@@ -586,12 +828,14 @@ function openCancelQueueFromPanelModal(deviceId, deviceName, studentId, studentN
         showToast(err.message || 'Lỗi khi huỷ đăng ký', 'error');
         throw err;
       }
-    }
+    },
   });
+
+  if (window.lucide) window.lucide.createIcons();
 }
 
 /* ==========================================================================
-   MODAL THAO TÁC (Thêm / Sửa / Bảo trì / Xoá / Hàng đợi)
+   MODAL THAO TÁC (Thêm / Sửa / Bảo trì / Xoá / Hàng đợi — kèm lỗi inline cạnh ô)
    ========================================================================== */
 
 /**
@@ -603,17 +847,26 @@ function openAddDeviceModal() {
     <div class="form-group">
       <label class="form-label" for="add-device-id">Mã thiết bị (ID):</label>
       <input type="text" id="add-device-id" class="form-input mono" placeholder="VD: VR02, OSC02..." required autofocus>
-      <div class="form-helper">Không chứa dấu phẩy, thanh đứng (|) hoặc ký tự xuống dòng (Quy tắc M5).</div>
+      <div class="form-error-inline" id="err-add-device-id" role="alert"></div>
+      <div class="form-helper">Không chứa dấu phẩy (,), thanh đứng (|) hoặc ký tự xuống dòng (Quy tắc M5).</div>
     </div>
     <div class="form-group">
       <label class="form-label" for="add-device-name">Tên thiết bị:</label>
       <input type="text" id="add-device-name" class="form-input" placeholder="VD: Kính thực tế ảo thế hệ 2..." required>
+      <div class="form-error-inline" id="err-add-device-name" role="alert"></div>
     </div>
     <div class="form-group">
       <label class="form-label" for="add-device-total">Tổng số lượng đơn vị:</label>
-      <input type="number" id="add-device-total" class="form-input" min="1" max="999" value="1" required>
+      <input type="number" id="add-device-total" class="form-input tabular-nums" min="1" max="999" value="1" required>
+      <div class="form-error-inline" id="err-add-device-total" role="alert"></div>
     </div>
   `;
+
+  bindClearErrorOnInput(content, [
+    ['add-device-id', 'err-add-device-id'],
+    ['add-device-name', 'err-add-device-name'],
+    ['add-device-total', 'err-add-device-total'],
+  ]);
 
   openModal({
     title: 'Thêm thiết bị mới vào phòng Lab',
@@ -621,18 +874,30 @@ function openAddDeviceModal() {
     confirmText: 'Lưu thiết bị',
     cancelText: 'Huỷ bỏ',
     onConfirm: async () => {
+      clearModalErrors(content);
       const idInput = content.querySelector('#add-device-id').value.trim();
       const nameInput = content.querySelector('#add-device-name').value.trim();
       const totalInput = parseInt(content.querySelector('#add-device-total').value, 10);
 
-      if (!idInput || !nameInput || isNaN(totalInput) || totalInput <= 0) {
-        showToast('Vui lòng điền đầy đủ mã, tên và số lượng hợp lệ (> 0)', 'warning');
-        throw new Error('Invalid input');
+      if (!idInput) {
+        setModalFieldError(content, 'add-device-id', 'err-add-device-id', 'Vui lòng nhập mã thiết bị.');
+        throw new Error('Missing device id');
       }
-
-      if (idInput.includes(',') || idInput.includes('|') || nameInput.includes(',') || nameInput.includes('|')) {
-        showToast('Mã và tên thiết bị không được chứa ký tự "," hoặc "|"', 'warning');
-        throw new Error('Invalid character');
+      if (/[,|\n\r]/.test(idInput)) {
+        setModalFieldError(content, 'add-device-id', 'err-add-device-id', 'Mã thiết bị không được chứa dấu phẩy (,), thanh đứng (|) hoặc xuống dòng.');
+        throw new Error('Invalid M5 id');
+      }
+      if (!nameInput) {
+        setModalFieldError(content, 'add-device-name', 'err-add-device-name', 'Vui lòng nhập tên thiết bị.');
+        throw new Error('Missing device name');
+      }
+      if (/[,|\n\r]/.test(nameInput)) {
+        setModalFieldError(content, 'add-device-name', 'err-add-device-name', 'Tên thiết bị không được chứa dấu phẩy (,), thanh đứng (|) hoặc xuống dòng.');
+        throw new Error('Invalid M5 name');
+      }
+      if (isNaN(totalInput) || totalInput <= 0 || totalInput > 999) {
+        setModalFieldError(content, 'add-device-total', 'err-add-device-total', 'Số lượng phải từ 1 đến 999.');
+        throw new Error('Invalid total');
       }
 
       try {
@@ -640,10 +905,11 @@ function openAddDeviceModal() {
         showToast(`Đã thêm thiết bị ${idInput} thành công!`, 'success');
         loadDevices();
       } catch (err) {
+        setModalFieldError(content, 'add-device-id', 'err-add-device-id', err.message || 'Không thể lưu thiết bị này.');
         showToast(err.message || 'Lỗi khi thêm thiết bị', 'error', 'Lỗi lưu thiết bị');
         throw err;
       }
-    }
+    },
   });
 }
 
@@ -656,21 +922,28 @@ function openEditDeviceModal(dev) {
   const content = document.createElement('div');
   content.innerHTML = `
     <div class="form-group">
-      <label class="form-label">Mã thiết bị:</label>
-      <input type="text" class="form-input mono" value="${escapeHtml(dev.id)}" disabled style="background-color: var(--color-bg-muted); opacity: 0.8;">
+      <label class="form-label" for="edit-device-id-readonly">Mã thiết bị:</label>
+      <input type="text" id="edit-device-id-readonly" class="form-input mono form-input-readonly" value="${escapeHtml(dev.id)}" disabled>
     </div>
     <div class="form-group">
       <label class="form-label" for="edit-device-name">Tên thiết bị:</label>
       <input type="text" id="edit-device-name" class="form-input" value="${escapeHtml(dev.name)}" required autofocus>
+      <div class="form-error-inline" id="err-edit-device-name" role="alert"></div>
     </div>
     <div class="form-group">
       <label class="form-label" for="edit-device-total">Tổng số lượng đơn vị:</label>
-      <input type="number" id="edit-device-total" class="form-input" min="${minAllowed}" value="${dev.total}" required>
+      <input type="number" id="edit-device-total" class="form-input tabular-nums" min="${minAllowed}" value="${dev.total}" required>
+      <div class="form-error-inline" id="err-edit-device-total" role="alert"></div>
       <div class="form-helper">
         Tối thiểu là <strong>${minAllowed}</strong> đơn vị (do đang có: ${dev.borrowed} mượn, ${dev.onHold} giữ, ${dev.maintenance} bảo trì — Quy tắc M3).
       </div>
     </div>
   `;
+
+  bindClearErrorOnInput(content, [
+    ['edit-device-name', 'err-edit-device-name'],
+    ['edit-device-total', 'err-edit-device-total'],
+  ]);
 
   openModal({
     title: `Chỉnh sửa thiết bị: ${dev.id}`,
@@ -678,25 +951,35 @@ function openEditDeviceModal(dev) {
     confirmText: 'Cập nhật',
     cancelText: 'Huỷ bỏ',
     onConfirm: async () => {
+      clearModalErrors(content);
       const nameInput = content.querySelector('#edit-device-name').value.trim();
       const totalInput = parseInt(content.querySelector('#edit-device-total').value, 10);
 
-      if (!nameInput || isNaN(totalInput) || totalInput < minAllowed) {
-        showToast(`Tổng số lượng không được nhỏ hơn ${minAllowed}`, 'warning');
-        throw new Error('Invalid input');
+      if (!nameInput) {
+        setModalFieldError(content, 'edit-device-name', 'err-edit-device-name', 'Tên thiết bị không được để trống.');
+        throw new Error('Missing name');
+      }
+      if (/[,|\n\r]/.test(nameInput)) {
+        setModalFieldError(content, 'edit-device-name', 'err-edit-device-name', 'Tên không được chứa dấu phẩy (,), thanh đứng (|) hoặc xuống dòng.');
+        throw new Error('Invalid M5');
+      }
+      if (isNaN(totalInput) || totalInput < minAllowed) {
+        setModalFieldError(content, 'edit-device-total', 'err-edit-device-total', `Tổng số lượng không được nhỏ hơn ${minAllowed}.`);
+        throw new Error('Invalid total');
       }
 
       try {
-        await api.put(`/devices/${dev.id}`, { name: nameInput, total: totalInput });
+        await api.put(`/devices/${encodeURIComponent(dev.id)}`, { name: nameInput, total: totalInput });
         showToast(`Cập nhật thông tin ${dev.id} thành công!`, 'success');
         await drainAndToastNotifications('Hàng đợi được phục vụ (M3)');
         openDevicePanel(dev.id);
         loadDevices();
       } catch (err) {
+        setModalFieldError(content, 'edit-device-total', 'err-edit-device-total', err.message || 'Lỗi khi cập nhật thiết bị.');
         showToast(err.message || 'Lỗi khi cập nhật thiết bị', 'error');
         throw err;
       }
-    }
+    },
   });
 }
 
@@ -714,14 +997,17 @@ function openSendMaintenanceModal(dev) {
   content.innerHTML = `
     <div class="form-group">
       <label class="form-label">Thiết bị:</label>
-      <div style="font-weight: 600;">${escapeHtml(dev.name)} (<code class="mono">${dev.id}</code>)</div>
+      <div class="modal-static-val">${escapeHtml(dev.name)} (<code class="device-code-chip">${escapeHtml(dev.id)}</code>)</div>
       <div class="form-helper">Hiện có <strong>${maxAvailable}</strong> đơn vị đang sẵn sàng.</div>
     </div>
     <div class="form-group">
       <label class="form-label" for="maint-qty">Số lượng đơn vị cần bảo trì (1 – ${maxAvailable}):</label>
-      <input type="number" id="maint-qty" class="form-input" min="1" max="${maxAvailable}" value="1" required autofocus>
+      <input type="number" id="maint-qty" class="form-input tabular-nums" min="1" max="${maxAvailable}" value="1" required autofocus>
+      <div class="form-error-inline" id="err-maint-qty" role="alert"></div>
     </div>
   `;
+
+  bindClearErrorOnInput(content, [['maint-qty', 'err-maint-qty']]);
 
   openModal({
     title: `Chuyển sang bảo trì: ${dev.id}`,
@@ -729,22 +1015,24 @@ function openSendMaintenanceModal(dev) {
     confirmText: 'Chuyển bảo trì',
     cancelText: 'Huỷ bỏ',
     onConfirm: async () => {
+      clearModalErrors(content);
       const qtyInput = parseInt(content.querySelector('#maint-qty').value, 10);
       if (isNaN(qtyInput) || qtyInput < 1 || qtyInput > maxAvailable) {
-        showToast(`Số lượng phải từ 1 đến ${maxAvailable}`, 'warning');
+        setModalFieldError(content, 'maint-qty', 'err-maint-qty', `Số lượng phải từ 1 đến ${maxAvailable}.`);
         throw new Error('Invalid qty');
       }
 
       try {
-        await api.post(`/devices/${dev.id}/maintenance`, { qty: qtyInput });
+        await api.post(`/devices/${encodeURIComponent(dev.id)}/maintenance`, { qty: qtyInput });
         showToast(`Đã chuyển ${qtyInput} đơn vị ${dev.id} sang bảo trì`, 'success');
         openDevicePanel(dev.id);
         loadDevices();
       } catch (err) {
+        setModalFieldError(content, 'maint-qty', 'err-maint-qty', err.message || 'Lỗi chuyển bảo trì.');
         showToast(err.message || 'Lỗi chuyển bảo trì', 'error');
         throw err;
       }
-    }
+    },
   });
 }
 
@@ -762,15 +1050,18 @@ function openFinishMaintenanceModal(dev) {
   content.innerHTML = `
     <div class="form-group">
       <label class="form-label">Thiết bị:</label>
-      <div style="font-weight: 600;">${escapeHtml(dev.name)} (<code class="mono">${dev.id}</code>)</div>
+      <div class="modal-static-val">${escapeHtml(dev.name)} (<code class="device-code-chip">${escapeHtml(dev.id)}</code>)</div>
       <div class="form-helper">Hiện có <strong>${maxMaint}</strong> đơn vị đang bảo trì.</div>
     </div>
     <div class="form-group">
       <label class="form-label" for="finish-maint-qty">Số lượng đơn vị hoàn tất bảo trì (1 – ${maxMaint}):</label>
-      <input type="number" id="finish-maint-qty" class="form-input" min="1" max="${maxMaint}" value="${maxMaint}" required autofocus>
+      <input type="number" id="finish-maint-qty" class="form-input tabular-nums" min="1" max="${maxMaint}" value="${maxMaint}" required autofocus>
+      <div class="form-error-inline" id="err-finish-maint-qty" role="alert"></div>
       <div class="form-helper">Đơn vị sau khi sửa xong sẽ trở lại sẵn sàng hoặc phục vụ người chờ hàng đợi.</div>
     </div>
   `;
+
+  bindClearErrorOnInput(content, [['finish-maint-qty', 'err-finish-maint-qty']]);
 
   openModal({
     title: `Hoàn tất bảo trì: ${dev.id}`,
@@ -778,26 +1069,25 @@ function openFinishMaintenanceModal(dev) {
     confirmText: 'Xác nhận hoàn tất',
     cancelText: 'Huỷ bỏ',
     onConfirm: async () => {
+      clearModalErrors(content);
       const qtyInput = parseInt(content.querySelector('#finish-maint-qty').value, 10);
       if (isNaN(qtyInput) || qtyInput < 1 || qtyInput > maxMaint) {
-        showToast(`Số lượng phải từ 1 đến ${maxMaint}`, 'warning');
+        setModalFieldError(content, 'finish-maint-qty', 'err-finish-maint-qty', `Số lượng phải từ 1 đến ${maxMaint}.`);
         throw new Error('Invalid qty');
       }
 
       try {
-        await api.post(`/devices/${dev.id}/maintenance/finish`, { qty: qtyInput });
+        await api.post(`/devices/${encodeURIComponent(dev.id)}/maintenance/finish`, { qty: qtyInput });
         showToast(`Đã phục hồi ${qtyInput} đơn vị ${dev.id} về kho`, 'success');
-
-        // Kiểm tra thông báo sự kiện nếu có người trong queue nhận hàng
         await drainAndToastNotifications('Hàng đợi được phục vụ');
-
         openDevicePanel(dev.id);
         loadDevices();
       } catch (err) {
+        setModalFieldError(content, 'finish-maint-qty', 'err-finish-maint-qty', err.message || 'Lỗi hoàn tất bảo trì.');
         showToast(err.message || 'Lỗi hoàn tất bảo trì', 'error');
         throw err;
       }
-    }
+    },
   });
 }
 
@@ -807,9 +1097,12 @@ function openFinishMaintenanceModal(dev) {
 function confirmDeleteDevice(dev) {
   const content = document.createElement('div');
   content.innerHTML = `
-    <p>Bạn có chắc chắn muốn xoá thiết bị <strong>${escapeHtml(dev.name)} (${dev.id})</strong>?</p>
-    <div class="form-helper" style="margin-top: 10px; color: var(--color-danger);">
-      ⚠️ Chỉ xoá được khi không còn phiếu mượn đang mở và không còn người trong hàng đợi (Quy tắc M4). Đỉnh và các cạnh liên quan trong đồ thị sẽ bị xoá vĩnh viễn.
+    <p>Bạn có chắc chắn muốn xoá thiết bị <strong>${escapeHtml(dev.name)} (${escapeHtml(dev.id)})</strong>?</p>
+    <div class="panel-alert-danger modal-danger-note">
+      <i data-lucide="alert-triangle" class="panel-alert-icon"></i>
+      <div>
+        Chỉ xoá được khi không còn phiếu mượn đang mở và không còn người trong hàng đợi (Quy tắc M4). Đỉnh và các cạnh liên quan trong đồ thị sẽ bị xoá vĩnh viễn.
+      </div>
     </div>
   `;
 
@@ -820,7 +1113,7 @@ function confirmDeleteDevice(dev) {
     cancelText: 'Giữ lại',
     onConfirm: async () => {
       try {
-        await api.delete(`/devices/${dev.id}`);
+        await api.delete(`/devices/${encodeURIComponent(dev.id)}`);
         showToast(`Đã xoá thiết bị ${dev.id} thành công`, 'success');
         closeDevicePanel();
         loadDevices();
@@ -828,8 +1121,10 @@ function confirmDeleteDevice(dev) {
         showToast(err.message || 'Không thể xoá thiết bị này', 'error', 'Từ chối xoá thiết bị');
         throw err;
       }
-    }
+    },
   });
+
+  if (window.lucide) window.lucide.createIcons();
 }
 
 /**
@@ -840,24 +1135,31 @@ function openRegisterQueueModal(deviceId, deviceName, nextQueuePosition = null) 
   content.innerHTML = `
     <div class="form-group">
       <label class="form-label">Thiết bị đăng ký:</label>
-      <div style="font-weight: 600;">${escapeHtml(deviceName)} (<code class="mono">${escapeHtml(deviceId)}</code>)</div>
-      <div id="panel-next-queue-pos" class="form-helper" style="margin-top: 4px; color: var(--color-primary); font-weight: 600;">
+      <div class="modal-static-val">${escapeHtml(deviceName)} (<code class="device-code-chip">${escapeHtml(deviceId)}</code>)</div>
+      <div id="panel-next-queue-pos" class="form-helper modal-highlight-note">
         ${nextQueuePosition ? `Vị trí dự kiến trong hàng đợi: #${nextQueuePosition}` : 'Đang kiểm tra vị trí hàng đợi…'}
       </div>
     </div>
     <div class="form-group">
       <label class="form-label" for="queue-student-id">Mã số sinh viên (MSSV):</label>
       <input type="text" id="queue-student-id" class="form-input mono" placeholder="VD: 25120199" required autofocus>
+      <div class="form-error-inline" id="err-queue-student-id" role="alert"></div>
     </div>
     <div class="form-group">
       <label class="form-label" for="queue-student-name">Họ và tên sinh viên:</label>
       <input type="text" id="queue-student-name" class="form-input" placeholder="VD: Trần Văn An" required>
+      <div class="form-error-inline" id="err-queue-student-name" role="alert"></div>
       <div class="form-helper">Không chứa dấu phẩy (,), gạch đứng (|) hoặc xuống dòng (M5).</div>
     </div>
   `;
 
+  bindClearErrorOnInput(content, [
+    ['queue-student-id', 'err-queue-student-id'],
+    ['queue-student-name', 'err-queue-student-name'],
+  ]);
+
   if (!nextQueuePosition) {
-    api.get(`/devices/${encodeURIComponent(deviceId)}`).then(res => {
+    api.get(`/devices/${encodeURIComponent(deviceId)}`).then((res) => {
       const posEl = content.querySelector('#panel-next-queue-pos');
       if (posEl && res) {
         const pos = res.nextQueuePosition || ((res.queue ? res.queue.length : 0) + 1);
@@ -872,29 +1174,38 @@ function openRegisterQueueModal(deviceId, deviceName, nextQueuePosition = null) 
     confirmText: 'Đăng ký chờ',
     cancelText: 'Huỷ bỏ',
     onConfirm: async () => {
+      clearModalErrors(content);
       const stId = content.querySelector('#queue-student-id').value.trim();
       const stName = content.querySelector('#queue-student-name').value.trim();
 
-      if (!stId || !stName) {
-        showToast('Vui lòng nhập đầy đủ MSSV và Họ tên', 'warning');
-        throw new Error('Missing input');
+      if (!stId) {
+        setModalFieldError(content, 'queue-student-id', 'err-queue-student-id', 'Vui lòng nhập MSSV.');
+        throw new Error('Missing studentId');
       }
-
-      if (/[,|\n\r]/.test(stId) || /[,|\n\r]/.test(stName)) {
-        showToast('Mã SV và Họ tên không được chứa dấu phẩy (,), gạch đứng (|) hoặc xuống dòng', 'warning');
-        throw new Error('Invalid M5 chars');
+      if (/[,|\n\r]/.test(stId)) {
+        setModalFieldError(content, 'queue-student-id', 'err-queue-student-id', 'MSSV không được chứa dấu phẩy (,), gạch đứng (|) hoặc xuống dòng.');
+        throw new Error('Invalid M5 studentId');
+      }
+      if (!stName) {
+        setModalFieldError(content, 'queue-student-name', 'err-queue-student-name', 'Vui lòng nhập họ và tên sinh viên.');
+        throw new Error('Missing studentName');
+      }
+      if (/[,|\n\r]/.test(stName)) {
+        setModalFieldError(content, 'queue-student-name', 'err-queue-student-name', 'Họ tên không được chứa dấu phẩy (,), gạch đứng (|) hoặc xuống dòng.');
+        throw new Error('Invalid M5 studentName');
       }
 
       try {
-        const res = await api.post(`/reservations/${deviceId}`, { studentId: stId, studentName: stName });
+        const res = await api.post(`/reservations/${encodeURIComponent(deviceId)}`, { studentId: stId, studentName: stName });
         showToast(`Đăng ký thành công! Bạn đứng vị trí số ${res.position} trong hàng đợi.`, 'success');
         openDevicePanel(deviceId);
         loadDevices();
       } catch (err) {
+        setModalFieldError(content, 'queue-student-id', 'err-queue-student-id', err.message || 'Lỗi đăng ký hàng đợi.');
         showToast(err.message || 'Lỗi đăng ký hàng đợi', 'error');
         throw err;
       }
-    }
+    },
   });
 }
 
@@ -906,15 +1217,18 @@ function openClaimModal(deviceId, studentId, studentName) {
   content.innerHTML = `
     <div class="form-group">
       <label class="form-label">Sinh viên nhận thiết bị:</label>
-      <div style="font-weight: 600;">${escapeHtml(studentName)} (<code class="mono">${studentId}</code>)</div>
-      <div class="form-helper">Thiết bị: <code class="mono">${deviceId}</code></div>
+      <div class="modal-static-val">${escapeHtml(studentName)} (<code class="device-code-chip">${escapeHtml(studentId)}</code>)</div>
+      <div class="form-helper">Thiết bị: <code class="device-code-chip">${escapeHtml(deviceId)}</code></div>
     </div>
     <div class="form-group">
       <label class="form-label" for="claim-days">Số ngày mượn (1 – 30 ngày):</label>
-      <input type="number" id="claim-days" class="form-input" min="1" max="30" value="7" required autofocus>
+      <input type="number" id="claim-days" class="form-input tabular-nums" min="1" max="30" value="7" required autofocus>
+      <div class="form-error-inline" id="err-claim-days" role="alert"></div>
       <div class="form-helper">Mặc định: 7 ngày (Quy tắc M13). Hệ thống sẽ tạo phiếu mượn 1 thiết bị.</div>
     </div>
   `;
+
+  bindClearErrorOnInput(content, [['claim-days', 'err-claim-days']]);
 
   openModal({
     title: 'Nhận thiết bị từ Hàng đợi',
@@ -922,24 +1236,26 @@ function openClaimModal(deviceId, studentId, studentName) {
     confirmText: 'Xác nhận tạo phiếu mượn',
     cancelText: 'Huỷ',
     onConfirm: async () => {
+      clearModalErrors(content);
       const days = parseInt(content.querySelector('#claim-days').value, 10);
       if (isNaN(days) || days < 1 || days > 30) {
-        showToast('Số ngày mượn phải từ 1 đến 30 ngày', 'warning');
+        setModalFieldError(content, 'claim-days', 'err-claim-days', 'Số ngày mượn phải từ 1 đến 30 ngày.');
         throw new Error('Invalid days');
       }
 
       try {
-        const res = await api.post(`/reservations/${deviceId}/claim`, { studentId, days });
+        const res = await api.post(`/reservations/${encodeURIComponent(deviceId)}/claim`, { studentId, days });
         const recId = res.record ? ` #${res.record.recordId}` : '';
         showToast(`Sinh viên ${studentName} đã nhận thiết bị! Đã tạo phiếu mượn${recId}.`, 'success');
         await drainAndToastNotifications();
         openDevicePanel(deviceId);
         loadDevices();
       } catch (err) {
+        setModalFieldError(content, 'claim-days', 'err-claim-days', err.message || 'Lỗi nhận thiết bị.');
         showToast(err.message || 'Lỗi nhận thiết bị', 'error');
         throw err;
       }
-    }
+    },
   });
 }
 
@@ -948,6 +1264,10 @@ function openClaimModal(deviceId, studentId, studentName) {
  */
 export async function render(container) {
   currentContainer = container;
+  // Luôn mở trang ở trạng thái mặc định "Tất cả trạng thái" và ô tìm kiếm trống
+  clearTimeout(searchTimeout);
+  currentQuery = '';
+  currentStatus = '';
 
   container.innerHTML = `
     <div class="page">
@@ -957,53 +1277,70 @@ export async function render(container) {
           <h1 class="page-title">
             <i data-lucide="layers"></i> Danh mục Thiết bị
           </h1>
-          <div class="page-desc">Quản lý toàn bộ danh mục thiết bị, theo dõi tỷ lệ kho 4 màu và xem gợi ý mượn kèm.</div>
+          <div class="page-desc">Quản lý danh mục thiết bị bằng Doubly Linked List, theo dõi tỷ lệ kho 4 màu và gợi ý mượn kèm.</div>
         </div>
         <div class="page-actions">
-          <button id="btn-add-device" class="btn btn-primary btn-sm">
+          <button id="btn-add-device" type="button" class="btn btn-primary btn-sm">
             <i data-lucide="plus"></i> Thêm thiết bị mới
           </button>
         </div>
       </div>
 
-      <!-- Thanh tìm kiếm và bộ lọc trạng thái -->
-      <div class="card" style="padding: 14px 18px;">
-        <div class="filter-bar">
-          <div class="filter-group">
+      <!-- Thanh tìm kiếm và bộ lọc trạng thái 1 hàng gọn -->
+      <div class="bento-card bento-table-card devices-filter-card stagger-item stagger-delay-1">
+        <div class="devices-filter-bar">
+          <div class="devices-filter-field is-search">
+            <label class="devices-filter-label" for="input-device-search">Tìm theo mã hoặc tên thiết bị</label>
             <div class="search-input-wrapper">
-              <i data-lucide="search" style="width: 16px; height: 16px;"></i>
-              <input type="text" id="input-device-search" class="form-input" placeholder="Tìm theo mã hoặc tên thiết bị..." value="${escapeHtml(currentQuery)}">
+              <i data-lucide="search" class="search-input-icon"></i>
+              <input
+                type="text"
+                id="input-device-search"
+                class="form-input"
+                placeholder="Nhập mã (VD: VR01) hoặc tên thiết bị..."
+                value=""
+              >
             </div>
+          </div>
 
-            <select id="select-device-status" class="form-select" style="width: 180px;">
-              <option value="" ${currentStatus === '' ? 'selected' : ''}>Tất cả trạng thái</option>
-              <option value="available" ${currentStatus === 'available' ? 'selected' : ''}>🟢 Sẵn sàng</option>
-              <option value="borrowed" ${currentStatus === 'borrowed' ? 'selected' : ''}>🟡 Đang mượn</option>
-              <option value="maintenance" ${currentStatus === 'maintenance' ? 'selected' : ''}>🔴 Bảo trì</option>
+          <div class="devices-filter-field is-status">
+            <label class="devices-filter-label" for="select-device-status">Trạng thái (M1)</label>
+            <select id="select-device-status" class="form-select">
+              <option value="" selected>Tất cả trạng thái</option>
+              <option value="available">Sẵn sàng</option>
+              <option value="borrowed">Đang mượn</option>
+              <option value="maintenance">Bảo trì</option>
             </select>
           </div>
 
-          <div style="display: flex; align-items: center; gap: 10px;">
-            <span id="devices-count-badge" class="badge badge-available" style="font-size: 12px;">Đang tải...</span>
-            <button id="btn-devices-refresh" class="btn btn-secondary btn-sm" title="Tải lại danh sách">
-              <i data-lucide="refresh-cw" style="width: 14px; height: 14px;"></i>
+          <div class="devices-filter-actions">
+            <span id="devices-count-badge" class="badge badge-available tabular-nums">Đang tải…</span>
+            <button
+              id="btn-devices-refresh"
+              type="button"
+              class="btn btn-secondary btn-sm"
+              aria-label="Làm mới danh mục thiết bị"
+              title="Tải lại danh sách thiết bị"
+            >
+              <i data-lucide="refresh-cw" class="btn-action-icon-sm"></i>
+              <span>Làm mới</span>
             </button>
           </div>
         </div>
       </div>
 
-      <!-- Bảng danh sách thiết bị -->
-      <div class="table-responsive">
-        <table class="data-table">
+      <!-- Bảng danh sách thiết bị (vừa 1366/1920, cuộn ngang nội bộ khi hẹp) -->
+      <div class="table-responsive bento-table-card stagger-item no-overshoot stagger-delay-2">
+        <table class="data-table devices-table">
           <thead>
             <tr>
-              <th style="width: 85px;">Mã</th>
-              <th style="min-width: 220px; max-width: 340px;">Tên thiết bị</th>
-              <th style="width: 125px;">Trạng thái</th>
-              <th style="min-width: 260px;">Tỷ lệ kho (Sẵn / Mượn / Giữ / Bảo trì)</th>
-              <th style="width: 95px; text-align: center;">Lượt mượn</th>
-              <th style="width: 95px; text-align: center;">Hàng đợi</th>
-              <th style="width: 95px; text-align: right;">Thao tác</th>
+              <th class="devices-col-code">Mã</th>
+              <th class="devices-col-name">Thiết bị</th>
+              <th class="devices-col-status">Trạng thái</th>
+              <th class="devices-col-stock" title="Tỷ lệ kho (Sẵn / Mượn / Giữ 24h / Bảo trì)">Tỷ lệ kho</th>
+              <th class="devices-col-count">Lượt mượn</th>
+              <th class="devices-col-queue">Hàng đợi</th>
+              <th class="devices-col-actions">Thao tác</th>
             </tr>
           </thead>
           <tbody id="devices-table-body"></tbody>
@@ -1041,7 +1378,7 @@ export async function render(container) {
     addBtn.addEventListener('click', openAddDeviceModal);
   }
 
-  // Nút Làm mới (kèm hiệu ứng xoay spin-loading)
+  // Nút Làm mới
   const refreshBtn = container.querySelector('#btn-devices-refresh');
   if (refreshBtn) {
     refreshBtn.addEventListener('click', async () => {
@@ -1060,7 +1397,7 @@ export async function render(container) {
     });
   }
 
-  // Gắn sự kiện đóng panel toàn cục đúng 1 lần (tránh rò rỉ listener khi chuyển route)
+  // Gắn sự kiện đóng panel toàn cục đúng 1 lần
   if (!globalPanelListenersBound) {
     globalPanelListenersBound = true;
     const backdrop = document.getElementById('side-panel-backdrop');
@@ -1075,7 +1412,6 @@ export async function render(container) {
     });
   }
 
-  // Nạp danh sách lần đầu
   await loadDevices();
 }
 

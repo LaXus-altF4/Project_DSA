@@ -1,7 +1,7 @@
 /**
- * bg-scene.js - Lớp lưới sóng phối cảnh & hạt ánh sáng 3D mờ phía sau nội dung (Đợt A.1)
+ * bg-scene.js - Lớp lưới sóng phối cảnh & hạt ánh sáng 3D mờ Dark-tech Cyan
  * Sử dụng Three.js cục bộ (nạp động), giới hạn devicePixelRatio <= 1.5, chỉ 2 draw calls,
- * chuyển động rất chậm, tự động dừng khi ẩn tab, tắt "Hiệu ứng 3D" hoặc prefers-reduced-motion.
+ * chuyển động chậm, tự dừng khi ẩn tab, tắt "Hiệu ứng 3D" hoặc prefers-reduced-motion.
  */
 
 import {
@@ -66,7 +66,7 @@ function createSoftDotTexture(threeNs) {
 }
 
 /**
- * Đồng bộ bảng màu lưới 3D & hạt theo Theme Sáng / Tối để luôn giữ tương phản chữ cao
+ * Đồng bộ bảng màu lưới 3D & hạt theo Dark-tech Cyan Theme Sáng / Tối
  */
 function applySceneTheme(theme) {
   if (!THREE || !gridMaterial || !particleMaterial) return;
@@ -76,26 +76,26 @@ function applySceneTheme(theme) {
   const isDark = theme === 'dark';
 
   // Lưới dây phối cảnh: mờ dịu không tranh chấp với chữ và bảng số liệu
-  gridMaterial.color.setHex(isDark ? 0x60a5fa : 0x3b82f6);
-  gridMaterial.opacity = isDark ? 0.18 : 0.13;
+  gridMaterial.color.setHex(isDark ? 0x3b82f6 : 0x3b82f6);
+  gridMaterial.opacity = isDark ? 0.14 : 0.09;
   gridMaterial.needsUpdate = true;
 
   // Hạt bụi ánh sáng lơ lửng
-  particleMaterial.opacity = isDark ? 0.56 : 0.42;
-  particleMaterial.size = isDark ? 0.40 : 0.36;
+  particleMaterial.opacity = isDark ? 0.52 : 0.36;
+  particleMaterial.size = isDark ? 0.40 : 0.34;
   particleMaterial.needsUpdate = true;
 
-  // Cập nhật sắc độ đỉnh hạt theo nền Sáng / Tối
+  // Cập nhật sắc độ hạt khớp 3 quầng màu: xanh dương, ngọc cyan, chàm indigo
   if (particlesPoints && particlesPoints.geometry) {
     const colorAttr = particlesPoints.geometry.getAttribute('color');
     if (colorAttr) {
-      const primaryColor = new THREE.Color(isDark ? 0x60a5fa : 0x2563eb);
-      const accentColor = new THREE.Color(isDark ? 0x34d399 : 0x059669);
-      const indigoColor = new THREE.Color(isDark ? 0x818cf8 : 0x4f46e5);
+      const primaryColor = new THREE.Color(isDark ? 0x3b82f6 : 0x2563eb);
+      const cyanColor = new THREE.Color(isDark ? 0x22d3ee : 0x0891b2);
+      const indigoColor = new THREE.Color(isDark ? 0x818cf8 : 0x6366f1);
 
       for (let i = 0; i < PARTICLE_COUNT; i++) {
         const mod = i % 3;
-        const c = mod === 0 ? primaryColor : mod === 1 ? accentColor : indigoColor;
+        const c = mod === 0 ? primaryColor : mod === 1 ? cyanColor : indigoColor;
         colorAttr.setXYZ(i, c.r, c.g, c.b);
       }
       colorAttr.needsUpdate = true;
@@ -186,7 +186,7 @@ async function ensureSceneCreated() {
     depthWrite: false,
   });
 
-  gridMesh = new THREE.Mesh(planeGeo, gridMeshMaterialOrFallback(gridMaterial));
+  gridMesh = new THREE.Mesh(planeGeo, gridMaterial);
   gridMesh.rotation.x = -Math.PI * 0.44;
   gridMesh.position.set(0, -3.25, -3.5);
   scene.add(gridMesh);
@@ -198,7 +198,6 @@ async function ensureSceneCreated() {
   particleSeeds = new Float32Array(PARTICLE_COUNT * 4);
 
   for (let i = 0; i < PARTICLE_COUNT; i++) {
-    // Khởi tạo tất định giả ngẫu nhiên mượt để không nhấp nháy
     const s1 = Math.sin(i * 12.9898 + 1.23) * 43758.5453;
     const s2 = Math.sin(i * 78.233 + 4.56) * 24634.6345;
     const s3 = Math.sin(i * 39.425 + 7.89) * 19543.2198;
@@ -217,7 +216,7 @@ async function ensureSceneCreated() {
     particleSeeds[i * 4] = bx;
     particleSeeds[i * 4 + 1] = by;
     particleSeeds[i * 4 + 2] = bz;
-    particleSeeds[i * 4 + 3] = 0.25 + rx * 0.45; // tốc độ trôi riêng
+    particleSeeds[i * 4 + 3] = 0.25 + rx * 0.45;
   }
 
   particleGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
@@ -229,7 +228,7 @@ async function ensureSceneCreated() {
     map: dotTexture,
     vertexColors: true,
     transparent: true,
-    opacity: 0.42,
+    opacity: 0.40,
     depthWrite: false,
     depthTest: false,
     sizeAttenuation: true,
@@ -238,7 +237,6 @@ async function ensureSceneCreated() {
   particlesPoints = new THREE.Points(particleGeo, particleMaterial);
   scene.add(particlesPoints);
 
-  // Xử lý an toàn khi mất ngữ cảnh WebGL
   canvasEl.addEventListener(
     'webglcontextlost',
     (e) => {
@@ -263,10 +261,6 @@ async function ensureSceneCreated() {
   return true;
 }
 
-function gridMeshMaterialOrFallback(mat) {
-  return mat;
-}
-
 function renderFrame(nowMs) {
   if (!isMotionAllowed() || !isTabVisible() || !renderer || !scene || !camera) {
     rafId = 0;
@@ -276,12 +270,10 @@ function renderFrame(nowMs) {
 
   rafId = window.requestAnimationFrame(renderFrame);
 
-  // Giới hạn delta <= 50ms để khi vừa mở lại tab không bị nhảy giật khung hình
   const deltaSec = lastFrameMs > 0 ? Math.min((nowMs - lastFrameMs) * 0.001, 0.05) : 0.016;
   lastFrameMs = nowMs;
   elapsedSec += deltaSec;
 
-  // 1. Cập nhật sóng sin rất chậm trên lưới 3D
   if (gridMesh && gridBaseXY) {
     const posAttr = gridMesh.geometry.getAttribute('position');
     const count = posAttr.count;
@@ -298,7 +290,6 @@ function renderFrame(nowMs) {
     posAttr.needsUpdate = true;
   }
 
-  // 2. Cập nhật chuyển động trôi rất chậm của 70 hạt ánh sáng
   if (particlesPoints && particleSeeds) {
     const pAttr = particlesPoints.geometry.getAttribute('position');
     const t = elapsedSec;
@@ -316,7 +307,6 @@ function renderFrame(nowMs) {
     pAttr.needsUpdate = true;
   }
 
-  // 3. Nhịp trôi máy quay cực chậm tạo chiều sâu tự nhiên (không phụ thuộc con trỏ chuột)
   camera.position.x = Math.sin(elapsedSec * 0.16) * 0.28;
   camera.position.y = 3.6 + Math.cos(elapsedSec * 0.12) * 0.12;
   camera.lookAt(0, -1.1, 0);
@@ -361,7 +351,6 @@ async function syncSceneRunState() {
 
   if (isMotionAllowed() && isTabVisible()) {
     const ok = await ensureSceneCreated();
-    // Kiểm tra lại sau bước await đề phòng người dùng vừa tắt công tắc hoặc ẩn tab
     if (ok && isMotionAllowed() && isTabVisible()) {
       updateRendererSize();
       startRenderLoop();
@@ -372,7 +361,7 @@ async function syncSceneRunState() {
 }
 
 /**
- * Khởi tạo nền hạt & lưới sóng 3D mờ phía sau nội dung (Đợt A.1)
+ * Khởi tạo nền hạt & lưới sóng 3D mờ phía sau nội dung
  */
 export function initBgScene() {
   syncSceneRunState();

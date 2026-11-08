@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Base CSS - Phông chữ, Khởi tạo & Bố cục chung
+   Base CSS - Phông chữ, Khởi tạo, Khung bố cục & Khoá cuộn ngang v2
    ========================================================================== */
 
 /* Nhúng phông chữ Be Vietnam Pro 100% Offline */
@@ -51,8 +51,8 @@ html, body {
   overflow: hidden;
   overflow-x: hidden !important;
   overscroll-behavior-x: none !important;
-  font-family: 'Be Vietnam Pro', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-  font-size: 14px;
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
   line-height: 1.5;
   background-color: var(--color-bg-canvas);
   color: var(--color-text-primary);
@@ -62,9 +62,39 @@ html, body {
   transform: none !important;
 }
 
-/* Tabular numbers cho số liệu */
+/* Focus ring rõ ràng khi điều hướng bàn phím */
+:where(button, a, input, select, textarea, [tabindex]):focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* Thanh cuộn tinh gọn đồng bộ Sáng / Tối */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--scrollbar-thumb);
+  border-radius: var(--radius-full);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--scrollbar-thumb-hover);
+}
+
+/* Tabular numbers monospace cho số liệu, mã thiết bị, đồng hồ */
 .tabular-nums, code, pre, .mono {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
 }
 
@@ -101,9 +131,9 @@ button {
 
 /* Sidebar bên trái - Cố định tuyệt đối, không dịch chuyển */
 #sidebar {
-  width: 250px;
-  min-width: 250px;
-  max-width: 250px;
+  width: var(--sidebar-width);
+  min-width: var(--sidebar-width);
+  max-width: var(--sidebar-width);
   height: 100vh;
   flex-shrink: 0;
   background-color: var(--color-bg-surface);
@@ -131,7 +161,7 @@ button {
 
 /* Thanh đỉnh (Top Bar) */
 #topbar {
-  height: 64px;
+  min-height: var(--topbar-height);
   width: 100%;
   max-width: 100%;
   background-color: var(--color-bg-surface);
@@ -139,7 +169,8 @@ button {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 24px;
+  gap: var(--space-3);
+  padding: 10px 24px;
   flex-shrink: 0;
   z-index: 10;
   overflow-x: hidden !important;
@@ -158,6 +189,28 @@ button {
   padding: 24px;
   background-color: var(--color-bg-canvas);
   transform: none !important;
+}
+
+/* Responsive khung sườn tại 1024px */
+@media (max-width: 1120px) {
+  :root {
+    --sidebar-width: 228px;
+  }
+
+  #topbar {
+    padding: 8px 16px;
+  }
+
+  #page-container {
+    padding: 18px;
+  }
+}
+
+@media (max-width: 980px) {
+  #topbar {
+    flex-wrap: wrap;
+    row-gap: var(--space-2);
+  }
 }
 
 /* Tôn trọng người dùng tắt hiệu ứng */

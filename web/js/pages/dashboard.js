@@ -1,7 +1,8 @@
 /**
- * dashboard.js - Màn hình 1: Tổng quan (Dashboard)
- * Kết nối API thật: GET /api/stats?within=6&top=5
- * Tích hợp hệ thống animation 60fps (stagger, count-up, diff floating delta, pulse, bar fill)
+ * dashboard.js - Màn hình 1: Tổng quan Bento (Dashboard v2)
+ * Kết nối API thật: GET /api/stats?within=25&top=5
+ * Tích hợp Bento Grid 4->2->1 cột, SVG vòng đếm 24h, 4 KPI (count-up + delta +N/-N,
+ * pulse đỏ 2 lần khi tăng quá hạn/phạt), Top 5 mượn nhiều và Hàng đợi giữ chỗ nổi bật.
  */
 
 import { api } from '../api.js';
@@ -10,6 +11,9 @@ import { animateCountUp, triggerRedPulse } from '../ui/motion.js';
 import { isHeroCollapsed, mountLabHero3D } from '../ui/lab-hero-3d.js';
 import { showToast } from '../ui/toast.js';
 import { navigateTo } from '../router.js';
+
+const RING_RADIUS = 48;
+const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
 
 let currentContainer = null;
 let lastStatsData = null;
@@ -21,52 +25,62 @@ function formatVND(amount) {
 }
 
 function escapeHtml(str) {
-  return String(str || '').replace(/[&<>"']/g, c => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'
+  return String(str || '').replace(/[&<>"']/g, (c) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
   }[c]));
 }
 
 /**
- * Hiển thị khung chờ Skeleton
+ * Hiển thị khung chờ Bento Skeleton (tránh layout shift khi dữ liệu về)
  */
 function renderSkeleton(container) {
+  const heroCollapsed = isHeroCollapsed();
   container.innerHTML = `
     <div class="page">
       <div class="page-header">
         <div>
           <h1 class="page-title"><i data-lucide="layout-dashboard"></i> Tổng quan phòng Lab</h1>
-          <div class="page-desc">Thống kê hoạt động, tình trạng kho thiết bị và người chờ nhận theo thời gian thực.</div>
+          <div class="page-desc">Thống kê hoạt động, tình trạng kho thiết bị và hàng đợi giữ chỗ theo thời gian thực.</div>
         </div>
         <div class="page-actions">
-          <button class="btn btn-secondary btn-sm" disabled><i data-lucide="refresh-cw" class="spin-loading"></i> Đang tải…</button>
+          <button type="button" class="btn btn-secondary btn-sm" disabled>
+            <i data-lucide="refresh-cw" class="spin-loading"></i> Đang tải…
+          </button>
         </div>
       </div>
 
-      <!-- 4 Thẻ Skeleton -->
-      <div class="grid-cols-4">
-        <div class="metric-card skeleton-card skeleton"></div>
-        <div class="metric-card skeleton-card skeleton"></div>
-        <div class="metric-card skeleton-card skeleton"></div>
-        <div class="metric-card skeleton-card skeleton"></div>
-      </div>
+      <div class="bento-grid ${heroCollapsed ? 'is-hero-collapsed' : ''}" aria-busy="true" aria-label="Đang tải dữ liệu Tổng quan">
+        <div class="bento-span-3 skeleton bento-skeleton-hero ${heroCollapsed ? 'is-collapsed' : ''}"></div>
+        <div class="bento-span-1 skeleton bento-skeleton-ring"></div>
 
-      <!-- 2 Khối biểu đồ Skeleton -->
-      <div class="grid-cols-2">
-        <div class="card">
-          <div class="card-header"><div class="card-title"><div class="skeleton" style="width: 160px; height: 18px;"></div></div></div>
+        <div class="bento-span-1 skeleton skeleton-card"></div>
+        <div class="bento-span-1 skeleton skeleton-card"></div>
+        <div class="bento-span-1 skeleton skeleton-card"></div>
+        <div class="bento-span-1 skeleton skeleton-card"></div>
+
+        <div class="bento-card bento-span-2">
+          <div class="card-header">
+            <div class="card-title"><div class="skeleton bento-skeleton-wide-title"></div></div>
+          </div>
           <div class="card-body">
-            <div class="skeleton" style="width: 100%; height: 28px; margin-bottom: 12px;"></div>
-            <div class="skeleton" style="width: 85%; height: 28px; margin-bottom: 12px;"></div>
-            <div class="skeleton" style="width: 70%; height: 28px; margin-bottom: 12px;"></div>
-            <div class="skeleton" style="width: 50%; height: 28px;"></div>
+            <div class="skeleton bento-skeleton-bar"></div>
+            <div class="skeleton bento-skeleton-bar is-w85"></div>
+            <div class="skeleton bento-skeleton-bar is-w70"></div>
+            <div class="skeleton bento-skeleton-bar is-w55"></div>
           </div>
         </div>
 
-        <div class="card">
-          <div class="card-header"><div class="card-title"><div class="skeleton" style="width: 180px; height: 18px;"></div></div></div>
+        <div class="bento-card bento-span-2">
+          <div class="card-header">
+            <div class="card-title"><div class="skeleton bento-skeleton-wide-title"></div></div>
+          </div>
           <div class="card-body">
-            <div class="skeleton" style="width: 100%; height: 60px; margin-bottom: 12px;"></div>
-            <div class="skeleton" style="width: 100%; height: 60px;"></div>
+            <div class="skeleton bento-skeleton-row"></div>
+            <div class="skeleton bento-skeleton-row"></div>
           </div>
         </div>
       </div>
@@ -76,7 +90,7 @@ function renderSkeleton(container) {
 }
 
 /**
- * Hiển thị trạng thái lỗi
+ * Hiển thị trạng thái lỗi kết nối
  */
 function renderError(container, errorMsg) {
   container.innerHTML = `
@@ -88,13 +102,13 @@ function renderError(container, errorMsg) {
         </div>
       </div>
 
-      <div class="card">
+      <div class="bento-card">
         <div class="card-body">
           <div class="error-state">
-            <i data-lucide="alert-octagon" class="error-state-icon"></i>
+            <i data-lucide="wifi-off" class="error-state-icon"></i>
             <div class="error-state-title">Không thể tải dữ liệu Tổng quan</div>
             <div class="error-state-desc">${escapeHtml(errorMsg)}</div>
-            <button id="btn-dashboard-retry" class="btn btn-primary btn-sm">
+            <button id="btn-dashboard-retry" type="button" class="btn btn-primary btn-sm">
               <i data-lucide="rotate-cw"></i> Thử lại
             </button>
           </div>
@@ -112,6 +126,102 @@ function renderError(container, errorMsg) {
 }
 
 /**
+ * Chuẩn bị dữ liệu cho Thẻ Bento Vòng đếm ngược Hàng đợi 24h
+ */
+function buildQueueRingState(data, expiringList) {
+  const holdingPeople = Number(data.holdingPeople) || 0;
+  const waitingPeople = Number(data.waitingPeople) || 0;
+  const leadHold = expiringList.length > 0 ? expiringList[0] : null;
+
+  if (leadHold) {
+    const hoursLeft = Math.max(0, Number(leadHold.hoursLeft) || 0);
+    const isUrgent = hoursLeft <= 6;
+    const ratio = Math.max(0, Math.min(1, hoursLeft / 24));
+    const dashOffset = (RING_CIRCUMFERENCE * (1 - ratio)).toFixed(2);
+    return {
+      leadHold,
+      glow: isUrgent ? 'maintenance' : 'onhold',
+      pillClass: isUrgent ? 'is-danger' : 'is-onhold',
+      pillIcon: isUrgent ? 'alert-triangle' : 'clock',
+      pillText: isUrgent ? 'Sắp hết' : 'Đang giữ',
+      ringClass: isUrgent ? 'is-urgent' : '',
+      valueClass: isUrgent ? 'is-urgent' : '',
+      centerValue: `${hoursLeft}h`,
+      centerUnit: '/ 24h',
+      dashOffset,
+      deviceLine: `${leadHold.deviceId} · ${leadHold.deviceName}`,
+      studentLine: `${leadHold.studentName} (${leadHold.studentId})`,
+      countsHtml: `Đang giữ: <strong>${holdingPeople}</strong> · Đang chờ: <strong>${waitingPeople}</strong>`,
+      ctaHref: `#/reservations?id=${encodeURIComponent(leadHold.deviceId)}`,
+      ctaText: 'Xử lý nhận ngay',
+      ariaLabel: `Vòng đếm ngược 24 giờ cho ${leadHold.deviceName}, còn ${hoursLeft} giờ`,
+    };
+  }
+
+  if (holdingPeople > 0) {
+    return {
+      leadHold: null,
+      glow: 'onhold',
+      pillClass: 'is-onhold',
+      pillIcon: 'clock',
+      pillText: 'Đang giữ',
+      ringClass: '',
+      valueClass: '',
+      centerValue: `${holdingPeople}`,
+      centerUnit: 'đang giữ',
+      dashOffset: '0',
+      deviceLine: 'Đang có lượt giữ chỗ 24h',
+      studentLine: `${waitingPeople} sinh viên trong hàng đợi`,
+      countsHtml: `Đang giữ: <strong>${holdingPeople}</strong> · Đang chờ: <strong>${waitingPeople}</strong>`,
+      ctaHref: '#/reservations',
+      ctaText: 'Xem hàng đợi',
+      ariaLabel: `Đang giữ chỗ 24 giờ cho ${holdingPeople} sinh viên`,
+    };
+  }
+
+  if (waitingPeople > 0) {
+    const dashOffset = (RING_CIRCUMFERENCE * 0.72).toFixed(2);
+    return {
+      leadHold: null,
+      glow: 'borrowed',
+      pillClass: 'is-borrowed',
+      pillIcon: 'users',
+      pillText: 'Xếp hàng',
+      ringClass: 'is-waiting',
+      valueClass: '',
+      centerValue: `${waitingPeople}`,
+      centerUnit: 'người chờ',
+      dashOffset,
+      deviceLine: 'Chưa có lượt giữ 24h',
+      studentLine: 'Đang chờ thiết bị được trả về kho',
+      countsHtml: `Đang giữ: <strong>0</strong> · Đang chờ: <strong>${waitingPeople}</strong>`,
+      ctaHref: '#/reservations',
+      ctaText: 'Xem hàng đợi',
+      ariaLabel: `Có ${waitingPeople} sinh viên đang xếp hàng chờ thiết bị`,
+    };
+  }
+
+  return {
+    leadHold: null,
+    glow: 'available',
+    pillClass: 'is-available',
+    pillIcon: 'check-circle-2',
+    pillText: 'Trống',
+    ringClass: 'is-idle',
+    valueClass: '',
+    centerValue: '0h',
+    centerUnit: '/ 24h',
+    dashOffset: RING_CIRCUMFERENCE.toFixed(2),
+    deviceLine: 'Không có lượt giữ 24h',
+    studentLine: 'Hàng đợi đặt trước hiện đang trống',
+    countsHtml: 'Đang giữ: <strong>0</strong> · Đang chờ: <strong>0</strong>',
+    ctaHref: '#/reservations',
+    ctaText: 'Mở hàng đợi',
+    ariaLabel: 'Hàng đợi đặt trước hiện đang trống',
+  };
+}
+
+/**
  * Tải dữ liệu từ API và hiển thị
  */
 async function loadAndRender(container, isManualRefresh = false) {
@@ -120,7 +230,7 @@ async function loadAndRender(container, isManualRefresh = false) {
   }
 
   try {
-    const data = await api.get('/stats?within=6&top=5');
+    const data = await api.get('/stats?within=25&top=5');
     renderContent(container, data, isManualRefresh);
   } catch (err) {
     renderError(container, err.message || 'Lỗi kết nối tới máy chủ');
@@ -128,29 +238,52 @@ async function loadAndRender(container, isManualRefresh = false) {
 }
 
 /**
- * Hiển thị dữ liệu hoàn chỉnh với Animation
+ * Hiển thị dữ liệu hoàn chỉnh dạng Bento Grid với Animation
  */
 function renderContent(container, data, isUpdating = false) {
   const prevData = lastStatsData;
   lastStatsData = data;
 
-  const totalUnits = data.totalUnits || 0;
-  const borrowedUnits = data.borrowed || 0;
+  const totalUnits = Number(data.totalUnits) || 0;
+  const availableUnits = Number(data.available) || 0;
+  const borrowedUnits = Number(data.borrowed) || 0;
+  const onHoldUnits = Number(data.onHold) || 0;
+  const maintenanceUnits = Number(data.maintenance) || 0;
+  const openRecords = Number(data.openRecords) || 0;
+  const overdueRecords = Number(data.overdueRecords) || 0;
+  const pendingFines = Number(data.pendingFines) || 0;
+  const waitingPeople = Number(data.waitingPeople) || 0;
+  const holdingPeople = Number(data.holdingPeople) || 0;
+
   const borrowPercent = totalUnits > 0 ? Math.round((borrowedUnits / totalUnits) * 100) : 0;
+  const denom = Math.max(totalUnits, 1);
+  const pctAvail = ((availableUnits / denom) * 100).toFixed(2);
+  const pctBorrow = ((borrowedUnits / denom) * 100).toFixed(2);
+  const pctHold = ((onHoldUnits / denom) * 100).toFixed(2);
+  const pctMaint = ((maintenanceUnits / denom) * 100).toFixed(2);
+
   const topList = Array.isArray(data.topBorrowed) ? data.topBorrowed : [];
-  const maxTimes = topList.length > 0 ? Math.max(...topList.map(t => t.timesBorrowed), 1) : 1;
-  const expiringList = Array.isArray(data.expiringHolds) ? data.expiringHolds : [];
+  const maxTimes = topList.length > 0 ? Math.max(...topList.map((t) => Number(t.timesBorrowed) || 0), 1) : 1;
+
+  const allHolds = Array.isArray(data.expiringHolds) ? data.expiringHolds : [];
+  const featuredHolds = allHolds.slice(0, 5);
+  const urgentCount = allHolds.filter((h) => (Number(h.hoursLeft) || 0) <= 6).length;
+
+  const ring = buildQueueRingState(data, allHolds);
   const stagger = (idx) => (isUpdating ? '' : `stagger-item stagger-delay-${idx}`);
   const heroCollapsed = isHeroCollapsed();
 
   let heroStatusClass = 'is-healthy';
-  let heroStatusText = `Kho thiết bị ổn định • ${data.available || 0}/${totalUnits} đơn vị sẵn sàng`;
-  if ((data.overdueRecords || 0) > 0) {
+  let heroStatusIcon = 'check-circle-2';
+  let heroStatusText = `Kho thiết bị ổn định · ${availableUnits}/${totalUnits} đơn vị sẵn sàng`;
+  if (overdueRecords > 0) {
     heroStatusClass = 'is-overdue';
-    heroStatusText = `Cần chú ý: ${data.overdueRecords} phiếu đang quá hạn`;
-  } else if ((data.holdingPeople || 0) > 0) {
+    heroStatusIcon = 'alert-triangle';
+    heroStatusText = `Cần chú ý: ${overdueRecords} phiếu đang quá hạn`;
+  } else if (holdingPeople > 0) {
     heroStatusClass = 'is-holding';
-    heroStatusText = `Đang giữ hàng 24h cho ${data.holdingPeople} sinh viên`;
+    heroStatusIcon = 'clock';
+    heroStatusText = `Đang giữ hàng 24h cho ${holdingPeople} sinh viên`;
   }
 
   container.innerHTML = `
@@ -161,147 +294,266 @@ function renderContent(container, data, isUpdating = false) {
           <h1 class="page-title">
             <i data-lucide="layout-dashboard"></i> Tổng quan phòng Lab
           </h1>
-          <div class="page-desc">Thống kê hoạt động, tình trạng kho thiết bị và người chờ nhận theo thời gian thực.</div>
+          <div class="page-desc">Thống kê hoạt động, tình trạng kho thiết bị và hàng đợi giữ chỗ theo thời gian thực.</div>
         </div>
         <div class="page-actions">
-          <button id="btn-dashboard-refresh" class="btn btn-secondary btn-sm" title="Làm mới số liệu">
+          <button id="btn-dashboard-refresh" type="button" class="btn btn-secondary btn-sm" title="Làm mới số liệu Tổng quan">
             <i data-lucide="refresh-cw"></i> Làm mới
           </button>
         </div>
       </div>
 
-      <!-- Khối giới thiệu đầu trang: Mô hình 3D Board STM32F103 "Blue Pill" (Đợt B.1, có thể thu gọn; tắt 3D hiện SVG tĩnh) -->
-      <section
-        id="dashboard-hero-3d"
-        class="dashboard-hero-3d ${heroCollapsed ? 'is-collapsed' : ''} ${isUpdating ? '' : 'stagger-item stagger-delay-1'}"
-        aria-label="Không gian thực hành công nghệ Lab HCMUS"
-      >
-        <div class="dashboard-hero-main">
-          <div class="dashboard-hero-copy">
-            <div class="dashboard-hero-topline">
+      <!-- Lưới Bento 4 -> 2 -> 1 cột -->
+      <div class="bento-grid ${heroCollapsed ? 'is-hero-collapsed' : ''}">
+        <!-- Hàng 1 · Cột 1–3 (hoặc cả hàng ~64px khi thu gọn): Thẻ giới thiệu + STM32 Blue Pill 3D -->
+        <section
+          id="dashboard-hero-3d"
+          class="dashboard-hero-3d bento-span-3 ${heroCollapsed ? 'is-collapsed' : ''} ${stagger(1)}"
+          aria-label="Không gian thực hành công nghệ Lab HCMUS"
+        >
+          <div class="dashboard-hero-header-row">
+            <div class="dashboard-hero-header-left">
               <span class="hero-status-pill ${heroStatusClass}">
-                <span class="hero-status-dot"></span>
+                <i data-lucide="${heroStatusIcon}" class="hero-status-icon"></i>
                 <span>${escapeHtml(heroStatusText)}</span>
               </span>
+              <span class="hero-collapsed-title">Phòng Lab Thực hành Nhúng &amp; Công nghệ — HCMUS</span>
             </div>
-            <div class="dashboard-hero-title">Phòng Lab Thực hành Nhúng & Công nghệ — HCMUS</div>
-            <div class="dashboard-hero-desc">
-              Quản lý danh mục thiết bị bằng <strong>Doubly Linked List</strong>, hàng đợi giữ chỗ 24h bằng <strong>Reservation Queue</strong> và gợi ý linh kiện mượn kèm thông minh qua <strong>Graph</strong>.
-            </div>
-            <div class="dashboard-hero-actions">
-              <a href="#/borrow" class="btn btn-primary btn-sm">
-                <i data-lucide="file-plus-2" style="width: 14px; height: 14px;"></i>
-                <span>Lập phiếu mượn</span>
-              </a>
-              <a href="#/graph" class="btn btn-outline btn-sm">
-                <i data-lucide="network" style="width: 14px; height: 14px;"></i>
-                <span>Đồ thị mượn kèm</span>
-              </a>
-            </div>
+
+            <button
+              id="btn-toggle-hero-3d"
+              type="button"
+              class="hero-collapse-btn"
+              aria-expanded="${heroCollapsed ? 'false' : 'true'}"
+              title="Thu gọn hoặc mở rộng thẻ giới thiệu phòng Lab"
+            >
+              <span class="hero-collapse-label">${heroCollapsed ? 'Mở giới thiệu' : 'Thu gọn'}</span>
+              <svg class="hero-collapse-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <polyline points="18 15 12 9 6 15"></polyline>
+              </svg>
+            </button>
           </div>
 
-          <div class="dashboard-hero-stage-wrap">
-            <div id="lab-hero-stage" class="lab-hero-stage" title="Board phát triển STM32F103 Blue Pill — Rê chuột để xoay nghiêng nhẹ & phát sáng mạch">
-              <img
-                src="assets/stm32-bluepill.svg"
-                alt="Minh hoạ tĩnh board phát triển STM32F103 Blue Pill"
-                class="lab-hero-static-svg"
-                width="300"
-                height="136"
-              >
+          <div class="dashboard-hero-collapsible" aria-hidden="${heroCollapsed ? 'true' : 'false'}">
+            <div class="dashboard-hero-collapsible-inner">
+              <div class="dashboard-hero-main">
+                <div class="dashboard-hero-copy">
+                  <h2 class="dashboard-hero-title">Phòng Lab Thực hành Nhúng &amp; Công nghệ — HCMUS</h2>
+                  <div class="dashboard-hero-desc">
+                    Quản lý danh mục thiết bị bằng <strong>Doubly Linked List</strong>, hàng đợi giữ chỗ 24h bằng <strong>Reservation Queue</strong> và gợi ý linh kiện mượn kèm qua <strong>Graph</strong>.
+                  </div>
+                  <div class="dashboard-hero-actions">
+                    <a href="#/borrow" class="btn btn-primary btn-sm">
+                      <i data-lucide="file-plus-2" class="hero-action-icon"></i>
+                      <span>Lập phiếu mượn</span>
+                    </a>
+                    <a href="#/devices" class="btn btn-secondary btn-sm">
+                      <i data-lucide="cpu" class="hero-action-icon"></i>
+                      <span>Danh mục thiết bị</span>
+                    </a>
+                    <a href="#/graph" class="btn btn-outline btn-sm">
+                      <i data-lucide="network" class="hero-action-icon"></i>
+                      <span>Đồ thị mượn kèm</span>
+                    </a>
+                  </div>
+                </div>
+
+                <div class="dashboard-hero-stage-wrap">
+                  <div id="lab-hero-stage" class="lab-hero-stage" title="Board phát triển STM32F103 Blue Pill — Rê chuột để xoay nghiêng nhẹ &amp; phát sáng mạch">
+                    <img
+                      src="assets/stm32-bluepill.svg"
+                      alt="Minh hoạ tĩnh board phát triển STM32F103 Blue Pill"
+                      class="lab-hero-static-svg"
+                      width="300"
+                      height="132"
+                    >
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
+        </section>
 
-        <button
-          id="btn-toggle-hero-3d"
-          type="button"
-          class="hero-collapse-btn"
-          aria-expanded="${heroCollapsed ? 'false' : 'true'}"
-          title="Thu gọn hoặc mở rộng thẻ giới thiệu phòng Lab"
+        <!-- Hàng 1 · Cột 4: Thẻ Hàng đợi có Vòng đếm ngược 24h -->
+        <section
+          class="bento-card bento-span-1 bento-queue-ring-card ${stagger(2)}"
+          data-glow="${ring.glow}"
+          aria-label="${escapeHtml(ring.ariaLabel)}"
         >
-          <span class="hero-collapse-label">${heroCollapsed ? 'Mở giới thiệu' : 'Thu gọn'}</span>
-          <svg class="hero-collapse-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <polyline points="18 15 12 9 6 15"></polyline>
-          </svg>
-        </button>
-      </section>
-
-      <!-- 4 Thẻ Số liệu Thống kê (Xuất hiện lần lượt - Stagger 60ms) -->
-      <div class="grid-cols-4">
-        <!-- Thẻ 1: Tổng thiết bị -->
-        <div class="metric-card ${stagger(1)}" data-glow="onhold">
-          <div class="metric-info">
-            <span class="metric-label">Tổng thiết bị</span>
-            <div class="metric-value-wrapper">
-              <span id="metric-device-count" class="metric-value tabular-nums">${data.deviceCount || 0}</span>
-              <span style="font-size: 15px; font-weight: 500; color: var(--color-text-secondary); margin-left: 4px;">mã</span>
-            </div>
-            <span class="metric-sub">${totalUnits} đơn vị (${data.available || 0} sẵn sàng, ${data.maintenance || 0} bảo trì)</span>
-          </div>
-          <div class="metric-icon-box metric-icon-primary">
-            <i data-lucide="cpu"></i>
-          </div>
-        </div>
-
-        <!-- Thẻ 2: Đang mượn -->
-        <div class="metric-card ${stagger(2)}" data-glow="borrowed">
-          <div class="metric-info">
-            <span class="metric-label">Đang mượn</span>
-            <div class="metric-value-wrapper">
-              <span id="metric-borrowed-count" class="metric-value tabular-nums">${borrowedUnits}</span>
-              <span style="font-size: 15px; font-weight: 500; color: var(--color-text-secondary); margin-left: 4px;">món</span>
-            </div>
-            <span class="metric-sub">Tỷ lệ sử dụng kho: <strong>${borrowPercent}%</strong></span>
-          </div>
-          <div class="metric-icon-box metric-icon-warning">
-            <i data-lucide="package-open"></i>
-          </div>
-        </div>
-
-        <!-- Thẻ 3: Phiếu quá hạn (Có viền đỏ Pulse nếu tăng số phiếu, bấm mở #/records?status=overdue) -->
-        <div id="card-metric-overdue" class="metric-card metric-card-clickable ${data.overdueRecords > 0 ? 'is-overdue-active' : ''} ${stagger(3)}" data-glow="${data.overdueRecords > 0 ? 'maintenance' : 'available'}" role="link" tabindex="0" title="Bấm để xem danh sách các phiếu mượn quá hạn">
-          <div class="metric-info">
-            <span class="metric-label" style="display: inline-flex; align-items: center; gap: 4px;">
-              <span>Phiếu quá hạn</span>
-              <i data-lucide="arrow-up-right" style="width: 13px; height: 13px; opacity: 0.7;"></i>
+          <div class="bento-ring-header">
+            <span class="bento-ring-title">
+              <i data-lucide="hourglass" class="bento-ring-title-icon"></i>
+              <span>Giữ hàng 24h</span>
             </span>
-            <div class="metric-value-wrapper">
-              <span id="metric-overdue-count" class="metric-value tabular-nums" style="color: ${data.overdueRecords > 0 ? 'var(--color-danger)' : 'inherit'};">
-                ${data.overdueRecords || 0}
+            <span class="bento-status-pill ${ring.pillClass}">
+              <i data-lucide="${ring.pillIcon}" class="bento-status-pill-icon"></i>
+              <span>${escapeHtml(ring.pillText)}</span>
+            </span>
+          </div>
+
+          <div class="bento-ring-body">
+            <div class="ring-countdown-wrap">
+              <svg class="ring-svg" viewBox="0 0 120 120" width="106" height="106" aria-hidden="true">
+                <circle class="ring-track" cx="60" cy="60" r="${RING_RADIUS}"></circle>
+                <circle
+                  class="ring-progress ${ring.ringClass}"
+                  cx="60"
+                  cy="60"
+                  r="${RING_RADIUS}"
+                  stroke-dasharray="${RING_CIRCUMFERENCE.toFixed(2)}"
+                  stroke-dashoffset="${ring.dashOffset}"
+                ></circle>
+              </svg>
+              <div class="ring-center">
+                <span class="ring-value tabular-nums ${ring.valueClass}">${escapeHtml(ring.centerValue)}</span>
+                <span class="ring-unit">${escapeHtml(ring.centerUnit)}</span>
+              </div>
+            </div>
+
+            <div class="bento-ring-meta">
+              <div class="bento-ring-device" title="${escapeHtml(ring.deviceLine)}">${escapeHtml(ring.deviceLine)}</div>
+              <div class="bento-ring-student" title="${escapeHtml(ring.studentLine)}">${escapeHtml(ring.studentLine)}</div>
+              <div class="bento-ring-counts tabular-nums">${ring.countsHtml}</div>
+            </div>
+          </div>
+
+          <a href="${ring.ctaHref}" class="btn btn-secondary btn-sm bento-ring-cta">
+            <span>${escapeHtml(ring.ctaText)}</span>
+            <i data-lucide="arrow-right" class="hero-action-icon"></i>
+          </a>
+        </section>
+
+        <!-- Hàng 2: 4 Thẻ Số liệu KPI (Mỗi thẻ 1 cột) -->
+        <!-- KPI 1: Tổng thiết bị & thanh tỷ lệ kho 4 màu -->
+        <div class="metric-card bento-kpi-card ${stagger(2)}" data-glow="available">
+          <div class="metric-top">
+            <div class="metric-info">
+              <span class="metric-label">Tổng thiết bị</span>
+              <div class="metric-value-wrapper">
+                <span id="metric-device-count" class="metric-value tabular-nums">${data.deviceCount || 0}</span>
+                <span class="metric-unit">mã</span>
+              </div>
+            </div>
+            <div class="metric-icon-box metric-icon-primary">
+              <i data-lucide="cpu"></i>
+            </div>
+          </div>
+          <div class="metric-footer">
+            <span class="metric-sub tabular-nums">
+              <strong>${totalUnits}</strong> đơn vị · <strong>${availableUnits}</strong> sẵn sàng · <strong>${maintenanceUnits}</strong> bảo trì
+            </span>
+            <div
+              class="progress-bar-multi"
+              role="img"
+              aria-label="Phân bổ kho: ${availableUnits} sẵn sàng, ${borrowedUnits} đang mượn, ${onHoldUnits} đang giữ 24h, ${maintenanceUnits} bảo trì"
+              title="Sẵn sàng: ${availableUnits} | Đang mượn: ${borrowedUnits} | Đang giữ: ${onHoldUnits} | Bảo trì: ${maintenanceUnits}"
+            >
+              <div class="progress-segment segment-available" style="width: ${pctAvail}%;"></div>
+              <div class="progress-segment segment-borrowed" style="width: ${pctBorrow}%;"></div>
+              <div class="progress-segment segment-onhold" style="width: ${pctHold}%;"></div>
+              <div class="progress-segment segment-maintenance" style="width: ${pctMaint}%;"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- KPI 2: Đang mượn -->
+        <div class="metric-card bento-kpi-card ${stagger(3)}" data-glow="borrowed">
+          <div class="metric-top">
+            <div class="metric-info">
+              <span class="metric-label">Đang mượn</span>
+              <div class="metric-value-wrapper">
+                <span id="metric-borrowed-count" class="metric-value tabular-nums">${borrowedUnits}</span>
+                <span class="metric-unit">món</span>
+              </div>
+            </div>
+            <div class="metric-icon-box metric-icon-warning">
+              <i data-lucide="package-open"></i>
+            </div>
+          </div>
+          <div class="metric-footer">
+            <span class="metric-sub tabular-nums">
+              Đang mở: <strong id="metric-open-records">${openRecords}</strong> phiếu · Tỷ lệ dùng: <strong>${borrowPercent}%</strong>
+            </span>
+            <div class="metric-mini-bar" aria-hidden="true">
+              <div class="metric-mini-fill-borrowed" style="width: ${borrowPercent}%;"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- KPI 3: Hàng đợi đặt trước -->
+        <div class="metric-card bento-kpi-card ${stagger(4)}" data-glow="${holdingPeople > 0 ? 'onhold' : 'available'}">
+          <div class="metric-top">
+            <div class="metric-info">
+              <span class="metric-label">Hàng đợi đặt trước</span>
+              <div class="metric-value-wrapper">
+                <span id="metric-waiting-count" class="metric-value tabular-nums">${waitingPeople}</span>
+                <span class="metric-unit">người</span>
+              </div>
+            </div>
+            <div class="metric-icon-box metric-icon-accent">
+              <i data-lucide="clock"></i>
+            </div>
+          </div>
+          <div class="metric-footer">
+            <div class="metric-status-row">
+              <span class="metric-sub tabular-nums">
+                <strong>${holdingPeople}</strong> đang giữ 24h · <strong>${onHoldUnits}</strong> đơn vị giữ
               </span>
-              <span style="font-size: 15px; font-weight: 500; color: var(--color-text-secondary); margin-left: 4px;">phiếu</span>
+              <span class="bento-status-pill ${holdingPeople > 0 ? 'is-onhold' : 'is-available'}">
+                <i data-lucide="${holdingPeople > 0 ? 'bell-ring' : 'check-circle-2'}" class="bento-status-pill-icon"></i>
+                <span>${holdingPeople > 0 ? 'Có giữ chỗ' : 'Ổn định'}</span>
+              </span>
             </div>
-            <span class="metric-sub" style="white-space: nowrap;">Phạt tạm tính: <strong id="metric-pending-fines" class="tabular-nums" style="white-space: nowrap;">${formatVND(data.pendingFines)}</strong></span>
-          </div>
-          <div class="metric-icon-box metric-icon-danger">
-            <i data-lucide="alert-triangle"></i>
           </div>
         </div>
 
-        <!-- Thẻ 4: Hàng đợi đặt trước -->
-        <div class="metric-card ${stagger(4)}" data-glow="${(data.holdingPeople || 0) > 0 ? 'onhold' : 'available'}">
-          <div class="metric-info">
-            <span class="metric-label">Hàng đợi đặt trước</span>
-            <div class="metric-value-wrapper">
-              <span id="metric-waiting-count" class="metric-value tabular-nums">${data.waitingPeople || 0}</span>
-              <span style="font-size: 15px; font-weight: 500; color: var(--color-text-secondary); margin-left: 4px;">người</span>
+        <!-- KPI 4: Quá hạn & Phạt (Click mở #/records?status=overdue, Pulse đỏ 2 lần khi tăng) -->
+        <div
+          id="card-metric-overdue"
+          class="metric-card bento-kpi-card metric-card-clickable ${overdueRecords > 0 ? 'is-overdue-active' : ''} ${stagger(5)}"
+          data-glow="${overdueRecords > 0 ? 'maintenance' : 'available'}"
+          role="link"
+          tabindex="0"
+          aria-label="Phiếu quá hạn: ${overdueRecords} phiếu, phạt tạm tính ${formatVND(pendingFines)}. Bấm để xem chi tiết."
+          title="Bấm để xem danh sách các phiếu mượn quá hạn"
+        >
+          <div class="metric-top">
+            <div class="metric-info">
+              <span class="metric-label">
+                <span>Quá hạn &amp; Phạt</span>
+                <i data-lucide="arrow-up-right" class="metric-label-arrow"></i>
+              </span>
+              <div class="metric-value-wrapper">
+                <span id="metric-overdue-count" class="metric-value tabular-nums ${overdueRecords > 0 ? 'is-danger' : ''}">${overdueRecords}</span>
+                <span class="metric-unit">phiếu</span>
+              </div>
             </div>
-            <span class="metric-sub">${data.holdingPeople || 0} người đang được giữ 24h</span>
+            <div class="metric-icon-box ${overdueRecords > 0 ? 'metric-icon-danger' : 'metric-icon-success'}">
+              <i data-lucide="${overdueRecords > 0 ? 'alert-triangle' : 'shield-check'}"></i>
+            </div>
           </div>
-          <div class="metric-icon-box metric-icon-success">
-            <i data-lucide="clock"></i>
+          <div class="metric-footer">
+            <div class="metric-status-row">
+              <span class="metric-sub">
+                Phạt tạm tính:
+                <strong id="metric-pending-fines" class="metric-fine-value tabular-nums ${pendingFines > 0 ? 'is-danger' : ''}">${formatVND(pendingFines)}</strong>
+              </span>
+              <span class="bento-status-pill ${overdueRecords > 0 ? 'is-danger' : 'is-available'}">
+                <i data-lucide="${overdueRecords > 0 ? 'alert-circle' : 'check-circle-2'}" class="bento-status-pill-icon"></i>
+                <span>${overdueRecords > 0 ? 'Đang quá hạn' : 'Đúng hạn'}</span>
+              </span>
+            </div>
           </div>
         </div>
-      </div>
 
-      <!-- Khối chính 2 cột: Biểu đồ Top mượn & Danh sách sắp hết hạn giữ -->
-      <div class="grid-cols-2">
-        <!-- Cột 1: Biểu đồ CSS thuần Top thiết bị mượn nhiều nhất -->
-        <div class="card ${stagger(5)}">
+        <!-- Hàng 3 · Cột 1–2: Bento rộng Top thiết bị mượn nhiều nhất -->
+        <section class="bento-card bento-span-2 ${stagger(6)}" aria-label="Top thiết bị mượn nhiều nhất">
           <div class="card-header">
-            <div class="card-title">
-              <i data-lucide="bar-chart-2"></i> Top thiết bị mượn nhiều nhất
+            <div class="bento-card-title-wrap">
+              <div class="card-title">
+                <i data-lucide="bar-chart-2"></i> Top thiết bị mượn nhiều nhất
+              </div>
+              <div class="bento-card-header-meta">Thống kê 5 thiết bị có lượt mượn cao nhất trong phòng Lab</div>
             </div>
             <a href="#/devices" class="btn btn-outline btn-sm">Xem tất cả</a>
           </div>
@@ -318,15 +570,19 @@ function renderContent(container, data, isUpdating = false) {
                   const borrowCount = Number(item.timesBorrowed) || 0;
                   const percent = Math.round((borrowCount / maxTimes) * 100);
                   const delayMs = isUpdating ? 0 : idx * 70;
-                  const tooltipLeft = `clamp(0px, calc(${percent}% - 26px), calc(100% - 54px))`;
+                  const tooltipLeft = `clamp(0px, calc(${percent}% - 28px), calc(100% - 64px))`;
                   return `
                     <div class="css-bar-item">
                       <div class="css-bar-header">
-                        <span><strong>${escapeHtml(item.name)}</strong> <code style="font-size: 11.5px; color: var(--color-text-muted);">${escapeHtml(item.id)}</code></span>
-                        <span class="top-bar-count tabular-nums font-semibold" data-device-id="${escapeHtml(item.id)}" data-count="${borrowCount}" data-delay="${delayMs}">${borrowCount} lượt</span>
+                        <div class="css-bar-title-group">
+                          <span class="css-bar-rank ${idx === 0 ? 'is-top-1' : ''}">#${idx + 1}</span>
+                          <span class="css-bar-name" title="${escapeHtml(item.name)}">${escapeHtml(item.name)}</span>
+                          <code class="device-code-chip">${escapeHtml(item.id)}</code>
+                        </div>
+                        <span class="top-bar-count" data-device-id="${escapeHtml(item.id)}" data-count="${borrowCount}" data-delay="${delayMs}">${borrowCount} lượt</span>
                       </div>
                       <div class="css-bar-track-wrap">
-                        <span class="css-bar-tooltip tabular-nums" style="left: ${tooltipLeft};" role="tooltip">${borrowCount} lượt</span>
+                        <span class="css-bar-tooltip" style="left: ${tooltipLeft};" role="tooltip">${borrowCount} lượt</span>
                         <div class="css-bar-track">
                           <div class="css-bar-fill ${isUpdating ? '' : 'css-bar-fill-animated'}" style="width: ${percent}%; ${isUpdating ? '' : `animation-delay: ${delayMs}ms;`}"></div>
                         </div>
@@ -337,58 +593,87 @@ function renderContent(container, data, isUpdating = false) {
               </div>
             `}
           </div>
-        </div>
+        </section>
 
-        <!-- Cột 2: Danh sách Sắp hết hạn giữ (< 6 giờ) -->
-        <div class="card ${stagger(6)}">
+        <!-- Hàng 3 · Cột 3–4: Bento rộng Hàng đợi nổi bật -->
+        <section class="bento-card bento-span-2 ${stagger(7)}" aria-label="Hàng đợi giữ chỗ 24h nổi bật">
           <div class="card-header">
-            <div class="card-title">
-              <i data-lucide="timer"></i> Sắp hết hạn giữ nhận (< 6 giờ)
+            <div class="bento-card-title-wrap">
+              <div class="card-title">
+                <i data-lucide="timer"></i> Hàng đợi nổi bật
+              </div>
+              <div class="bento-card-header-meta">
+                ${allHolds.length > 0
+                  ? `${allHolds.length} lượt đang giữ 24h${urgentCount > 0 ? ` · ${urgentCount} lượt sắp hết hạn (≤ 6h)` : ''}`
+                  : 'Theo dõi các lượt giữ chỗ 24h sắp đến hạn nhận thiết bị'}
+              </div>
             </div>
             <a href="#/reservations" class="btn btn-outline btn-sm">Xem hàng đợi</a>
           </div>
           <div class="card-body">
-            ${expiringList.length === 0 ? `
+            ${featuredHolds.length === 0 ? `
               <div class="empty-state">
-                <svg class="empty-state-icon svg-draw-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--color-success); width: 44px; height: 44px;">
+                <svg class="empty-state-icon is-success svg-draw-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                   <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
                   <polyline points="22 4 12 14.01 9 11.01"></polyline>
                 </svg>
-                <div class="empty-state-title">Không có lượt giữ nào sắp hết hạn</div>
-                <div class="empty-state-desc">Tất cả sinh viên đang được giữ thiết bị còn nhiều hơn 6 giờ để đến nhận.</div>
+                <div class="empty-state-title">Chưa có lượt giữ 24h đang hoạt động</div>
+                <div class="empty-state-desc">Khi có thiết bị được trả cho sinh viên trong hàng đợi, đồng hồ giữ chỗ 24 giờ sẽ hiển thị tại đây.</div>
               </div>
             ` : `
               <div class="expiring-list">
-                ${expiringList.map(item => `
-                  <div class="expiring-item">
-                    <div class="expiring-meta">
-                      <span class="expiring-device">${escapeHtml(item.deviceName)} <code style="font-size: 11px;">${escapeHtml(item.deviceId)}</code></span>
-                      <span class="expiring-student">SV: <strong>${escapeHtml(item.studentName)}</strong> (${escapeHtml(item.studentId)})</span>
-                      <span style="font-size: 11px; color: var(--color-text-muted);">Hạn nhận: ${escapeHtml(item.holdUntilText || '')}</span>
+                ${featuredHolds.map((item) => {
+                  const hoursLeft = Math.max(0, Number(item.hoursLeft) || 0);
+                  const isUrgent = hoursLeft <= 6;
+                  const missCount = Number(item.missCount) || 0;
+                  return `
+                    <div class="expiring-item" data-glow="${isUrgent ? 'maintenance' : 'onhold'}">
+                      <div class="expiring-left">
+                        <div class="expiring-thumb ${isUrgent ? 'is-urgent' : ''}" aria-hidden="true">
+                          <i data-lucide="${isUrgent ? 'alert-circle' : 'clock'}"></i>
+                        </div>
+                        <div class="expiring-meta">
+                          <div class="expiring-device">
+                            <span>${escapeHtml(item.deviceName)}</span>
+                            <code class="device-code-chip">${escapeHtml(item.deviceId)}</code>
+                          </div>
+                          <div class="expiring-student">
+                            SV: <strong>${escapeHtml(item.studentName)}</strong> (${escapeHtml(item.studentId)})
+                          </div>
+                          <div class="expiring-deadline">
+                            Hạn nhận: ${escapeHtml(item.holdUntilText || 'Đang cập nhật')} · Lỡ hạn: ${missCount}/2
+                          </div>
+                        </div>
+                      </div>
+                      <div class="expiring-right">
+                        <span class="expiring-badge ${isUrgent ? 'is-urgent' : ''}">
+                          <i data-lucide="${isUrgent ? 'alert-triangle' : 'hourglass'}" class="expiring-badge-icon"></i>
+                          <span>${isUrgent ? `Sắp hết · ${hoursLeft}h` : `Giữ 24h · ${hoursLeft}h`}</span>
+                        </span>
+                        <a
+                          href="#/reservations?id=${encodeURIComponent(item.deviceId)}"
+                          class="btn btn-secondary btn-sm"
+                          title="Mở hàng đợi ${escapeHtml(item.deviceId)} để nhận hoặc xử lý"
+                        >
+                          Xử lý
+                        </a>
+                      </div>
                     </div>
-                    <div class="expiring-right">
-                      <span class="expiring-badge">
-                        <i data-lucide="hourglass" style="width: 13px; height: 13px;"></i>
-                        Còn ${item.hoursLeft}h
-                      </span>
-                      <a href="#/reservations?id=${escapeHtml(item.deviceId)}" class="btn btn-secondary btn-sm" title="Mở hàng đợi thiết bị này">
-                        Nhận
-                      </a>
-                    </div>
-                  </div>
-                `).join('')}
+                  `;
+                }).join('')}
               </div>
             `}
           </div>
-        </div>
+        </section>
       </div>
     </div>
   `;
 
   if (window.lucide) window.lucide.createIcons();
 
-  // Khởi chạy / cập nhật mô hình 3D Board STM32F103 Blue Pill ở đầu trang (Đợt B.1)
+  // Khởi chạy / cập nhật mô hình 3D Board STM32F103 Blue Pill ở đầu trang
   mountLabHero3D(container);
+
   const cardOverdue = container.querySelector('#card-metric-overdue');
   if (cardOverdue) {
     const openOverdueRecords = () => navigateTo('#/records?status=overdue');
@@ -404,6 +689,7 @@ function renderContent(container, data, isUpdating = false) {
   // Kích hoạt Count-up và so sánh Delta (gán lại _lastValue từ prevData vì DOM vừa render mới)
   const elDev = container.querySelector('#metric-device-count');
   const elBorrow = container.querySelector('#metric-borrowed-count');
+  const elOpenRec = container.querySelector('#metric-open-records');
   const elOverdue = container.querySelector('#metric-overdue-count');
   const elWait = container.querySelector('#metric-waiting-count');
   const elFines = container.querySelector('#metric-pending-fines');
@@ -411,38 +697,46 @@ function renderContent(container, data, isUpdating = false) {
   if (prevData) {
     if (elDev) {
       elDev._lastValue = prevData.deviceCount || 0;
-      animateCountUp(elDev, data.deviceCount || 0, 350, v => v, true);
+      animateCountUp(elDev, data.deviceCount || 0, 360, (v) => v, true);
     }
     if (elBorrow) {
       elBorrow._lastValue = prevData.borrowed || 0;
-      animateCountUp(elBorrow, borrowedUnits, 350, v => v, true);
+      animateCountUp(elBorrow, borrowedUnits, 360, (v) => v, true);
+    }
+    if (elOpenRec) {
+      elOpenRec._lastValue = prevData.openRecords || 0;
+      animateCountUp(elOpenRec, openRecords, 360, (v) => v, false);
     }
     if (elOverdue) {
       elOverdue._lastValue = prevData.overdueRecords || 0;
-      animateCountUp(elOverdue, data.overdueRecords || 0, 350, v => v, true);
-      // Nếu số phiếu quá hạn tăng so với lần xem trước / trước khi tua, viền đỏ pulse 2 lần
-      if ((data.overdueRecords || 0) > (prevData.overdueRecords || 0) && cardOverdue) {
-        triggerRedPulse(cardOverdue);
-      }
+      animateCountUp(elOverdue, overdueRecords, 360, (v) => v, true);
     }
     if (elWait) {
       elWait._lastValue = prevData.waitingPeople || 0;
-      animateCountUp(elWait, data.waitingPeople || 0, 350, v => v, true);
+      animateCountUp(elWait, waitingPeople, 360, (v) => v, true);
     }
     if (elFines) {
       elFines._lastValue = prevData.pendingFines || 0;
-      animateCountUp(elFines, data.pendingFines || 0, 350, formatVND, false);
+      animateCountUp(elFines, pendingFines, 360, formatVND, false);
+    }
+
+    // Tua giờ khiến số phiếu quá hạn hoặc tiền phạt tăng -> nháy viền đỏ đúng 2 lần
+    const overdueIncreased = overdueRecords > (prevData.overdueRecords || 0);
+    const finesIncreased = pendingFines > (prevData.pendingFines || 0);
+    if ((overdueIncreased || finesIncreased) && cardOverdue) {
+      triggerRedPulse(cardOverdue);
     }
   } else {
     // Lần đầu tiên trong phiên: đếm từ 0 lên
-    if (elDev) animateCountUp(elDev, data.deviceCount || 0, 350);
-    if (elBorrow) animateCountUp(elBorrow, borrowedUnits, 350);
-    if (elOverdue) animateCountUp(elOverdue, data.overdueRecords || 0, 350);
-    if (elWait) animateCountUp(elWait, data.waitingPeople || 0, 350);
-    if (elFines) elFines._lastValue = data.pendingFines || 0;
+    if (elDev) animateCountUp(elDev, data.deviceCount || 0, 360);
+    if (elBorrow) animateCountUp(elBorrow, borrowedUnits, 360);
+    if (elOpenRec) elOpenRec._lastValue = openRecords;
+    if (elOverdue) animateCountUp(elOverdue, overdueRecords, 360);
+    if (elWait) animateCountUp(elWait, waitingPeople, 360);
+    if (elFines) elFines._lastValue = pendingFines;
   }
 
-  // Hiệu ứng đếm số lượt mượn lên (Count-up) đồng bộ theo stagger của biểu đồ thanh Top mượn
+  // Hiệu ứng đếm số lượt mượn lên đồng bộ theo stagger của Top mượn nhiều
   const prevTopMap = new Map(
     prevData && Array.isArray(prevData.topBorrowed)
       ? prevData.topBorrowed.map((it) => [String(it.id), Number(it.timesBorrowed) || 0])
@@ -457,7 +751,7 @@ function renderContent(container, data, isUpdating = false) {
 
     if (prevData) {
       countEl._lastValue = prevTopMap.has(devId) ? prevTopMap.get(devId) : targetCount;
-      animateCountUp(countEl, targetCount, 350, formatLuot, false);
+      animateCountUp(countEl, targetCount, 360, formatLuot, false);
     } else if (!reducedMotion && targetCount > 0) {
       countEl._lastValue = 0;
       countEl.textContent = '0 lượt';
@@ -476,7 +770,7 @@ function renderContent(container, data, isUpdating = false) {
     }
   });
 
-  // Nút làm mới (Hiệu ứng xoay icon SVG trong lúc fetch)
+  // Nút làm mới số liệu Tổng quan
   const refreshBtn = container.querySelector('#btn-dashboard-refresh');
   if (refreshBtn) {
     refreshBtn.addEventListener('click', async () => {
@@ -510,7 +804,7 @@ export async function render(container) {
 export async function onTimeAdvanced() {
   if (currentContainer && document.body.contains(currentContainer)) {
     try {
-      const data = await api.get('/stats?within=6&top=5');
+      const data = await api.get('/stats?within=25&top=5');
       renderContent(currentContainer, data, true);
     } catch (e) {
       console.warn('Không thể tự cập nhật Dashboard sau khi tua giờ:', e);

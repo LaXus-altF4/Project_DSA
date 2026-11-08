@@ -532,3 +532,321 @@ Chỉ sử dụng 2 thư viện JavaScript cực nhẹ và 1 bộ font cục b�
 
 ---
 *(Đã hoàn thành toàn bộ Đợt A, B, C, D, E theo đúng kế hoạch; toàn bộ mã nguồn nằm gọn trong web/, không vi phạm ranh giới hệ thống).*
+
+---
+
+## 7. v2 — Dark-tech Glass + Bento
+
+Phiên bản nâng cấp **v2** chuyển toàn bộ giao diện `web/` sang ngôn ngữ **Dark-tech Glassmorphism + Bento Grid**, thống nhất hệ thống token Sáng/Tối (tuyệt đối không dùng hex rời trong CSS component), bổ sung bộ ảnh minh hoạ 3D isometric *Soft Clay Render* cho 18 thiết bị + trạng thái rỗng/lỗi, đồng thời giữ nguyên 100% logic gọi API (`docs/api.md`), `mock.js`, splash screen, mô hình 3D STM32, công tắc `"Hiệu ứng 3D"` và cơ chế khoá cuộn ngang trang.
+
+---
+
+### 7.1. Token màu Sáng / Tối & Hiệu ứng Kính mờ (Glassmorphism Tokens)
+
+Tất cả màu sắc định nghĩa tập trung trong `web/css/theme.css` (`:root` / `[data-theme="light"]` và `[data-theme="dark"]`). Các tệp `components.css`, `pages.css`, `effects-3d.css` và style inline chỉ được phép tham chiếu `var(--...)`.
+
+#### A. Bảng Token màu nền, bề mặt kính & văn bản
+
+| Token CSS | Dark (`[data-theme="dark"]`) | Light (`[data-theme="light"]`) | Tương phản chữ tối thiểu & Ghi chú |
+|---|---|---|---|
+| `--color-bg-canvas` | `#070B14` | `#F5F7FB` | Nền gốc toàn trang |
+| `--color-card-base` | `#1B2336` | `#FFFFFF` | Nền thẻ đặc dự phòng khi tắt 3D (`data-fx="flat"`) |
+| `--glass-bg` | `linear-gradient(155deg, rgba(30, 41, 59, 0.70) 0%, rgba(15, 23, 42, 0.55) 100%)` | `linear-gradient(155deg, rgba(255, 255, 255, 0.88) 0%, rgba(248, 250, 252, 0.78) 100%)` | Kính mờ chính cho Bento card & panel |
+| `--glass-surface-reading` | `rgba(15, 23, 42, 0.76)` | `rgba(255, 255, 255, 0.92)` | **Lớp đệm đủ đặc dưới vùng chữ/bảng** đảm bảo độ tương phản ≥ `4.5:1` trên kính mờ |
+| `--glass-surface-elevated` | `rgba(30, 41, 59, 0.86)` | `rgba(255, 255, 255, 0.95)` | Dropdown, modal, side panel, tooltip nổi |
+| `--glass-blur` | `16px` *(biên độ chuẩn `14px`–`18px` theo lớp)* | `16px` *(biên độ `14px`–`18px`)* | `backdrop-filter: blur(var(--glass-blur))` (bỏ qua khi `data-fx="flat"`) |
+| `--glass-border` | `rgba(148, 163, 184, 0.14)` | `rgba(15, 23, 42, 0.12)` | Viền mảnh `1px` tách lớp kính |
+| `--glass-inset` | `rgba(255, 255, 255, 0.06)` | `rgba(255, 255, 255, 0.85)` | Highlight cạnh trên: `inset 0 1px 0 var(--glass-inset)` |
+| `--glass-shadow` | `0 20px 40px -20px rgba(0, 0, 0, 0.60)` | `0 20px 40px -20px rgba(15, 23, 42, 0.14)` | Bóng đổ chính cho thẻ kính |
+| `--color-text-primary` | `#F1F5F9` | `#0F172A` | Tương phản > `13:1` trên cả Dark & Light |
+| `--color-text-secondary` | `#CBD5E1` | `#334155` | Tương phản ≥ `8.5:1` |
+| `--color-muted-fg` | `#94A3B8` | `#475569` | Tương phản ≥ `5.8:1` *(Light dùng `#475569` thay vì `#94A3B8` để đạt ≥ `4.5:1`)* |
+
+#### B. Token màu Nhấn, Trạng thái & Nền Dark-tech
+
+| Token CSS | Giá trị gốc (Brand / Semantic) | Dark Text / Surface | Light Text / Surface | Quy ước |
+|---|---|---|---|---|
+| `--color-primary` | `#3B82F6` | Text: `#60A5FA` / Bg: `rgba(59, 130, 246, 0.18)` | Text: `#1D4ED8` / Bg: `rgba(59, 130, 246, 0.12)` | Hành động chính, link active, nút Primary |
+| `--color-accent-cyan` | `#22D3EE` | Text: `#22D3EE` / Glow: `rgba(34, 211, 238, 0.28)` | Text: `#0E7490` / Glow: `rgba(8, 145, 178, 0.18)` | Đường mạch nền, focus glow, highlight kỹ thuật |
+| `--color-success` | `#10B981` | Text: `#34D399` / Bg: `rgba(16, 185, 129, 0.16)` | Text: `#047857` / Bg: `rgba(16, 185, 129, 0.12)` | Sẵn sàng (`available`), đúng hạn |
+| `--color-warning` | `#F59E0B` | Text: `#FBBF24` / Bg: `rgba(245, 158, 11, 0.16)` | Text: `#B45309` / Bg: `rgba(245, 158, 11, 0.14)` | Đang mượn (`borrowed`), lỡ hạn 1 lần |
+| `--color-danger` | `#EF4444` | Text: `#F87171` / Bg: `rgba(239, 68, 68, 0.18)` | Text: `#B91C1C` / Bg: `rgba(239, 68, 68, 0.12)` | Bảo trì (`maintenance`), quá hạn, tiền phạt, bị loại |
+| `--color-onhold` | `#38BDF8` *(Cyan-Blue)* | Text: `#38BDF8` / Bg: `rgba(56, 189, 248, 0.16)` | Text: `#0369A1` / Bg: `rgba(14, 165, 233, 0.12)` | Đơn vị đang giữ 24h (`onHold` — là số lượng, không phải trạng thái M1) |
+| `--focus-ring` | `0 0 0 3px rgba(34, 211, 238, 0.42)` | Như bên | `0 0 0 3px rgba(37, 99, 235, 0.35)` | `:focus-visible` rõ nét ở mọi nút, ô nhập, thẻ tương tác |
+
+#### C. Lớp nền kỹ thuật (`#ambient-bg-root`)
+1. **Lưới mảnh (Tech Grid):** `background-size: 32px 32px`, đường kẻ `1px` dùng token `--bg-grid-line` (`rgba(148, 163, 184, 0.06)` Dark / `rgba(15, 23, 42, 0.045)` Light).
+2. **3 quầng radial ánh sáng:**
+   - Orb 1 (góc trên-trái): xanh dương `--bg-orb-blue` (`rgba(59, 130, 246, 0.18)` Dark / `0.10` Light).
+   - Orb 2 (giữa-phải): xanh ngọc/cyan `--bg-orb-teal` (`rgba(34, 211, 238, 0.13)` Dark / `0.08` Light).
+   - Orb 3 (dưới-trái): chàm indigo `--bg-orb-indigo` (`rgba(99, 102, 241, 0.15)` Dark / `0.07` Light).
+3. **Đường mạch sáng Cyan (`circuit-traces`):** Khung SVG nhẹ (`aria-hidden="true"`, không tương tác chuột) vẽ 3–4 đường mạch vuông góc `90°/45°` chấm via ở hai mép nền bằng token `--bg-circuit-stroke`, opacity thấp (`0.18` Dark / `0.10` Light) để không giảm độ đọc chữ. Kết hợp hạt 3D từ `bg-scene.js` (`dpr ≤ 1.5`, tự dừng khi tab ẩn).
+
+---
+
+### 7.2. Thang chữ, Khoảng cách, Bo góc, Bóng đổ & Quy chuẩn UI
+
+1. **Thang chữ (Typography):**
+   - Font chính: `'Be Vietnam Pro'` (local `.ttf` tại `web/assets/fonts/`).
+   - Font số liệu & mã: `ui-monospace, 'Cascadia Mono', Consolas, monospace` đi kèm `font-variant-numeric: tabular-nums`.
+   - **Body chuẩn:** `15px` (`--text-base: 0.9375rem`), `line-height: 1.5`.
+   - **Ngưỡng kích thước tối thiểu:** **KHÔNG có chữ `< 12px`** trên toàn bộ ứng dụng (kể cả chú thích, badge, bảng, tooltip, footer canvas).
+   - `--text-xs`: `12px` (`0.75rem`, `line-height: 1.4`) — nhãn phụ, badge, tag mã.
+   - `--text-sm`: `13.5px` (`0.84375rem`, `line-height: 1.45`) — mô tả, bảng dữ liệu, helper form.
+   - `--text-base`: `15px` (`0.9375rem`, `line-height: 1.5`) — nội dung chính.
+   - `--text-lg`: `18px` (`1.125rem`, `line-height: 1.35`) — tiêu đề thẻ Bento.
+   - `--text-xl`: `22px` (`1.375rem`, `line-height: 1.25`) — tiêu đề trang.
+   - `--text-kpi`: `28px`–`32px` (`1.75rem`–`2rem`, `tabular-nums`, `font-weight: 700`) — số liệu KPI chính.
+2. **Khoảng cách (Spacing Scale — bội số 4px):**
+   - `--space-1: 4px`, `--space-2: 8px`, `--space-3: 12px`, `--space-4: 16px`, `--space-5: 20px`, `--space-6: 24px`, `--space-8: 32px`.
+   - Khoảng hở lưới Bento (`gap`): `20px` (≥ `1200px`), `16px` (`768–1199px`). Padding trong thẻ Bento: `20px`–`24px`.
+3. **Bo góc (Border Radius):**
+   - Thẻ Bento lớn / Panel / Modal: `--radius-bento-lg: 24px`, thẻ Bento chuẩn: `--radius-bento: 20px`.
+   - Nút bấm, ô nhập (`input`), `select`, item danh sách con: `--radius-btn: 12px`.
+   - Badge / chip trạng thái: `--radius-full: 9999px`.
+4. **Bóng đổ & Viền kính:**
+   - `--glass-shadow`: `0 20px 40px -20px rgba(0, 0, 0, 0.60)` (Dark) / `0 20px 40px -20px rgba(15, 23, 42, 0.14)` (Light).
+   - `--glass-shadow-hover`: `0 26px 48px -18px rgba(0, 0, 0, 0.72), 0 0 0 1px var(--glow-color)`.
+   - Viền highlight nội khối: `box-shadow: inset 0 1px 0 var(--glass-inset), var(--glass-shadow)`.
+5. **Checklist Bắt buộc (Accessibility & Layout):**
+   - **Trạng thái thiết bị:** Luôn hiển thị đồng thời **3 yếu tố**: Màu token + Icon Lucide + Chữ tiếng Việt (VD: `[icon check-circle-2] Sẵn sàng`, `[icon clock] Đang mượn`, `[icon wrench] Bảo trì`). Tuyệt đối **không dùng emoji** làm icon UI (trừ text thuần trong `<option>` của `<select>` không dùng emoji mà ghi chữ `[Có hàng]`, `[N chờ]`).
+   - **Vùng bấm ≥ `44×44px`:** Mọi nút (`.btn`, `.btn-icon`, `.records-page-btn`, mục Sidebar, nút Tua giờ, nút xoá chip/đóng panel) đảm bảo vùng chạm tối thiểu `44×44px` (`min-height: 44px; min-width: 44px;` hoặc vùng chạm `::after` mở rộng) và `cursor: pointer`.
+   - Mọi nút chỉ có icon đều có `aria-label` + `title`; mọi nút/link đều có `:focus-visible` rõ bằng `--focus-ring`.
+   - **Form:** Mọi ô nhập có `<label>` hiển thị rõ (không phụ thuộc placeholder), thông báo lỗi hiện trực tiếp ngay bên cạnh/dưới ô nhập (`.form-error-inline`) trước khi hoặc song song với toast.
+   - **Cuộn & Responsive:** Kiểm thử ở `1024`, `1366`, `1440`, `1920`. Bảng dài cuộn ngang bên trong `.table-responsive`; toàn trang giữ khoá `overflow-x` (không bao giờ cuộn ngang). Không layout shift (ảnh `<img>` luôn khai báo `width`, `height` cố định và `loading="lazy"`).
+
+---
+
+### 7.3. Quy tắc Chuyển động v2 (Motion Specification)
+
+Mọi chuyển động tuân thủ **4 nguyên tắc cứng**:
+1. Chỉ animate `transform` và `opacity` (không animate `width`, `height`, `top`, `left` gây layout thrashing).
+2. Mọi chuyển động phức tạp tắt ngay theo công tắc **"Hiệu ứng 3D"** (`html[data-fx="flat"]`) và `@media (prefers-reduced-motion: reduce)` — khi tắt phải hiển thị thẳng **trạng thái cuối ngay lập tức**, không kẹt ở `opacity: 0`.
+3. Canvas nền (`bg-scene.js`) và STM32 (`lab-hero-3d.js`) ép `devicePixelRatio ≤ 1.5` và tự dừng `requestAnimationFrame` khi `document.hidden === true` hoặc ra khỏi viewport.
+4. `exit` luôn nhanh hơn `enter` (`enter: 220–250ms`, `exit: 150ms`).
+
+| Thành phần / Tình huống | Thông số chuẩn v2 | Chế độ tắt 3D / `reduced-motion` |
+|---|---|---|
+| **Vào trang / Thẻ Bento** | Stagger `60ms`/thẻ (tối đa `360ms`), thời lượng `320ms–420ms`, `opacity: 0 → 1`, `translateY(12px) → 0`, `scale(0.98) → 1`, easing `cubic-bezier(0.22, 1, 0.36, 1)`. **Bảng dữ liệu lớn không overshoot (`cubic-bezier(0.2, 0.8, 0.2, 1)` mượt phẳng).** | Hiện ngay trạng thái cuối (`opacity: 1; transform: none`). |
+| **Hover thẻ Bento & danh sách con** | Nhấc nhẹ `translateY(-2px)`, tilt 3D `≤ 4°` (tối đa `maxTilt = 4`), viền sáng glow đổi theo màu trạng thái (`--status-*-border`/`--color-accent-cyan`), thời lượng enter `220ms`, exit `150ms`. | Bỏ tilt 3D và nhấc nổi quá mức; chỉ đổi nhẹ viền sáng `150ms`. |
+| **Đồng hồ giả lập (Flip Clock)** | Chuỗi `DD/MM/YYYY HH:MM` tách thành **5 ô flip riêng**: `[DD]` `/` `[MM]` `/` `[YYYY]`  `[HH]` `:` `[MM]`. Khi tua giờ, **chỉ các ô có giá trị thay đổi** mới lật 3D nửa cánh `rotateX` (`360ms`, stagger `35ms`). | Thay chữ ngay lập tức không lật 3D. |
+| **Số liệu khi tua giờ** | Số KPI chạy `count-up` (`380ms`) kèm nhãn delta nổi (`+N` / `-N`, tự mờ sau `2.2s`). Thẻ **Quá hạn / Tiền phạt** nháy viền đỏ **đúng 2 lần** (`pulseRedBorder`, `2 × 450ms`). | Cập nhật số & delta tĩnh ngay không count-up / nháy. |
+| **Hàng đợi (`#/reservations`)** | Lỡ hạn lần 1: thẻ người đầu **lật 3D** (`rotateY` `320ms`) rồi **trượt FLIP** (`420ms`, `transform` only) xuống cuối hàng. Lỡ hạn lần 2 (bị loại): nháy đỏ + **co & mờ** (`scale(0.88) + opacity(0)`, `300ms`). Người kế tiếp được giữ: viền/thẻ **sáng lên** (`2` nhịp glow). | Bỏ lật 3D; `reduced-motion` cập nhật DOM vị trí mới ngay. |
+| **Đồ thị (`#/graph`, `vis-network` 2D)** | Giữ đỉnh tròn (`shape: 'dot'`). Khi chọn đỉnh: **camera bay mượt** (`focusNode` `380ms`) tới đỉnh; trên các cạnh nối trực tiếp chạy **xung sáng dọc cạnh** thể hiện duyệt danh sách kề; Top 3 gắn huy hiệu `1–2–3` bật nhẹ (`transform/opacity`). | Căn chọn ngay không bay camera, tắt vòng xung sáng `rAF`. |
+
+---
+
+### 7.4. Wireframe ASCII cho 7 Màn hình & Khung Chính
+
+#### 0. Khung chính: Sidebar + Topbar + Đồng hồ Flip 5 ô
+```text
++--------------------+-----------------------------------------------------------------------+
+| [Cube] Lab Manager | [=] [Route Title]         | [D][D]/[M][M]/[YYYY] [H][H]:[M][M] |   |
+|        HCMUS · DSA |                           | [+1h][+6h][+24h][+N h] [3D:On][Theme] |
++--------------------+-----------------------------------------------------------------------+
+| > Tổng quan        |                                                                       |
+|   Thiết bị         |                  Nền Tech Grid + 3 Radial Orbs + Mạch Cyan            |
+|   Mượn thiết bị    |                     <main id="page-container">                        |
+|   Trả thiết bị     |                  (Kính mờ Glassmorphism Bento Layout)                 |
+|   Hàng đợi         |                                                                       |
+|   Quá hạn & L.sử   |                                                                       |
+|   Đồ thị mượn kèm  |                                                                       |
++--------------------+-----------------------------------------------------------------------+
+```
+
+#### 1. Tổng quan Bento (`#/dashboard` — Lưới `4 → 2 → 1` cột)
+```text
++--[4 CỘT trên >= 1200px (1366, 1440, 1920)]--------------------------------------------------+
+| +---------------------------------------------------+ +-----------------------------------+ |
+| | BENTO HERO + STM32 (span 3)                       | | BENTO HÀNG ĐỢI & VÒNG ĐẾM (span 1)| |
+| |  Lab Manager · HCMUS              [Thu gọn STM32] | |   (  16h  )  Vòng đếm ngược 24h   | |
+| |  Bất biến kho: avail+borr+hold+maint == total     | |   ( /24h  )  Đang giữ: 1 | Chờ: 2 | |
+| |  [ Lập phiếu mượn ] [ Danh mục ]   +------------+ | |   VR01 · Phạm Gia Huy             | |
+| |                                    | STM32 3D / | | |   [ Xem hàng đợi -> ]             | |
+| |                                    | SVG Blue   | | +-----------------------------------+ |
+| +------------------------------------+------------+ +-----------------------------------+ |
+|                                                                                             |
+| +-----------------+ +-----------------+ +-----------------+ +-----------------------------+ |
+| | KPI 1 (1 col)   | | KPI 2 (1 col)   | | KPI 3 (1 col)   | | KPI 4 (1 col)               | |
+| | Tổng thiết bị   | | Sẵn sàng / Mượn | | Phiếu đang mở   | | Quá hạn & Phạt (pulse đỏ)   | |
+| | 18 mã  [+0]     | | 50 / 16 (77đv)  | | 6 phiếu         | | 2 phiếu | 1.008.000 đ       | |
+| +-----------------+ +-----------------+ +-----------------+ +-----------------------------+ |
+|                                                                                             |
+| +-----------------------------------------+ +---------------------------------------------+ |
+| | BENTO RỘNG: TOP MƯỢN NHIỀU (span 2)     | | BENTO RỘNG: HÀNG ĐỢI NỔI BẬT (span 2)       | |
+| |  [img] VR01 Kính VR     ======== 13     | |  [img] VR01 · Kính thực tế ảo               | |
+| |  [img] RPI01 RPi 4      =======  12     | |        Phạm Gia Huy (25120103) · Còn 16h    | |
+| |  [img] ARD01 Arduino    ======   10     | |        Hạn nhận: 04/03 08:00  [Xử lý ->]    | |
+| |  ...                                    | |  ... (hoặc trạng thái trống có minh hoạ)     | |
+| +-----------------------------------------+ +---------------------------------------------+ |
++---------------------------------------------------------------------------------------------+
+* Tại 768px–1199px (gồm 1024px): Lưới 2 cột — Hero span 2, 4 KPI xếp 2×2, 2 thẻ rộng span 2 + Vòng đếm span 2 (hoặc 1+1 cân đối).
+* Tại < 768px: Lưới 1 cột, toàn bộ thẻ xếp dọc `100%` chiều rộng, không cuộn ngang.
+```
+
+#### 2. Danh mục Thiết bị + Panel chi tiết (`#/devices`)
+```text
++---------------------------------------------------------------------------------------------+
+| Danh mục Thiết bị                                                        [ + Thêm thiết bị ]|
++---------------------------------------------------------------------------------------------+
+| [ Tìm mã/tên thiết bị...                    ] [ Trạng thái: Tất cả v ]  [18 mã]  [Làm mới]  |
++---------------------------------------------------------------------------------------------+
+| +---------------------------------------------------------+ +-----------------------------+ |
+| | BẢNG KÍNH (.table-responsive cuộn ngang nội bộ)         | | SIDE PANEL CHI TIẾT (440px) | |
+| | Mã    | Thiết bị (Ảnh 44px + Tên) | Trạng thái  | Kho   | | [Ảnh 112px] VR01 · Kính VR  | |
+| | VR01  | [img] Kính thực tế ảo     | [icon] Mượn | ===-- | | Badge: [icon] Đang mượn     | |
+| | ARD01 | [img] Arduino Uno R3      | [icon] Sẵn  | ===== | | 4 chip: Sẵn / Mượn / Giữ /  | |
+| | SLD01 | [img] Máy hàn thiếc       | [icon] B.trì| ----- | |         Bảo trì + Thanh bar | |
+| | ...   |                           |             |       | | [Bảo trì] [Sửa] [Xoá]       | |
+| |       |                           |             |       | | Top 3 Mượn kèm + Láng giềng | |
+| |       |                           |             |       | | Hàng đợi hiện tại [Đăng ký] | |
+| +---------------------------------------------------------+ +-----------------------------+ |
+```
+
+#### 3. Lập phiếu Mượn (`#/borrow`)
+```text
++---------------------------------------------------+ +---------------------------------------+
+| CỘT TRÁI: CHỌN THIẾT BỊ                           | | CỘT PHẢI: PHIẾU MƯỢN & GIỎ HÀNG       |
+| [ Tìm mã/tên thiết bị... ] [ Chỉ món còn hàng ]   | | Giỏ đã chọn (M7: tối đa 1 đv/mã)      |
+| +-----------------------------------------------+ | | +-----------------------------------+ |
+| | [img 44px] ARD01 · Arduino Uno R3   [+ Thêm]  | | | | [img 40px] VR01 · Kính VR    [Xoá]| |
+| |            [icon] Sẵn sàng (Còn 4/5)          | | | | [img 40px] TC01 · Tay cầm VR [Xoá]| |
+| | [img 44px] VR01 · Kính VR          [Đặt trước]| | | +-----------------------------------+ |
+| |            [icon] Hết hàng (0 sẵn sàng)       | | | GỢI Ý MƯỢN KÈM THEO GIỎ (M17 - Top 3) |
+| +-----------------------------------------------+ | | +-------+ +-------+ +---------------+ |
+|                                                   | | | IMG+Mã| | IMG+Mã| | Còn / Hết [+] | |
+| (Nếu rỗng giỏ → hiện illustrations/empty-basket)  | | |_______| |_______| |_______________| |
+|                                                   | | Thông tin SV (Label rõ + Lỗi cạnh ô)  |
+|                                                   | | MSSV: [________]  Họ tên: [________]  |
+|                                                   | | Số ngày mượn (1–30): [ 7 ]            |
+|                                                   | | [ Xác nhận Lập phiếu mượn (M6) ]      |
++---------------------------------------------------+ +---------------------------------------+
+```
+
+#### 4. Trả phiếu mượn (`#/return`)
+```text
++---------------------------------------+ +---------------------------------------------------+
+| CỘT TRÁI: PHIẾU ĐANG MỞ               | | CỘT PHẢI: CHI TIẾT PHIẾU & PHẠT TẠM TÍNH (M19)    |
+| [ Tìm mã PM / MSSV / tên... ]         | | Phiếu #PM0055             [icon Quá hạn 9 ngày]   |
+| [ ] Chỉ hiện phiếu quá hạn  (6 phiếu) | | Sinh viên: Nguyễn Thị Lan (25120104)              |
+| +-----------------------------------+ | | Mượn: 21/02 12:00   | Hạn trả: 25/02 12:00        |
+| | #PM0055 · Nguyễn Thị Lan [Trễ 9n] | | +-------------------------------------------------+ |
+| | #PM0052 · Trần Minh Đức  [Đ.mượn] | | | Thiết bị thu hồi (M7, M8):                      | |
+| +-----------------------------------+ | | | [img 40px] PSU01 · Nguồn DC điều chỉnh (1 đv)   | |
+|                                       | | | [img 40px] DMM01 · Đồng hồ vạn năng    (1 đv)   | |
+|                                       | | +-------------------------------------------------+ |
+|                                       | | +-[CẢNH BÁO QUÁ HẠN (pulse đỏ 2x) / ĐÚNG HẠN]----+ |
+|                                       | | | Trễ: 9 ngày   |   Tiền phạt tạm tính: 648.000 đ | |
+|                                       | | | Công thức: 9 × 2 × 36.000 đ = 648.000 đ         | |
+|                                       | | +-------------------------------------------------+ |
+|                                       | | [ Xác nhận trả toàn bộ phiếu (M8) ]               |
++---------------------------------------+ +---------------------------------------------------+
+```
+
+#### 5. Hàng đợi Đặt trước (`#/reservations`)
+```text
++---------------------------------------------------------------------------------------------+
+| Chọn thiết bị xem hàng đợi: [ VR01 — Kính thực tế ảo (Đang mượn, Còn: 0/2) [2 chờ]      v ] |
++---------------------------------------------------------------------------------------------+
+| [img 56px] VR01 · Kính thực tế ảo  [icon Đang mượn]  | Tổng:2 | Sẵn:0 | Mượn:1 | Giữ:1 | BT:0|
+| [===== Thanh tỷ lệ kho 4 màu =====] Bất biến kho: avail(0)+borr(1)+hold(1)+maint(0) == 2    |
++---------------------------------------------------------------------------------------------+
+| DÃY SINH VIÊN XẾP HÀNG FIFO (2 người)                                                       |
+| +-----------------------------------------+ +---------------------------------------------+ |
+| | #1 ĐANG GIỮ HÀNG (Vị trí đầu — sáng viền)| | #2 ĐANG CHỜ                                 | |
+| | Phạm Gia Huy · MSSV: 25120103  [0/2 lỡ] | | Lê Minh Tuấn · MSSV: 25120110  [0/2 lỡ]     | |
+| | ( 16h ) Hạn nhận: 04/03/2026 08:00      | | [icon hourglass] Đang chờ có thiết bị trống | |
+| | [ Nhận thiết bị ] [ Huỷ đăng ký ]       | |                               [ Huỷ đ.ký ]  | |
+| +-----------------------------------------+ +---------------------------------------------+ |
++---------------------------------------------------------------------------------------------+
+| ĐĂNG KÝ NGƯỜI MỚI VÀO HÀNG ĐỢI (M12: chỉ bật khi available == 0)                            |
+| MSSV: [____________]   Họ và tên: [________________________]   [ + Đăng ký giữ chỗ ]        |
++---------------------------------------------------------------------------------------------+
+```
+
+#### 6. Quá hạn & Lịch sử (`#/records`)
+```text
++---------------------------------------------------------------------------------------------+
+| Quá Hạn & Lịch Sử                                                               [ Làm mới ] |
++---------------------------------------------------------------------------------------------+
+| [ Tất cả (52) ]  [ Quá hạn (2) ]  [ Đang mượn (6) ]  [ Đã trả (46) ]                        |
+| [ Tìm mã phiếu PM..., MSSV hoặc họ tên... ]   * Bấm phiếu đang mở để chuyển sang Trả        |
++---------------------------------------------------------------------------------------------+
+| .records-table-scroll (cuộn ngang trong khung bảng, không overshoot)                        |
+| Mã phiếu | Sinh viên      | Thiết bị (chip ảnh nhỏ) | Ngày mượn | Hạn / Trả | Trễ   | Phạt  |
+| PM0055   | Nguyễn Thị Lan | [PSU01] [DMM01]         | 21/02 12h | 25/02 12h | Trễ 9n| 648k* |
+| PM0051   | Hoàng Văn Nam  | [ARD01] [(đã xoá) M4]   | 10/02 09h | 15/02 09h | Đúng  |   0 đ |
++---------------------------------------------------------------------------------------------+
+| Hiển thị 1–20 trong tổng số 52 phiếu                  Trang 1 / 3  [ < Trước ][1][2][3][Sau >] |
++---------------------------------------------------------------------------------------------+
+```
+
+#### 7. Đồ thị mượn kèm (`#/graph`)
+```text
++---------------------------------------------------------------------------------------------+
+| [i] Đỉnh = thiết bị, cạnh = số lần mượn cùng phiếu (Graph vô hướng, danh sách kề lõi C++)    |
++---------------------------------------------------------------------------------------------+
+| Lọc cạnh weight >= [ 1 ] [===o-----] [ 10 ] (Hiện 14/14 cạnh) | Chú giải: Sẵn / Mượn / B.trì|
++---------------------------------------------------------------------------------------------+
+| +---------------------------------------------------------+ +-----------------------------+ |
+| | KHUNG VẼ VIS-NETWORK 2D (Giữ đỉnh tròn + Canvas xung)   | | PANEL CHI TIẾT ĐỈNH (Kính)  | |
+| |                            [Bỏ chọn][Sắp xếp lực][+][-] | | [img 56px] VR01 · Kính VR   | |
+| |       (ARD01) -------- (BRD01)                          | | [icon] Đang mượn · 13 lượt  | |
+| |          \               /                              | | Thanh kho 4 màu             | |
+| |        (JMP01)       (VR01)* ==xung cyan==> (TC01) #1   | | TOP 3 MƯỢN KÈM (M17):       | |
+| |                         \                               | | #1 [img] TC01  w=10 [Còn 2] | |
+| |                      (CAM01) #2                         | | #2 [img] CAM01 w=4  [Còn 3] | |
+| |                                                         | | #3 [img] LAP01 w=2  [Hết]   | |
+| | Kéo thả đỉnh · Lăn chuột zoom · Bấm đỉnh bay camera tới | | [ Xem hàng đợi VR01 -> ]    | |
+| +---------------------------------------------------------+ +-----------------------------+ |
++---------------------------------------------------------------------------------------------+
+```
+
+---
+
+### 7.5. Danh sách Ảnh minh hoạ AI (Soft Clay Isometric 3D)
+
+- **Phong cách thống nhất (Style Prefix):**
+  > `3D isometric soft clay render icon of a single piece of lab hardware on a pure solid flat white background (#FFFFFF) with no cast floor shadow, soft matte clay and anodized metal texture, clean top-left studio lighting, subtle electric blue (#3B82F6) and cyan (#22D3EE) technical accents, rounded friendly industrial design, minimal details, NO text, NO letters, NO numbers, NO logos, NO brand marks, centered framing.`
+  *(Với 5 ảnh trạng thái: bố cục cảnh isometric 4:3 sạch không nền rối, cùng bảng màu blue/cyan/emerald/amber/coral).*
+- **Module ánh xạ:** `web/js/ui/device-images.js`
+  - Thiết bị không có ảnh riêng (hoặc ID lạ trong `mock.js` như `CAB01`, `ROB01`, hoặc thiết bị mới người dùng thêm) tự động ánh xạ sang `assets/devices/generic.webp` và gài fallback `onerror`.
+  - Mọi `<img>` khai báo rõ `width`, `height`, `loading="lazy"`, `decoding="async"` và `alt` tiếng Việt rõ nghĩa.
+
+#### A. Ảnh Thiết bị (`web/assets/devices/<MÃ>.webp` — `256×256px`, nền trong suốt RGBA, `≤ 40 KB`)
+
+| STT | Mã (`data/devices.csv`) | Đường dẫn file | Đối tượng minh hoạ 3D |
+|---|---|---|---|
+| 1 | `ARD01` | `web/assets/devices/ARD01.webp` | Bo vi điều khiển xanh dương bo mạch tối giản (không chữ/logo) |
+| 2 | `BK01` | `web/assets/devices/BK01.webp` | Cuốn sách khoa học máy tính bìa cứng xanh chàm gáy dày, ruy-băng cyan |
+| 3 | `BRD01` | `web/assets/devices/BRD01.webp` | Bảng cắm test mạch trắng ngà có 2 dải nguồn xanh dương – đỏ |
+| 4 | `CAM01` | `web/assets/devices/CAM01.webp` | Mô-đun camera nhỏ gọn thấu kính xanh ngọc gắn cáp dẹt xanh dương |
+| 5 | `DMM01` | `web/assets/devices/DMM01.webp` | Đồng hồ vạn năng cầm tay vỏ xám-xanh lam, núm xoay tròn & 2 que đo |
+| 6 | `ESP01` | `web/assets/devices/ESP01.webp` | Bo phát triển Wi-Fi IoT mạch đen-lam kèm lồng kim loại trắng và anten PCB |
+| 7 | `JMP01` | `web/assets/devices/JMP01.webp` | Bó dây cắm test nhiều màu (lam, ngọc, hổ phách, trắng) đầu kim nhựa |
+| 8 | `LAP01` | `web/assets/devices/LAP01.webp` | Laptop kỹ thuật mở hé góc 110°, vỏ nhôm xám bạc & màn hình sóng cyan |
+| 9 | `OSC01` | `web/assets/devices/OSC01.webp` | Máy hiện sóng để bàn nhỏ gọn, màn hình hiển thị sóng sin cyan, 4 núm vặn |
+| 10 | `PRB01` | `web/assets/devices/PRB01.webp` | Đầu dò máy hiện sóng kèm dây BNC cuộn tròn và kẹp móc xám-lam |
+| 11 | `PRJ01` | `web/assets/devices/PRJ01.webp` | Máy chiếu mini hình khối bo tròn trắng-xám, thấu kính phát tia sáng xanh ngọc |
+| 12 | `PSU01` | `web/assets/devices/PSU01.webp` | Bộ nguồn DC điều chỉnh để bàn có 2 màn hiển thị khối lam/ngọc, 2 núm chỉnh & cọc đỏ/đen |
+| 13 | `RPI01` | `web/assets/devices/RPI01.webp` | Máy tính nhúng bo xanh ngọc-lam có các cổng kết nối bạc & chip tản nhiệt vuông |
+| 14 | `SDC01` | `web/assets/devices/SDC01.webp` | Thẻ nhớ microSD tối giản tông xám than viền nhấn xanh cyan |
+| 15 | `SEN01` | `web/assets/devices/SEN01.webp` | Hộp khay chia ngăn đựng bộ mô-đun cảm biến nhỏ (siêu âm, ánh sáng, nhiệt) |
+| 16 | `SLD01` | `web/assets/devices/SLD01.webp` | Trạm hàn & tay hàn thiếc kèm giá đỡ lò xo, dây nguồn cuộn và đầu mũi đồng |
+| 17 | `TC01` | `web/assets/devices/TC01.webp` | Cặp tay cầm điều khiển thực tế ảo công thái học vòng sáng cyan mềm |
+| 18 | `VR01` | `web/assets/devices/VR01.webp` | Kính thực tế ảo bo tròn trắng-xám mặt kính bóng xanh dương/ngọc |
+| 19 | *(Mặc định)* | `web/assets/devices/generic.webp` | Hộp mô-đun phần cứng Lab đa năng gắn vi mạch cyan (fallback mọi mã lạ) |
+
+#### B. Ảnh Minh hoạ Trạng thái (`web/assets/illustrations/<tên>.webp` — `400×300px`, nền trong suốt RGBA, `≤ 60 KB`)
+
+| File | Màn hình sử dụng | Mô tả trực quan |
+|---|---|---|
+| `empty-basket.webp` | Mượn (`#/borrow`) khi giỏ trống | Khay/giỏ thiết bị phòng Lab trống lơ lửng kèm chip nổi ánh sáng cyan dịu |
+| `empty-queue.webp` | Hàng đợi (`#/reservations`) & Bento hàng đợi khi trống | Dãy cột/ghế chờ phòng Lab trống gọn gàng với biểu tượng đồng hồ cát trong suốt |
+| `no-overdue.webp` | Quá hạn & Lịch sử (`#/records`), Trả (`#/return`) khi không có trễ hạn | Bảng kiểm tra & khiên/huy hiệu xác nhận màu xanh ngọc phát sáng dịu |
+| `no-results.webp` | Bộ lọc Thiết bị, Phiếu mượn, Lịch sử không ra kết quả | Kính lúp 3D soft-clay rọi trên thẻ mạch trống |
+| `connection-error.webp` | Trạng thái lỗi API ở mọi màn hình | Cáp kết nối hai đầu tách rời kèm tia cảnh báo hổ phách/đỏ mềm |
+
+- **Ngân sách dung lượng:** Hiện tại `web/assets/` nặng `~561 KB`. 19 ảnh thiết bị (`≤ 40 KB`) + 5 ảnh trạng thái (`≤ 60 KB`) có trần tối đa lý thuyết `1.06 MB` (thực tế nén WebP RGBA khoảng `380–650 KB`), tổng tăng trưởng **thấp hơn nhiều** so với giới hạn `~2 MB`.
+- **Ghi nhận nguồn AI (ở Đợt 7):** Ghi `"Ảnh minh hoạ tạo bằng AI (Gemini)"` vào `web/vendor/README.md` và mục `## Phần có AI hỗ trợ` trong `README.md`.
+

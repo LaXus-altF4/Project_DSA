@@ -802,13 +802,13 @@ export async function render(container) {
           <table class="data-table records-table">
             <thead>
               <tr>
-                <th style="width: 115px;">Mã phiếu</th>
-                <th style="min-width: 170px;">Sinh viên</th>
-                <th style="min-width: 220px;">Thiết bị</th>
-                <th style="width: 145px;">Ngày mượn</th>
-                <th style="width: 155px;">Hạn trả / Ngày trả</th>
-                <th style="width: 130px;">Số ngày trễ</th>
-                <th style="width: 135px; text-align: right;">Tiền phạt</th>
+                <th style="width: 105px;">Mã phiếu</th>
+                <th style="min-width: 155px;">Sinh viên</th>
+                <th style="min-width: 195px;">Thiết bị</th>
+                <th style="width: 138px;">Ngày mượn</th>
+                <th style="width: 145px;">Hạn trả / Ngày trả</th>
+                <th style="width: 120px;">Số ngày trễ</th>
+                <th style="width: 120px; text-align: right;">Tiền phạt</th>
               </tr>
             </thead>
             <tbody id="records-table-body"></tbody>

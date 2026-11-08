@@ -1,12 +1,12 @@
 /**
- * clock.js - Điều khiển đồng hồ giả lập và sự kiện tua thời gian
+ * clock.js - Điều khiển đồng hồ giả lập 5 ô flip và sự kiện tua thời gian
  */
 
 import { api } from '../api.js';
 import { showToast } from './toast.js';
 import { openModal } from './modal.js';
 import { teardownFlipClock3D, triggerRollDigit, updateFlipClock3D } from './motion.js';
-import { isFxEnabled, onFxChange } from './fx.js';
+import { isFxEnabled, isMotionAllowed, onFxChange } from './fx.js';
 
 let isAdvancing = false;
 let lastKnownFxState = null;
@@ -16,10 +16,10 @@ function applyClockDisplay(newText, animateFlip = false) {
   if (!clockEl || !newText) return;
 
   clockEl.dataset.rawTime = newText;
-  clockEl.setAttribute('aria-label', newText);
+  clockEl.setAttribute('aria-label', `Đồng hồ giả lập: ${newText}`);
 
   if (isFxEnabled()) {
-    updateFlipClock3D(clockEl, newText, animateFlip);
+    updateFlipClock3D(clockEl, newText, animateFlip && isMotionAllowed());
   } else {
     if (clockEl.classList.contains('flip-clock-active')) {
       teardownFlipClock3D(clockEl);
@@ -45,7 +45,9 @@ export async function advanceTime(hours) {
   isAdvancing = true;
 
   const iconWrapper = document.getElementById('clock-icon-wrapper');
-  if (iconWrapper) iconWrapper.classList.add('spinning');
+  if (iconWrapper && isMotionAllowed()) {
+    iconWrapper.classList.add('spinning');
+  }
 
   try {
     const result = await api.post('/clock/advance', { hours: Number(hours) });
@@ -82,10 +84,32 @@ export function promptAdvanceNh() {
   content.innerHTML = `
     <div class="form-group">
       <label class="form-label" for="input-custom-hours">Nhập số giờ muốn tua (1 – 8760 giờ):</label>
-      <input type="number" id="input-custom-hours" class="form-input" min="1" max="8760" value="48" autofocus>
-      <div class="form-helper">Hệ thống sẽ cập nhật trạng thái các lượt giữ hàng đợi và tính toán lại quá hạn.</div>
+      <input
+        type="number"
+        id="input-custom-hours"
+        class="form-input tabular-nums"
+        min="1"
+        max="8760"
+        value="48"
+        aria-describedby="input-custom-hours-helper input-custom-hours-error"
+        autofocus
+      >
+      <div id="input-custom-hours-error" class="form-error-inline" role="alert" hidden></div>
+      <div id="input-custom-hours-helper" class="form-helper">Hệ thống sẽ cập nhật trạng thái các lượt giữ hàng đợi và tính toán lại quá hạn.</div>
     </div>
   `;
+
+  const inputEl = content.querySelector('#input-custom-hours');
+  const errorEl = content.querySelector('#input-custom-hours-error');
+
+  if (inputEl && errorEl) {
+    inputEl.addEventListener('input', () => {
+      inputEl.classList.remove('is-invalid');
+      inputEl.removeAttribute('aria-invalid');
+      errorEl.hidden = true;
+      errorEl.textContent = '';
+    });
+  }
 
   openModal({
     title: 'Tua thời gian giả lập (+N giờ)',
@@ -93,10 +117,17 @@ export function promptAdvanceNh() {
     confirmText: 'Tua ngay',
     cancelText: 'Hủy',
     onConfirm: async () => {
-      const input = content.querySelector('#input-custom-hours');
-      const val = parseInt(input.value, 10);
+      const val = parseInt(inputEl.value, 10);
       if (isNaN(val) || val < 1 || val > 8760) {
-        showToast('Số giờ phải nằm trong khoảng từ 1 đến 8760', 'warning');
+        const msg = 'Số giờ phải là số nguyên trong khoảng từ 1 đến 8760.';
+        inputEl.classList.add('is-invalid');
+        inputEl.setAttribute('aria-invalid', 'true');
+        if (errorEl) {
+          errorEl.textContent = msg;
+          errorEl.hidden = false;
+        }
+        inputEl.focus();
+        showToast(msg, 'warning');
         throw new Error('Invalid hours');
       }
       await advanceTime(val);
@@ -106,16 +137,30 @@ export function promptAdvanceNh() {
 
 export function initClock() {
   lastKnownFxState = isFxEnabled();
+
+  const initialClockEl = document.getElementById('clock-time');
+  if (initialClockEl) {
+    const initialRaw = initialClockEl.dataset.rawTime || initialClockEl.textContent || '--/--/---- --:00';
+    if (lastKnownFxState) {
+      updateFlipClock3D(initialClockEl, initialRaw, false);
+    }
+  }
+
   refreshClock();
 
-  onFxChange(({ fxEnabled }) => {
+  onFxChange(({ fxEnabled, motionAllowed }) => {
+    const iconWrapper = document.getElementById('clock-icon-wrapper');
+    if (iconWrapper && !motionAllowed) {
+      iconWrapper.classList.remove('spinning');
+    }
+
     if (fxEnabled === lastKnownFxState) return;
     lastKnownFxState = fxEnabled;
 
     const clockEl = document.getElementById('clock-time');
     if (!clockEl) return;
     const raw = clockEl.dataset.rawTime || clockEl.textContent || '';
-    if (!raw || raw.includes('--')) return;
+    if (!raw) return;
 
     if (fxEnabled) {
       updateFlipClock3D(clockEl, raw, false);

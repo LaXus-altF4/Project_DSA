@@ -1108,15 +1108,31 @@ export function mountLabHero3D(pageContainer) {
 
   // Nút Thu gọn / Mở rộng thẻ giới thiệu (lưu localStorage bọc try/catch)
   if (toggleBtn) {
+    let expandResizeTimer = 0;
     toggleBtn.addEventListener('click', () => {
       const nextCollapsed = !heroEl.classList.contains('is-collapsed');
       heroEl.classList.toggle('is-collapsed', nextCollapsed);
+      const bentoGrid = heroEl.closest('.bento-grid');
+      if (bentoGrid) {
+        bentoGrid.classList.toggle('is-hero-collapsed', nextCollapsed);
+      }
+
+      const collapsibleEl = heroEl.querySelector('.dashboard-hero-collapsible');
+      if (collapsibleEl) {
+        collapsibleEl.setAttribute('aria-hidden', nextCollapsed ? 'true' : 'false');
+      }
+
       setHeroCollapsed(nextCollapsed);
       toggleBtn.setAttribute('aria-expanded', nextCollapsed ? 'false' : 'true');
 
       const labelSpan = toggleBtn.querySelector('.hero-collapse-label');
       if (labelSpan) {
         labelSpan.textContent = nextCollapsed ? 'Mở giới thiệu' : 'Thu gọn';
+      }
+
+      if (expandResizeTimer) {
+        window.clearTimeout(expandResizeTimer);
+        expandResizeTimer = 0;
       }
 
       if (nextCollapsed) {
@@ -1126,6 +1142,21 @@ export function mountLabHero3D(pageContainer) {
         stopHeroLoop();
       } else {
         syncHeroLifecycle();
+        // Cập nhật lại kích thước canvas WebGL sau khi animation mở rộng hoàn tất
+        expandResizeTimer = window.setTimeout(() => {
+          expandResizeTimer = 0;
+          if (
+            currentHeroEl === heroEl &&
+            heroEl.isConnected &&
+            !heroEl.classList.contains('is-collapsed') &&
+            isFxEnabled()
+          ) {
+            resizeHeroRenderer();
+            if (prefersReducedMotion()) {
+              renderStaticFrameOnce();
+            }
+          }
+        }, 280);
       }
     });
   }

@@ -1,14 +1,14 @@
 /**
- * tilt.js - Nghiêng chiều sâu Tilt 3D tinh tế theo chuột trên các thẻ (Đợt C.1)
+ * tilt.js - Nghiêng chiều sâu Tilt 3D tinh tế theo chuột trên các thẻ (<= 4 độ)
  * - Không dùng listener mousemove/pointermove toàn cục trên window.
  * - Chỉ gắn pointermove cục bộ trên đúng thẻ đang được trỏ chuột và gỡ ngay khi rời thẻ.
- * - Không tilt bảng dữ liệu lớn (.data-table), biểu mẫu hay màn hình Đồ thị 2D (#/graph).
+ * - Không tilt bảng dữ liệu lớn (.data-table, .bento-table-card), biểu mẫu hay Đồ thị 2D (#/graph).
  */
 
 import { isMotionAllowed, isTabVisible, onFxChange } from './fx.js';
 
 const TILT_COMPACT_SELECTOR = '.metric-card, .companion-card, .suggestion-card, .expiring-item';
-const TILT_MEDIUM_SELECTOR = '.queue-card, .return-record-item, .device-select-item:not(.in-basket)';
+const TILT_MEDIUM_SELECTOR = '.queue-card, .return-record-item, .device-select-item:not(.in-basket), .bento-card:not(.bento-table-card)';
 const TILT_ANY_SELECTOR = `${TILT_COMPACT_SELECTOR}, ${TILT_MEDIUM_SELECTOR}`;
 
 let listenersAttached = false;
@@ -114,7 +114,7 @@ function clearActiveTiltCard() {
   prev._tiltReleaseTimer = window.setTimeout(() => {
     prev.style.willChange = '';
     prev._tiltReleaseTimer = 0;
-  }, 240);
+  }, 180);
 
   activeTiltCard = null;
   activeTiltRect = null;
@@ -134,7 +134,7 @@ function handleDocumentPointerOver(e) {
 
   activeTiltCard = candidate;
   activeTiltRect = candidate.getBoundingClientRect();
-  activeTiltMaxDeg = candidate.matches(TILT_COMPACT_SELECTOR) ? 3.6 : 2.2;
+  activeTiltMaxDeg = candidate.matches(TILT_COMPACT_SELECTOR) ? 3.5 : 2.2;
   tiltRectDirty = false;
 
   if (activeTiltCard._tiltReleaseTimer) {
@@ -184,7 +184,7 @@ function syncTiltState() {
 }
 
 /**
- * Khởi tạo hiệu ứng Tilt 3D trên các thẻ con (Đợt C.1)
+ * Khởi tạo hiệu ứng Tilt 3D trên các thẻ
  */
 export function initCardTilt() {
   syncTiltState();

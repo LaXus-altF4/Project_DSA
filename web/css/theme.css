@@ -1,152 +1,427 @@
 /* ==========================================================================
-   Theme CSS - Biến màu Sáng / Tối và Trạng thái Nghiệp vụ
+   Theme CSS - Hệ thống Token Màu Sáng / Tối, Kính mờ & Dark-tech v2
+   Mọi thành phần UI chỉ tham chiếu biến CSS tại đây (không dùng hex rời).
    ========================================================================== */
 
-:root, [data-theme="light"] {
-  /* Nền và Bề mặt */
-  --color-bg-canvas: #F8FAFC;       /* Slate 50 */
-  --color-bg-surface: #FFFFFF;      /* Trắng tuyệt đối */
-  --color-bg-muted: #F1F5F9;        /* Slate 100 */
-  --color-bg-hover: #F8FAFC;        /* Slate 50 */
-  --color-bg-active: #E2E8F0;       /* Slate 200 */
+:root {
+  /* Thang chữ chuẩn v2 (tối thiểu 12px, body 15px, line-height 1.5) */
+  --font-sans: 'Be Vietnam Pro', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: ui-monospace, 'Cascadia Mono', SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
+  --text-xs: 0.75rem;       /* 12px - ngưỡng tối thiểu tuyệt đối */
+  --text-sm: 0.84375rem;    /* 13.5px */
+  --text-base: 0.9375rem;   /* 15px - body chuẩn */
+  --text-lg: 1.125rem;      /* 18px */
+  --text-xl: 1.375rem;      /* 22px */
+  --text-kpi: 1.875rem;     /* 30px */
 
-  /* Đường viền */
-  --color-border: #E2E8F0;          /* Slate 200 */
-  --color-border-hover: #CBD5E1;    /* Slate 300 */
-  --color-border-subtle: #F1F5F9;   /* Slate 100 */
+  /* Thang khoảng cách (bội số 4px) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
 
-  /* Chữ viết */
-  --color-text-primary: #0F172A;    /* Slate 900 */
-  --color-text-secondary: #475569;  /* Slate 600 */
-  --color-text-muted: #94A3B8;      /* Slate 400 */
-  --color-text-inverse: #FFFFFF;
+  /* Vùng chạm & kích thước khung */
+  --tap-min: 44px;
+  --sidebar-width: 256px;
+  --topbar-height: 68px;
 
-  /* Màu chủ đạo (Primary Accent) */
-  --color-primary: #3B82F6;         /* Blue 500 */
-  --color-primary-hover: #2563EB;   /* Blue 600 */
-  --color-primary-soft: #EFF6FF;    /* Blue 50 */
-  --color-primary-border: #BFDBFE;  /* Blue 200 */
-
-  /* 4 Trạng thái thiết bị & Kho (Quy tắc M1) */
-  /* 1. Sẵn sàng (Available - Xanh lá) */
-  --status-available-bg: #ECFDF5;
-  --status-available-border: #A7F3D0;
-  --status-available-text: #065F46;
-  --status-available-bar: #10B981;
-
-  /* 2. Đang mượn (Borrowed - Hổ phách) */
-  --status-borrowed-bg: #FFFBEB;
-  --status-borrowed-border: #FDE68A;
-  --status-borrowed-text: #92400E;
-  --status-borrowed-bar: #F59E0B;
-
-  /* 3. Đang giữ hàng 24h (On Hold - Xanh dương) */
-  --status-onhold-bg: #EFF6FF;
-  --status-onhold-border: #BFDBFE;
-  --status-onhold-text: #1E40AF;
-  --status-onhold-bar: #3B82F6;
-
-  /* 4. Bảo trì (Maintenance - Đỏ/Xám) */
-  --status-maintenance-bg: #FEF2F2;
-  --status-maintenance-border: #FECACA;
-  --status-maintenance-text: #991B1B;
-  --status-maintenance-bar: #EF4444;
-
-  /* Semantic Alerts */
-  --color-danger-bg: #FEF2F2;
-  --color-danger-border: #FCA5A5;
-  --color-danger-text: #B91C1C;
-  --color-danger: #EF4444;
-
-  --color-success-bg: #ECFDF5;
-  --color-success-border: #6EE7B7;
-  --color-success-text: #047857;
-  --color-success: #10B981;
-
-  --color-warning-bg: #FFFBEB;
-  --color-warning-border: #FCD34D;
-  --color-warning-text: #B45309;
-  --color-warning: #F59E0B;
-
-  /* Bóng đổ */
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.08);
-  --shadow-modal: 0 20px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
-
-  /* Bo góc */
-  --radius-sm: 4px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
-  --radius-xl: 16px;
+  /* Bo góc chuẩn v2: thẻ 20–24px, nút/input 12px */
+  --radius-xs: 6px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-btn: 12px;
+  --radius-lg: 20px;
+  --radius-bento: 20px;
+  --radius-xl: 24px;
+  --radius-bento-lg: 24px;
   --radius-full: 9999px;
+
+  /* Easing & Thời lượng chuyển động chuẩn */
+  --ease-enter: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+  --ease-table: cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  /* Token màu cố định cho chữ trên nút đặc (đảm bảo >= 4.5:1) & khối 3D Splash */
+  --color-on-primary: #FFFFFF;
+  --color-on-danger: #FFFFFF;
+  --color-on-onhold: #FFFFFF;
+  --color-primary-solid: #2563EB;
+  --color-primary-solid-hover: #1D4ED8;
+  --color-danger-solid: #DC2626;
+  --color-danger-solid-hover: #B91C1C;
+  --btn-highlight-top: rgba(255, 255, 255, 0.16);
+  --btn-shade-bottom: rgba(0, 0, 0, 0.08);
+  --btn-inset-lip: rgba(255, 255, 255, 0.32);
+  --btn-inset-dark-press: rgba(0, 0, 0, 0.22);
+  --btn-lip-primary: rgba(29, 78, 216, 0.85);
+  --btn-lip-danger: rgba(185, 28, 28, 0.88);
+
+  --splash-cube-front: linear-gradient(135deg, #1D4ED8 0%, #1E3A8A 100%);
+  --splash-cube-back: #0F172A;
+  --splash-cube-right: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%);
+  --splash-cube-left: #172554;
+  --splash-cube-top: linear-gradient(135deg, #60A5FA 0%, #3B82F6 100%);
+  --splash-cube-bottom: #090D1A;
+  --splash-cube-border: rgba(255, 255, 255, 0.28);
+  --splash-cube-inset: rgba(255, 255, 255, 0.15);
+  --splash-cube-core: #10B981;
+  --splash-cube-core-glow: #34D399;
+  --splash-cube-node-grad: radial-gradient(circle, #ECFDF5 0%, #10B981 100%);
+  --splash-cube-node-glow: #6EE7B7;
+  --splash-cube-trace: #93C5FD;
+  --splash-cube-pins: #FDE047;
+  --splash-cube-shadow: radial-gradient(ellipse at center, rgba(37, 99, 235, 0.45) 0%, transparent 72%);
+  --splash-progress-grad: linear-gradient(90deg, #3B82F6 0%, #22D3EE 55%, #10B981 100%);
+  --logo-sheen-grad: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.52) 50%, transparent 100%);
+
+  /* Hiệu ứng nhấp nháy & hào quang */
+  --pulse-danger-start: rgba(239, 68, 68, 0.60);
+  --pulse-danger-mid: rgba(239, 68, 68, 0.20);
+  --pulse-danger-end: rgba(239, 68, 68, 0);
+  --pulse-onhold-start: rgba(59, 130, 246, 0.68);
+  --pulse-onhold-mid: rgba(59, 130, 246, 0.22);
+  --pulse-onhold-end: rgba(59, 130, 246, 0);
+  --status-available-ring: rgba(16, 185, 129, 0.22);
+  --status-borrowed-ring: rgba(245, 158, 11, 0.22);
+  --status-onhold-ring: rgba(59, 130, 246, 0.24);
+  --status-maintenance-ring: rgba(239, 68, 68, 0.24);
 }
 
-[data-theme="dark"] {
-  /* Nền và Bề mặt */
-  --color-bg-canvas: #0B0F17;       /* Dark canvas */
-  --color-bg-surface: #151D2A;      /* Slate 900 */
-  --color-bg-muted: #1E293B;        /* Slate 800 */
-  --color-bg-hover: #1E293B;        /* Slate 800 */
-  --color-bg-active: #334155;       /* Slate 700 */
+/* ==========================================================================
+   THEME SÁNG ([data-theme="light"])
+   ========================================================================== */
+:root, [data-theme="light"] {
+  color-scheme: light;
 
-  /* Đường viền */
-  --color-border: #26354A;          /* Slate 700 */
-  --color-border-hover: #374A67;    /* Slate 600 */
-  --color-border-subtle: #1E293B;   /* Slate 800 */
+  /* Nền & Bề mặt */
+  --color-bg-canvas: #F5F7FB;
+  --color-card-base: #FFFFFF;
+  --color-bg-surface: #FFFFFF;
+  --color-bg-muted: #EEF2F8;
+  --color-bg-hover: #E6ECF6;
+  --color-bg-active: #DCE5F3;
 
-  /* Chữ viết */
-  --color-text-primary: #F8FAFC;    /* Slate 50 */
-  --color-text-secondary: #94A3B8;  /* Slate 400 */
-  --color-text-muted: #64748B;      /* Slate 500 */
-  --color-text-inverse: #0F172A;
+  /* Kính mờ v2 (Light theme giữ độ đục cao để tương phản chữ >= 4.5:1) */
+  --glass-bg: linear-gradient(155deg, rgba(255, 255, 255, 0.90) 0%, rgba(248, 250, 252, 0.80) 100%);
+  --glass-chrome-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.92) 0%, rgba(245, 247, 251, 0.88) 100%);
+  --glass-surface-reading: rgba(255, 255, 255, 0.94);
+  --glass-surface-subcard: rgba(248, 250, 252, 0.88);
+  --glass-surface-elevated: rgba(255, 255, 255, 0.96);
+  --glass-blur: 16px;
+  --glass-blur-sm: 14px;
+  --glass-blur-lg: 18px;
+  --glass-border: rgba(15, 23, 42, 0.12);
+  --glass-border-hover: rgba(37, 99, 235, 0.30);
+  --glass-inset: rgba(255, 255, 255, 0.88);
+  --glass-inset-strong: rgba(255, 255, 255, 0.98);
+  --glass-shadow: 0 20px 40px -20px rgba(15, 23, 42, 0.14);
+  --glass-shadow-hover: 0 24px 46px -18px rgba(15, 23, 42, 0.20);
+  --glass-table-row-hover: rgba(59, 130, 246, 0.055);
+  --glass-table-head-bg: rgba(238, 242, 248, 0.95);
+  --backdrop-dim: rgba(15, 23, 42, 0.56);
+  --backdrop-panel-dim: rgba(15, 23, 42, 0.38);
 
-  /* Màu chủ đạo (Primary Accent) */
-  --color-primary: #60A5FA;         /* Blue 400 */
-  --color-primary-hover: #3B82F6;   /* Blue 500 */
-  --color-primary-soft: #1E3A8A;    /* Dark blue soft */
-  --color-primary-border: #2563EB;
+  /* Đường viền chuẩn (chế độ phẳng) */
+  --color-border: rgba(15, 23, 42, 0.12);
+  --color-border-hover: rgba(15, 23, 42, 0.24);
+  --color-border-subtle: rgba(15, 23, 42, 0.07);
 
-  /* 4 Trạng thái thiết bị & Kho */
-  --status-available-bg: #064E3B;
-  --status-available-border: #059669;
-  --status-available-text: #6EE7B7;
+  /* Chữ viết (bảo đảm >= 4.5:1 trên #F5F7FB & #FFFFFF) */
+  --color-text-primary: #0F172A;
+  --color-text-secondary: #334155;
+  --color-muted-fg: #475569;
+  --color-text-muted: var(--color-muted-fg);
+  --color-text-inverse: #FFFFFF;
+
+  /* Màu nhấn & Kỹ thuật */
+  --color-primary: #3B82F6;
+  --color-primary-hover: #2563EB;
+  --color-primary-text: #1D4ED8;
+  --color-primary-soft: rgba(59, 130, 246, 0.12);
+  --color-primary-border: rgba(37, 99, 235, 0.30);
+  --color-primary-glow: rgba(59, 130, 246, 0.26);
+  --color-primary-focus-ring: rgba(59, 130, 246, 0.20);
+
+  --color-accent-cyan: #22D3EE;
+  --color-accent-text: #0E7490;
+  --color-accent-soft: rgba(8, 145, 178, 0.11);
+  --color-accent-border: rgba(8, 145, 178, 0.28);
+  --color-accent-glow: rgba(8, 145, 178, 0.20);
+
+  /* 4 Trạng thái thiết bị & Kho (Quy tắc M1) */
+  --status-available-bg: rgba(16, 185, 129, 0.12);
+  --status-available-border: rgba(5, 150, 105, 0.34);
+  --status-available-text: #047857;
   --status-available-bar: #10B981;
+  --status-available-glow: rgba(16, 185, 129, 0.24);
 
-  --status-borrowed-bg: #78350F;
-  --status-borrowed-border: #D97706;
-  --status-borrowed-text: #FCD34D;
+  --status-borrowed-bg: rgba(245, 158, 11, 0.14);
+  --status-borrowed-border: rgba(217, 119, 6, 0.34);
+  --status-borrowed-text: #B45309;
   --status-borrowed-bar: #F59E0B;
+  --status-borrowed-glow: rgba(245, 158, 11, 0.24);
 
-  --status-onhold-bg: #1E3A8A;
-  --status-onhold-border: #3B82F6;
-  --status-onhold-text: #93C5FD;
+  --status-onhold-bg: rgba(14, 165, 233, 0.12);
+  --status-onhold-border: rgba(2, 132, 199, 0.32);
+  --status-onhold-text: #0369A1;
   --status-onhold-bar: #3B82F6;
+  --status-onhold-glow: rgba(59, 130, 246, 0.24);
 
-  --status-maintenance-bg: #450A0A;
-  --status-maintenance-border: #DC2626;
-  --status-maintenance-text: #FCA5A5;
+  --status-maintenance-bg: rgba(239, 68, 68, 0.12);
+  --status-maintenance-border: rgba(220, 38, 38, 0.32);
+  --status-maintenance-text: #B91C1C;
   --status-maintenance-bar: #EF4444;
+  --status-maintenance-glow: rgba(239, 68, 68, 0.26);
 
   /* Semantic Alerts */
-  --color-danger-bg: #450A0A;
-  --color-danger-border: #DC2626;
-  --color-danger-text: #FCA5A5;
-  --color-danger: #F87171;
+  --color-danger: #EF4444;
+  --color-danger-hover: #DC2626;
+  --color-danger-bg: rgba(239, 68, 68, 0.11);
+  --color-danger-border: rgba(220, 38, 38, 0.32);
+  --color-danger-text: #B91C1C;
+  --color-danger-glow: rgba(239, 68, 68, 0.26);
 
-  --color-success-bg: #064E3B;
-  --color-success-border: #059669;
-  --color-success-text: #6EE7B7;
-  --color-success: #34D399;
+  --color-success: #10B981;
+  --color-success-hover: #059669;
+  --color-success-bg: rgba(16, 185, 129, 0.11);
+  --color-success-border: rgba(5, 150, 105, 0.32);
+  --color-success-text: #047857;
+  --color-success-glow: rgba(16, 185, 129, 0.24);
 
-  --color-warning-bg: #78350F;
-  --color-warning-border: #D97706;
-  --color-warning-text: #FCD34D;
-  --color-warning: #FBBF24;
+  --color-warning: #F59E0B;
+  --color-warning-hover: #D97706;
+  --color-warning-bg: rgba(245, 158, 11, 0.13);
+  --color-warning-border: rgba(217, 119, 6, 0.34);
+  --color-warning-text: #B45309;
+  --color-warning-glow: rgba(245, 158, 11, 0.24);
 
-  /* Bóng đổ */
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.4);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.45), 0 2px 4px -2px rgba(0, 0, 0, 0.35);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -4px rgba(0, 0, 0, 0.4);
-  --shadow-modal: 0 20px 25px -5px rgba(0, 0, 0, 0.7), 0 8px 10px -6px rgba(0, 0, 0, 0.5);
+  /* Focus ring & Controls */
+  --focus-ring: 0 0 0 3px rgba(37, 99, 235, 0.32);
+  --scrollbar-thumb: rgba(15, 23, 42, 0.22);
+  --scrollbar-thumb-hover: rgba(15, 23, 42, 0.38);
+
+  /* Nền Dark-tech Grid + 3 Radial Orbs + Đường mạch Cyan */
+  --bg-grid-line: rgba(15, 23, 42, 0.045);
+  --bg-orb-blue: rgba(59, 130, 246, 0.12);
+  --bg-orb-teal: rgba(34, 211, 238, 0.10);
+  --bg-orb-indigo: rgba(99, 102, 241, 0.085);
+  --bg-circuit-stroke: rgba(8, 145, 178, 0.14);
+  --bg-circuit-node: rgba(37, 99, 235, 0.22);
+
+  /* Nút & Thành phần có chiều sâu */
+  --btn-primary-bg: linear-gradient(180deg, #2563EB 0%, #1D4ED8 100%);
+  --btn-primary-bg-hover: linear-gradient(180deg, #1D4ED8 0%, #1E40AF 100%);
+  --btn-primary-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.30), 0 8px 20px -8px rgba(37, 99, 235, 0.45);
+  --btn-danger-bg: linear-gradient(180deg, #DC2626 0%, #B91C1C 100%);
+  --btn-danger-bg-hover: linear-gradient(180deg, #B91C1C 0%, #991B1B 100%);
+  --btn-danger-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.26), 0 8px 20px -8px rgba(220, 38, 38, 0.42);
+  --btn-secondary-bg: rgba(255, 255, 255, 0.90);
+  --btn-secondary-bg-hover: #FFFFFF;
+  --btn-secondary-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.92), 0 4px 12px -4px rgba(15, 23, 42, 0.08);
+  --btn-neutral-lip: rgba(15, 23, 42, 0.12);
+  --btn-neutral-press: rgba(15, 23, 42, 0.12);
+
+  --switch-track-off: rgba(15, 23, 42, 0.20);
+  --switch-thumb-active: #FFFFFF;
+  --switch-thumb-shadow: 0 1px 3px rgba(15, 23, 42, 0.25);
+  --logo-bg-grad: linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%);
+  --logo-shadow: 0 4px 12px -2px rgba(37, 99, 235, 0.35);
+  --logo-shadow-hover: 0 8px 18px -3px rgba(37, 99, 235, 0.48);
+
+  --fx-ripple-color: rgba(255, 255, 255, 0.45);
+  --fx-ripple-color-neutral: rgba(59, 130, 246, 0.22);
+  --nav-active-bg: linear-gradient(90deg, rgba(59, 130, 246, 0.15) 0%, rgba(34, 211, 238, 0.05) 100%);
+  --nav-active-bar: linear-gradient(180deg, #3B82F6 0%, #0E7490 100%);
+  --nav-active-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72), 0 4px 14px -6px rgba(37, 99, 235, 0.24);
+  --nav-active-glow: 0 0 12px rgba(59, 130, 246, 0.55);
+
+  /* Flip-Clock 5 ô */
+  --flip-tile-bg: #FFFFFF;
+  --flip-tile-bg-bottom: #EDF2FA;
+  --flip-tile-border: rgba(15, 23, 42, 0.16);
+  --flip-tile-text: #0F172A;
+  --flip-split-line: rgba(15, 23, 42, 0.14);
+  --flip-tile-shadow: 0 2px 5px -1px rgba(15, 23, 42, 0.10), inset 0 1px 0 rgba(255, 255, 255, 0.92);
+
+  /* Hero STM32 */
+  --fx-hero-bg: linear-gradient(140deg, rgba(255, 255, 255, 0.94) 0%, rgba(239, 246, 255, 0.88) 58%, rgba(236, 254, 255, 0.86) 100%);
+  --fx-hero-stage-glow: radial-gradient(circle at 50% 54%, rgba(59, 130, 246, 0.14), rgba(34, 211, 238, 0.09) 46%, transparent 72%);
+  --hero-hover-border: rgba(37, 99, 235, 0.50);
+
+  /* Bóng đổ chế độ phẳng */
+  --shadow-sm: 0 1px 3px 0 rgba(15, 23, 42, 0.06);
+  --shadow-md: 0 6px 14px -3px rgba(15, 23, 42, 0.08), 0 2px 6px -2px rgba(15, 23, 42, 0.05);
+  --shadow-lg: 0 12px 24px -6px rgba(15, 23, 42, 0.12), 0 4px 8px -4px rgba(15, 23, 42, 0.06);
+  --shadow-modal: 0 24px 48px -12px rgba(15, 23, 42, 0.22);
+}
+
+/* ==========================================================================
+   THEME TỐI ([data-theme="dark"]) — Dark-tech Glassmorphism
+   ========================================================================== */
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* Nền & Bề mặt */
+  --color-bg-canvas: #070B14;
+  --color-card-base: #1B2336;
+  --color-bg-surface: #1B2336;
+  --color-bg-muted: #131B2E;
+  --color-bg-hover: #212C45;
+  --color-bg-active: #2A3856;
+
+  /* Kính mờ v2 đúng thông số chuẩn */
+  --glass-bg: linear-gradient(155deg, rgba(30, 41, 59, 0.70) 0%, rgba(15, 23, 42, 0.55) 100%);
+  --glass-chrome-bg: linear-gradient(180deg, rgba(15, 23, 42, 0.78) 0%, rgba(7, 11, 20, 0.72) 100%);
+  --glass-surface-reading: rgba(15, 23, 42, 0.80);
+  --glass-surface-subcard: rgba(27, 35, 54, 0.76);
+  --glass-surface-elevated: rgba(20, 28, 46, 0.92);
+  --glass-blur: 16px;
+  --glass-blur-sm: 14px;
+  --glass-blur-lg: 18px;
+  --glass-border: rgba(148, 163, 184, 0.14);
+  --glass-border-hover: rgba(34, 211, 238, 0.34);
+  --glass-inset: rgba(255, 255, 255, 0.06);
+  --glass-inset-strong: rgba(255, 255, 255, 0.12);
+  --glass-shadow: 0 20px 40px -20px rgba(0, 0, 0, 0.60);
+  --glass-shadow-hover: 0 24px 48px -18px rgba(0, 0, 0, 0.75);
+  --glass-table-row-hover: rgba(34, 211, 238, 0.065);
+  --glass-table-head-bg: rgba(15, 23, 42, 0.90);
+  --backdrop-dim: rgba(3, 6, 14, 0.72);
+  --backdrop-panel-dim: rgba(3, 6, 14, 0.58);
+
+  /* Đường viền chuẩn (chế độ phẳng) */
+  --color-border: rgba(148, 163, 184, 0.18);
+  --color-border-hover: rgba(148, 163, 184, 0.34);
+  --color-border-subtle: rgba(148, 163, 184, 0.10);
+
+  /* Chữ viết */
+  --color-text-primary: #F1F5F9;
+  --color-text-secondary: #CBD5E1;
+  --color-muted-fg: #94A3B8;
+  --color-text-muted: var(--color-muted-fg);
+  --color-text-inverse: #070B14;
+
+  /* Màu nhấn & Kỹ thuật */
+  --color-primary: #3B82F6;
+  --color-primary-hover: #2563EB;
+  --color-primary-text: #60A5FA;
+  --color-primary-soft: rgba(59, 130, 246, 0.18);
+  --color-primary-border: rgba(96, 165, 250, 0.35);
+  --color-primary-glow: rgba(59, 130, 246, 0.38);
+  --color-primary-focus-ring: rgba(34, 211, 238, 0.25);
+
+  --color-accent-cyan: #22D3EE;
+  --color-accent-text: #22D3EE;
+  --color-accent-soft: rgba(34, 211, 238, 0.15);
+  --color-accent-border: rgba(34, 211, 238, 0.35);
+  --color-accent-glow: rgba(34, 211, 238, 0.30);
+
+  /* 4 Trạng thái thiết bị & Kho (Quy tắc M1) */
+  --status-available-bg: rgba(16, 185, 129, 0.16);
+  --status-available-border: rgba(52, 211, 153, 0.36);
+  --status-available-text: #34D399;
+  --status-available-bar: #10B981;
+  --status-available-glow: rgba(16, 185, 129, 0.32);
+
+  --status-borrowed-bg: rgba(245, 158, 11, 0.16);
+  --status-borrowed-border: rgba(251, 191, 36, 0.38);
+  --status-borrowed-text: #FBBF24;
+  --status-borrowed-bar: #F59E0B;
+  --status-borrowed-glow: rgba(245, 158, 11, 0.30);
+
+  --status-onhold-bg: rgba(56, 189, 248, 0.16);
+  --status-onhold-border: rgba(56, 189, 248, 0.38);
+  --status-onhold-text: #38BDF8;
+  --status-onhold-bar: #3B82F6;
+  --status-onhold-glow: rgba(56, 189, 248, 0.32);
+
+  --status-maintenance-bg: rgba(239, 68, 68, 0.18);
+  --status-maintenance-border: rgba(248, 113, 113, 0.38);
+  --status-maintenance-text: #F87171;
+  --status-maintenance-bar: #EF4444;
+  --status-maintenance-glow: rgba(239, 68, 68, 0.34);
+
+  /* Semantic Alerts */
+  --color-danger: #EF4444;
+  --color-danger-hover: #DC2626;
+  --color-danger-bg: rgba(239, 68, 68, 0.18);
+  --color-danger-border: rgba(248, 113, 113, 0.38);
+  --color-danger-text: #F87171;
+  --color-danger-glow: rgba(239, 68, 68, 0.34);
+
+  --color-success: #10B981;
+  --color-success-hover: #34D399;
+  --color-success-bg: rgba(16, 185, 129, 0.16);
+  --color-success-border: rgba(52, 211, 153, 0.36);
+  --color-success-text: #34D399;
+  --color-success-glow: rgba(16, 185, 129, 0.32);
+
+  --color-warning: #F59E0B;
+  --color-warning-hover: #FBBF24;
+  --color-warning-bg: rgba(245, 158, 11, 0.16);
+  --color-warning-border: rgba(251, 191, 36, 0.38);
+  --color-warning-text: #FBBF24;
+  --color-warning-glow: rgba(245, 158, 11, 0.30);
+
+  /* Focus ring & Controls */
+  --focus-ring: 0 0 0 3px rgba(34, 211, 238, 0.42);
+  --scrollbar-thumb: rgba(148, 163, 184, 0.25);
+  --scrollbar-thumb-hover: rgba(148, 163, 184, 0.42);
+
+  /* Nền Dark-tech Grid + 3 Radial Orbs + Đường mạch Cyan */
+  --bg-grid-line: rgba(148, 163, 184, 0.06);
+  --bg-orb-blue: rgba(59, 130, 246, 0.20);
+  --bg-orb-teal: rgba(34, 211, 238, 0.14);
+  --bg-orb-indigo: rgba(99, 102, 241, 0.17);
+  --bg-circuit-stroke: rgba(34, 211, 238, 0.20);
+  --bg-circuit-node: rgba(34, 211, 238, 0.34);
+
+  /* Nút & Thành phần có chiều sâu (giữ >= 4.5:1 với --color-on-primary/danger) */
+  --btn-primary-bg: linear-gradient(180deg, #2563EB 0%, #1D4ED8 100%);
+  --btn-primary-bg-hover: linear-gradient(180deg, #1D4ED8 0%, #1E40AF 100%);
+  --btn-primary-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.26), 0 8px 22px -6px rgba(59, 130, 246, 0.50);
+  --btn-danger-bg: linear-gradient(180deg, #DC2626 0%, #B91C1C 100%);
+  --btn-danger-bg-hover: linear-gradient(180deg, #B91C1C 0%, #991B1B 100%);
+  --btn-danger-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 8px 22px -6px rgba(239, 68, 68, 0.46);
+  --btn-secondary-bg: rgba(30, 41, 59, 0.74);
+  --btn-secondary-bg-hover: rgba(41, 55, 80, 0.88);
+  --btn-secondary-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 6px 14px -6px rgba(0, 0, 0, 0.48);
+  --btn-neutral-lip: rgba(15, 23, 42, 0.85);
+  --btn-neutral-press: rgba(0, 0, 0, 0.35);
+
+  --switch-track-off: rgba(148, 163, 184, 0.28);
+  --switch-thumb-active: #FFFFFF;
+  --switch-thumb-shadow: 0 1px 3px rgba(0, 0, 0, 0.40);
+  --logo-bg-grad: linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%);
+  --logo-shadow: 0 4px 14px -2px rgba(59, 130, 246, 0.42);
+  --logo-shadow-hover: 0 8px 20px -2px rgba(34, 211, 238, 0.45);
+
+  --fx-ripple-color: rgba(255, 255, 255, 0.34);
+  --fx-ripple-color-neutral: rgba(34, 211, 238, 0.26);
+  --nav-active-bg: linear-gradient(90deg, rgba(59, 130, 246, 0.24) 0%, rgba(34, 211, 238, 0.05) 100%);
+  --nav-active-bar: linear-gradient(180deg, #22D3EE 0%, #3B82F6 100%);
+  --nav-active-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 6px 16px -6px rgba(59, 130, 246, 0.36);
+  --nav-active-glow: 0 0 12px rgba(34, 211, 238, 0.72);
+
+  /* Flip-Clock 5 ô */
+  --flip-tile-bg: #0F172A;
+  --flip-tile-bg-bottom: #17233A;
+  --flip-tile-border: rgba(148, 163, 184, 0.24);
+  --flip-tile-text: #F1F5F9;
+  --flip-split-line: rgba(241, 245, 249, 0.14);
+  --flip-tile-shadow: 0 3px 8px -2px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+
+  /* Hero STM32 */
+  --fx-hero-bg: linear-gradient(140deg, rgba(27, 35, 54, 0.88) 0%, rgba(30, 58, 138, 0.34) 58%, rgba(14, 116, 144, 0.24) 100%);
+  --fx-hero-stage-glow: radial-gradient(circle at 50% 54%, rgba(59, 130, 246, 0.22), rgba(34, 211, 238, 0.12) 46%, transparent 72%);
+  --hero-hover-border: rgba(34, 211, 238, 0.45);
+
+  /* Bóng đổ chế độ phẳng */
+  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.42);
+  --shadow-md: 0 8px 16px -4px rgba(0, 0, 0, 0.48), 0 2px 6px -2px rgba(0, 0, 0, 0.35);
+  --shadow-lg: 0 14px 26px -6px rgba(0, 0, 0, 0.55), 0 4px 10px -4px rgba(0, 0, 0, 0.40);
+  --shadow-modal: 0 24px 52px -12px rgba(0, 0, 0, 0.78);
 }
