@@ -1,9 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 164" width="360" height="164" role="img" aria-label="Board phát triển STM32F103 Blue Pill">
   <defs>
     <linearGradient id="pcbBlue" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#1B66C9"/>
-      <stop offset="55%" stop-color="#1452A6"/>
-      <stop offset="100%" stop-color="#0F3F82"/>
+      <stop offset="0%" stop-color="#12507A"/>
+      <stop offset="55%" stop-color="#10466D"/>
+      <stop offset="100%" stop-color="#0E3A5C"/>
     </linearGradient>
     <linearGradient id="metalSilver" x1="0%" y1="0%" x2="0%" y2="100%">
       <stop offset="0%" stop-color="#F1F5F9"/>
@@ -26,15 +26,16 @@
     </radialGradient>
   </defs>
 
-  <!-- Bóng đổ nhẹ bên dưới board -->
-  <rect x="24" y="24" width="316" height="122" rx="12" fill="#0F172A" fill-opacity="0.16"/>
+  <!-- Bóng đổ mềm bên dưới board -->
+  <ellipse cx="180" cy="144" rx="154" ry="15" fill="#020617" fill-opacity="0.26"/>
+  <rect x="24" y="24" width="316" height="122" rx="12" fill="#020617" fill-opacity="0.20"/>
 
-  <!-- Thân PCB Blue Pill bo góc -->
-  <rect x="20" y="18" width="316" height="122" rx="11" fill="url(#pcbBlue)" stroke="#3B82F6" stroke-width="1.2"/>
-  <rect x="24" y="22" width="308" height="114" rx="8" fill="none" stroke="#93C5FD" stroke-opacity="0.32" stroke-width="0.9"/>
+  <!-- Thân PCB Blue Pill tông xanh lam đậm ngả teal & viền sáng cyan mảnh -->
+  <rect x="20" y="18" width="316" height="122" rx="11" fill="url(#pcbBlue)" stroke="#22D3EE" stroke-width="1.4"/>
+  <rect x="24" y="22" width="308" height="114" rx="8" fill="none" stroke="#67E8F9" stroke-opacity="0.34" stroke-width="0.9"/>
 
   <!-- Đường mạch đồng mảnh trên mặt PCB từ chip LQFP48 ra 2 hàng header -->
-  <g stroke="#60A5FA" stroke-opacity="0.52" stroke-width="1.25" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <g stroke="#22D3EE" stroke-opacity="0.46" stroke-width="1.25" fill="none" stroke-linecap="round" stroke-linejoin="round">
     <polyline points="164,62 150,48 112,48 112,33"/>
     <polyline points="172,58 164,44 142,44 142,33"/>
     <polyline points="180,58 180,33"/>

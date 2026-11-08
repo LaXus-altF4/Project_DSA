@@ -151,7 +151,7 @@ function buildQueueRingState(data, expiringList) {
       dashOffset,
       deviceLine: `${leadHold.deviceId} · ${leadHold.deviceName}`,
       studentLine: `${leadHold.studentName} (${leadHold.studentId})`,
-      countsHtml: `Đang giữ: <strong>${holdingPeople}</strong> · Đang chờ: <strong>${waitingPeople}</strong>`,
+      countsHtml: `<span class="metric-phrase">Đang giữ: <strong class="tabular-nums">${holdingPeople}</strong></span> · <span class="metric-phrase">Đang chờ: <strong class="tabular-nums">${waitingPeople}</strong></span>`,
       ctaHref: `#/reservations?id=${encodeURIComponent(leadHold.deviceId)}`,
       ctaText: 'Xử lý nhận ngay',
       ariaLabel: `Vòng đếm ngược 24 giờ cho ${leadHold.deviceName}, còn ${hoursLeft} giờ`,
@@ -172,7 +172,7 @@ function buildQueueRingState(data, expiringList) {
       dashOffset: '0',
       deviceLine: 'Đang có lượt giữ chỗ 24h',
       studentLine: `${waitingPeople} sinh viên trong hàng đợi`,
-      countsHtml: `Đang giữ: <strong>${holdingPeople}</strong> · Đang chờ: <strong>${waitingPeople}</strong>`,
+      countsHtml: `<span class="metric-phrase">Đang giữ: <strong class="tabular-nums">${holdingPeople}</strong></span> · <span class="metric-phrase">Đang chờ: <strong class="tabular-nums">${waitingPeople}</strong></span>`,
       ctaHref: '#/reservations',
       ctaText: 'Xem hàng đợi',
       ariaLabel: `Đang giữ chỗ 24 giờ cho ${holdingPeople} sinh viên`,
@@ -194,7 +194,7 @@ function buildQueueRingState(data, expiringList) {
       dashOffset,
       deviceLine: 'Chưa có lượt giữ 24h',
       studentLine: 'Đang chờ thiết bị được trả về kho',
-      countsHtml: `Đang giữ: <strong>0</strong> · Đang chờ: <strong>${waitingPeople}</strong>`,
+      countsHtml: `<span class="metric-phrase">Đang giữ: <strong class="tabular-nums">0</strong></span> · <span class="metric-phrase">Đang chờ: <strong class="tabular-nums">${waitingPeople}</strong></span>`,
       ctaHref: '#/reservations',
       ctaText: 'Xem hàng đợi',
       ariaLabel: `Có ${waitingPeople} sinh viên đang xếp hàng chờ thiết bị`,
@@ -214,7 +214,7 @@ function buildQueueRingState(data, expiringList) {
     dashOffset: RING_CIRCUMFERENCE.toFixed(2),
     deviceLine: 'Không có lượt giữ 24h',
     studentLine: 'Hàng đợi đặt trước hiện đang trống',
-    countsHtml: 'Đang giữ: <strong>0</strong> · Đang chờ: <strong>0</strong>',
+    countsHtml: '<span class="metric-phrase">Đang giữ: <strong class="tabular-nums">0</strong></span> · <span class="metric-phrase">Đang chờ: <strong class="tabular-nums">0</strong></span>',
     ctaHref: '#/reservations',
     ctaText: 'Mở hàng đợi',
     ariaLabel: 'Hàng đợi đặt trước hiện đang trống',
@@ -273,6 +273,29 @@ function renderContent(container, data, isUpdating = false) {
   const stagger = (idx) => (isUpdating ? '' : `stagger-item stagger-delay-${idx}`);
   const heroCollapsed = isHeroCollapsed();
 
+  // Thông tin giữ hàng thu gọn trên thanh banner khi Hero đóng (icon đồng hồ cát + mã thiết bị + giờ còn + nút Xử lý)
+  const leadHold = allHolds.length > 0 ? allHolds[0] : null;
+  let leadHoldSnippetHtml = '';
+  if (leadHold) {
+    const leadHoursLeft = Math.max(0, Number(leadHold.hoursLeft) || 0);
+    const isLeadUrgent = leadHoursLeft <= 6;
+    leadHoldSnippetHtml = `
+      <div class="hero-collapsed-hold ${isLeadUrgent ? 'is-urgent' : ''}" title="${escapeHtml(leadHold.deviceName)} — Còn ${leadHoursLeft} giờ giữ thiết bị">
+        <i data-lucide="hourglass" class="hero-collapsed-hold-icon" aria-hidden="true"></i>
+        <span class="hero-collapsed-hold-text">
+          <strong>${escapeHtml(leadHold.deviceId)}</strong> · còn <span class="tabular-nums">${leadHoursLeft}h</span>/24h
+        </span>
+        <a
+          href="#/reservations?id=${encodeURIComponent(leadHold.deviceId)}"
+          class="btn btn-secondary btn-xs hero-collapsed-hold-btn"
+          title="Mở hàng đợi ${escapeHtml(leadHold.deviceId)} để xử lý"
+        >
+          Xử lý
+        </a>
+      </div>
+    `;
+  }
+
   let heroStatusClass = 'is-healthy';
   let heroStatusIcon = 'check-circle-2';
   let heroStatusText = `Kho thiết bị ổn định · ${availableUnits}/${totalUnits} đơn vị sẵn sàng`;
@@ -320,18 +343,21 @@ function renderContent(container, data, isUpdating = false) {
               <span class="hero-collapsed-title">Phòng Lab Thực hành Nhúng &amp; Công nghệ — HCMUS</span>
             </div>
 
-            <button
-              id="btn-toggle-hero-3d"
-              type="button"
-              class="hero-collapse-btn"
-              aria-expanded="${heroCollapsed ? 'false' : 'true'}"
-              title="Thu gọn hoặc mở rộng thẻ giới thiệu phòng Lab"
-            >
-              <span class="hero-collapse-label">${heroCollapsed ? 'Mở giới thiệu' : 'Thu gọn'}</span>
-              <svg class="hero-collapse-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <polyline points="18 15 12 9 6 15"></polyline>
-              </svg>
-            </button>
+            <div class="dashboard-hero-header-actions">
+              ${leadHoldSnippetHtml}
+              <button
+                id="btn-toggle-hero-3d"
+                type="button"
+                class="hero-collapse-btn"
+                aria-expanded="${heroCollapsed ? 'false' : 'true'}"
+                title="Thu gọn hoặc mở rộng thẻ giới thiệu phòng Lab"
+              >
+                <span class="hero-collapse-label">${heroCollapsed ? 'Mở giới thiệu' : 'Thu gọn'}</span>
+                <svg class="hero-collapse-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <polyline points="18 15 12 9 6 15"></polyline>
+                </svg>
+              </button>
+            </div>
           </div>
 
           <div class="dashboard-hero-collapsible" aria-hidden="${heroCollapsed ? 'true' : 'false'}">
@@ -343,17 +369,17 @@ function renderContent(container, data, isUpdating = false) {
                     Quản lý danh mục thiết bị bằng <strong>Doubly Linked List</strong>, hàng đợi giữ chỗ 24h bằng <strong>Reservation Queue</strong> và gợi ý linh kiện mượn kèm qua <strong>Graph</strong>.
                   </div>
                   <div class="dashboard-hero-actions">
-                    <a href="#/borrow" class="btn btn-primary btn-sm">
+                    <a href="#/borrow" class="btn btn-primary btn-sm hero-btn-primary">
                       <i data-lucide="file-plus-2" class="hero-action-icon"></i>
                       <span>Lập phiếu mượn</span>
                     </a>
-                    <a href="#/devices" class="btn btn-secondary btn-sm">
+                    <a href="#/devices" class="btn btn-secondary btn-sm hero-btn-secondary" title="Xem danh mục thiết bị phòng Lab">
                       <i data-lucide="cpu" class="hero-action-icon"></i>
-                      <span>Danh mục thiết bị</span>
+                      <span>Kho thiết bị</span>
                     </a>
-                    <a href="#/graph" class="btn btn-outline btn-sm">
+                    <a href="#/graph" class="btn btn-outline btn-sm hero-btn-secondary" title="Mở đồ thị quan hệ mượn kèm">
                       <i data-lucide="network" class="hero-action-icon"></i>
-                      <span>Đồ thị mượn kèm</span>
+                      <span>Đồ thị</span>
                     </a>
                   </div>
                 </div>
@@ -364,8 +390,8 @@ function renderContent(container, data, isUpdating = false) {
                       src="assets/stm32-bluepill.svg"
                       alt="Minh hoạ tĩnh board phát triển STM32F103 Blue Pill"
                       class="lab-hero-static-svg"
-                      width="300"
-                      height="132"
+                      width="360"
+                      height="164"
                     >
                   </div>
                 </div>
@@ -413,7 +439,7 @@ function renderContent(container, data, isUpdating = false) {
             <div class="bento-ring-meta">
               <div class="bento-ring-device" title="${escapeHtml(ring.deviceLine)}">${escapeHtml(ring.deviceLine)}</div>
               <div class="bento-ring-student" title="${escapeHtml(ring.studentLine)}">${escapeHtml(ring.studentLine)}</div>
-              <div class="bento-ring-counts tabular-nums">${ring.countsHtml}</div>
+              <div class="bento-ring-counts">${ring.countsHtml}</div>
             </div>
           </div>
 
@@ -439,19 +465,46 @@ function renderContent(container, data, isUpdating = false) {
             </div>
           </div>
           <div class="metric-footer">
-            <span class="metric-sub tabular-nums">
-              <strong>${totalUnits}</strong> đơn vị · <strong>${availableUnits}</strong> sẵn sàng · <strong>${maintenanceUnits}</strong> bảo trì
-            </span>
-            <div
-              class="progress-bar-multi"
-              role="img"
-              aria-label="Phân bổ kho: ${availableUnits} sẵn sàng, ${borrowedUnits} đang mượn, ${onHoldUnits} đang giữ 24h, ${maintenanceUnits} bảo trì"
-              title="Sẵn sàng: ${availableUnits} | Đang mượn: ${borrowedUnits} | Đang giữ: ${onHoldUnits} | Bảo trì: ${maintenanceUnits}"
-            >
-              <div class="progress-segment segment-available" style="width: ${pctAvail}%;"></div>
-              <div class="progress-segment segment-borrowed" style="width: ${pctBorrow}%;"></div>
-              <div class="progress-segment segment-onhold" style="width: ${pctHold}%;"></div>
-              <div class="progress-segment segment-maintenance" style="width: ${pctMaint}%;"></div>
+            <div class="metric-sub">
+              <span class="metric-phrase"><strong class="tabular-nums">${totalUnits}</strong> đơn vị</span> ·
+              <span class="metric-phrase"><strong class="tabular-nums">${availableUnits}</strong> sẵn sàng</span> ·
+              <span class="metric-phrase"><strong class="tabular-nums">${maintenanceUnits}</strong> bảo trì</span>
+            </div>
+            <div class="metric-bottom-slot kpi-stock-visual">
+              <div class="progress-bar-tooltip-wrap">
+                <div class="progress-bar-hover-tip" role="tooltip">
+                  Sẵn sàng: ${availableUnits} · Đang mượn: ${borrowedUnits}${onHoldUnits > 0 ? ` · Giữ 24h: ${onHoldUnits}` : ''} · Bảo trì: ${maintenanceUnits}
+                </div>
+                <div
+                  class="progress-bar-multi"
+                  role="img"
+                  aria-label="Phân bổ kho: ${availableUnits} sẵn sàng, ${borrowedUnits} đang mượn, ${onHoldUnits} đang giữ 24h, ${maintenanceUnits} bảo trì"
+                >
+                  <div class="progress-segment segment-available" style="width: ${pctAvail}%;" title="Sẵn sàng: ${availableUnits} đơn vị (${Math.round(Number(pctAvail))}%)"></div>
+                  <div class="progress-segment segment-borrowed" style="width: ${pctBorrow}%;" title="Đang mượn: ${borrowedUnits} đơn vị (${Math.round(Number(pctBorrow))}%)"></div>
+                  <div class="progress-segment segment-onhold" style="width: ${pctHold}%;" title="Đang giữ 24h: ${onHoldUnits} đơn vị (${Math.round(Number(pctHold))}%)"></div>
+                  <div class="progress-segment segment-maintenance" style="width: ${pctMaint}%;" title="Bảo trì: ${maintenanceUnits} đơn vị (${Math.round(Number(pctMaint))}%)"></div>
+                </div>
+              </div>
+              <div class="progress-legend" aria-label="Chú thích thanh trạng thái kho">
+                <span class="progress-legend-item" title="Thiết bị sẵn sàng cho mượn">
+                  <span class="progress-legend-dot is-available" aria-hidden="true"></span>
+                  <span>Sẵn sàng</span>
+                </span>
+                <span class="progress-legend-item" title="Thiết bị đang có sinh viên mượn">
+                  <span class="progress-legend-dot is-borrowed" aria-hidden="true"></span>
+                  <span>Đang mượn</span>
+                </span>
+                ${onHoldUnits > 0 ? `
+                <span class="progress-legend-item" title="Đang giữ cho sinh viên trong hàng đợi">
+                  <span class="progress-legend-dot is-onhold" aria-hidden="true"></span>
+                  <span>Giữ 24h</span>
+                </span>` : ''}
+                <span class="progress-legend-item" title="Thiết bị đang bảo trì, tạm ngưng mượn">
+                  <span class="progress-legend-dot is-maintenance" aria-hidden="true"></span>
+                  <span>Bảo trì</span>
+                </span>
+              </div>
             </div>
           </div>
         </div>
@@ -471,11 +524,14 @@ function renderContent(container, data, isUpdating = false) {
             </div>
           </div>
           <div class="metric-footer">
-            <span class="metric-sub tabular-nums">
-              Đang mở: <strong id="metric-open-records">${openRecords}</strong> phiếu · Tỷ lệ dùng: <strong>${borrowPercent}%</strong>
-            </span>
-            <div class="metric-mini-bar" aria-hidden="true">
-              <div class="metric-mini-fill-borrowed" style="width: ${borrowPercent}%;"></div>
+            <div class="metric-sub">
+              <span class="metric-phrase">Đang mở: <strong id="metric-open-records" class="tabular-nums">${openRecords}</strong> phiếu</span> ·
+              <span class="metric-phrase">Tỷ lệ dùng: <strong class="tabular-nums">${borrowPercent}%</strong></span>
+            </div>
+            <div class="metric-bottom-slot">
+              <div class="metric-mini-bar" aria-hidden="true" title="Tỷ lệ sử dụng kho: ${borrowPercent}%">
+                <div class="metric-mini-fill-borrowed" style="width: ${borrowPercent}%;"></div>
+              </div>
             </div>
           </div>
         </div>
@@ -495,10 +551,11 @@ function renderContent(container, data, isUpdating = false) {
             </div>
           </div>
           <div class="metric-footer">
-            <div class="metric-status-row">
-              <span class="metric-sub tabular-nums">
-                <strong>${holdingPeople}</strong> đang giữ 24h · <strong>${onHoldUnits}</strong> đơn vị giữ
-              </span>
+            <div class="metric-sub">
+              <span class="metric-phrase"><strong class="tabular-nums">${holdingPeople}</strong> đang giữ 24h</span> ·
+              <span class="metric-phrase"><strong class="tabular-nums">${onHoldUnits}</strong> đơn vị giữ</span>
+            </div>
+            <div class="metric-badge-row">
               <span class="bento-status-pill ${holdingPeople > 0 ? 'is-onhold' : 'is-available'}">
                 <i data-lucide="${holdingPeople > 0 ? 'bell-ring' : 'check-circle-2'}" class="bento-status-pill-icon"></i>
                 <span>${holdingPeople > 0 ? 'Có giữ chỗ' : 'Ổn định'}</span>
@@ -533,11 +590,11 @@ function renderContent(container, data, isUpdating = false) {
             </div>
           </div>
           <div class="metric-footer">
-            <div class="metric-status-row">
-              <span class="metric-sub">
-                Phạt tạm tính:
-                <strong id="metric-pending-fines" class="metric-fine-value tabular-nums ${pendingFines > 0 ? 'is-danger' : ''}">${formatVND(pendingFines)}</strong>
-              </span>
+            <div class="metric-sub metric-fine-sub">
+              <span class="metric-fine-label">Phạt tạm tính:</span>
+              <strong id="metric-pending-fines" class="metric-fine-value tabular-nums ${pendingFines > 0 ? 'is-danger' : ''}" title="${formatVND(pendingFines)}">${formatVND(pendingFines)}</strong>
+            </div>
+            <div class="metric-badge-row">
               <span class="bento-status-pill ${overdueRecords > 0 ? 'is-danger' : 'is-available'}">
                 <i data-lucide="${overdueRecords > 0 ? 'alert-circle' : 'check-circle-2'}" class="bento-status-pill-icon"></i>
                 <span>${overdueRecords > 0 ? 'Đang quá hạn' : 'Đúng hạn'}</span>

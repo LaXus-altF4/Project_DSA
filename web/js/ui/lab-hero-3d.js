@@ -53,10 +53,13 @@ let boardGroup = null;
 let ambientLight = null;
 let keyLight = null;
 let rimLight = null;
+let rimFillLight = null;
 
 let pcbBodyMat = null;
+let pcbTopMat = null;
 let rimGlowMat = null;
-let rimHaloMat = null;
+let rimOuterMat = null;
+let traceLineMat = null;
 let pwrLedMat = null;
 let pwrHaloSprite = null;
 let pc13LedMat = null;
@@ -68,6 +71,7 @@ let traceSegmentsMeta = null;
 let currentStageEl = null;
 let currentHeroEl = null;
 let viewportObserver = null;
+let stageResizeObserver = null;
 let isHeroIntersecting = true;
 
 let rafId = 0;
@@ -195,7 +199,7 @@ function createChipTopTexture(threeNs) {
 }
 
 /**
- * Vẽ hoạ tiết phủ mạch in mặt trên PCB Blue Pill (solder mask xanh dương mờ, trace đồng mảnh & silkscreen trắng)
+ * Vẽ hoạ tiết phủ mạch in mặt trên PCB (xanh lam đậm hơi ngả teal #0E3A5C–#12507A, trace cyan mảnh & silkscreen trắng)
  */
 function createPcbSilkscreenTexture(threeNs) {
   const w = 1024;
@@ -206,11 +210,11 @@ function createPcbSilkscreenTexture(threeNs) {
   const ctx = cvs.getContext('2d');
   if (!ctx) return null;
 
-  // Nền phủ xanh dương mờ đặc trưng Blue Pill
+  // Nền phủ xanh lam đậm hơi ngả teal (#0E3A5C–#12507A) tách biệt khỏi nền navy thẻ
   const bgGrad = ctx.createLinearGradient(0, 0, w, h);
-  bgGrad.addColorStop(0, '#1860BE');
-  bgGrad.addColorStop(0.55, '#1350A2');
-  bgGrad.addColorStop(1, '#0F4187');
+  bgGrad.addColorStop(0, '#12507A');
+  bgGrad.addColorStop(0.52, '#10466D');
+  bgGrad.addColorStop(1, '#0E3A5C');
   ctx.fillStyle = bgGrad;
   ctx.fillRect(0, 0, w, h);
 
@@ -218,8 +222,8 @@ function createPcbSilkscreenTexture(threeNs) {
   const toPxX = (wx) => ((wx + 2.12) / 4.24) * w;
   const toPxY = (wz) => ((wz + 0.90) / 1.80) * h;
 
-  // Mạng đường mạch đồng chìm dưới lớp phủ xanh (mảnh, tinh tế)
-  ctx.strokeStyle = 'rgba(96, 165, 250, 0.36)';
+  // Mạng đường mạch đồng chìm ánh cyan dịu dưới lớp phủ teal-navy
+  ctx.strokeStyle = 'rgba(34, 211, 238, 0.34)';
   ctx.lineWidth = 3.2;
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
@@ -329,34 +333,75 @@ function samplePointAlongTrace(meta, progress01) {
 }
 
 /**
- * Đồng bộ ánh sáng & vật liệu theo Theme Sáng / Tối để board luôn nổi khối và hợp nền thẻ
+ * Đồng bộ ánh sáng & vật liệu theo Theme Sáng / Tối để board nổi khối,
+ * giữ PCB xanh lam đậm ngả teal (#0E3A5C–#12507A) & rim light cyan (#22D3EE) mảnh trên cả 2 theme (không bóng đổ).
  */
 function applyHeroThemeLighting() {
   if (!THREE || !ambientLight || !keyLight || !rimLight || !pcbBodyMat) return;
   const isDark = getCurrentTheme() === 'dark';
 
-  ambientLight.intensity = isDark ? 1.15 : 1.35;
-  keyLight.intensity = isDark ? 1.75 : 1.95;
-  rimLight.intensity = isDark ? 1.10 : 0.85;
-  rimLight.color.setHex(isDark ? 0x60a5fa : 0x3b82f6);
+  ambientLight.intensity = isDark ? 1.22 : 1.36;
+  keyLight.intensity = isDark ? 1.80 : 1.95;
 
-  pcbBodyMat.color.setHex(isDark ? 0x134e9b : 0x1659b2);
+  rimLight.intensity = isDark ? 1.85 : 1.45;
+  rimLight.color.setHex(isDark ? 0x22d3ee : 0x06b6d4);
+  if (rimFillLight) {
+    rimFillLight.intensity = isDark ? 0.95 : 0.72;
+    rimFillLight.color.setHex(0x22d3ee);
+  }
+
+  pcbBodyMat.color.setHex(isDark ? 0x0e3a5c : 0x12507a);
+  pcbBodyMat.emissive.setHex(0x07263d);
+  pcbBodyMat.emissiveIntensity = isDark ? 0.24 : 0.12;
+  if (pcbTopMat) {
+    pcbTopMat.emissive.setHex(0x062033);
+    pcbTopMat.emissiveIntensity = isDark ? 0.20 : 0.10;
+  }
+
   if (rimGlowMat) {
-    rimGlowMat.color.setHex(isDark ? 0x60a5fa : 0x2563eb);
+    rimGlowMat.color.setHex(0x22d3ee);
   }
-  if (rimHaloMat) {
-    rimHaloMat.color.setHex(isDark ? 0x3b82f6 : 0x60a5fa);
+  if (rimOuterMat) {
+    rimOuterMat.color.setHex(isDark ? 0x38bdf8 : 0x0891b2);
   }
+  if (traceLineMat) {
+    traceLineMat.color.setHex(isDark ? 0x22d3ee : 0x38bdf8);
+  }
+
 }
 
 function resizeHeroRenderer() {
   if (!renderer || !camera || !currentStageEl) return;
   const rect = currentStageEl.getBoundingClientRect();
-  const width = Math.max(Math.round(rect.width) || 300, 140);
-  const height = Math.max(Math.round(rect.height) || 132, 84);
+  const width = Math.max(Math.round(rect.width) || 320, 140);
+  const height = Math.max(Math.round(rect.height) || 184, 84);
   const dpr = Math.min(window.devicePixelRatio || 1, MAX_DPR);
 
-  camera.aspect = width / height;
+  const aspect = width / height;
+  camera.aspect = aspect;
+
+  // Đảm bảo khoảng cách an toàn >= 20px mỗi bên mép khung để board không bao giờ bị cắt ở bất kỳ góc xoay nào
+  const fovYDeg = 30;
+  camera.fov = fovYDeg;
+  const tanHalfFov = Math.tan(((fovYDeg / 2) * Math.PI) / 180);
+
+  const usableFracH = Math.min(0.84, Math.max(0.66, (width - 40) / width));
+  const usableFracV = Math.min(0.84, Math.max(0.66, (height - 28) / height));
+
+  const BOARD_RADIUS_H = 2.66;
+  const BOARD_SPAN_V = 1.44;
+
+  const distH = BOARD_RADIUS_H / (usableFracH * tanHalfFov * aspect);
+  const distV = BOARD_SPAN_V / (usableFracV * tanHalfFov);
+  const dist = Math.max(distH, distV, 6.45);
+
+  const targetY = 0.08;
+  const dirY = 0.515;
+  const dirZ = 0.857;
+
+  camera.position.set(0, targetY + dist * dirY, dist * dirZ);
+  camera.lookAt(0, targetY, 0);
+
   camera.updateProjectionMatrix();
 
   renderer.setPixelRatio(dpr);
@@ -404,24 +449,28 @@ async function ensureHeroScene() {
   renderer.setClearColor(0x000000, 0);
 
   scene = new THREE.Scene();
-  camera = new THREE.PerspectiveCamera(32, 300 / 132, 0.4, 30);
-  camera.position.set(0, 3.05, 3.95);
-  camera.lookAt(0, 0.02, 0);
+  camera = new THREE.PerspectiveCamera(30, 320 / 184, 0.4, 30);
+  camera.position.set(0, 3.40, 5.53);
+  camera.lookAt(0, 0.08, 0);
 
-  // Hệ thống chiếu sáng 3 điểm nhẹ (không bật shadowMap)
-  ambientLight = new THREE.HemisphereLight(0xf8fafc, 0x1e293b, 1.25);
+  // Hệ thống chiếu sáng nhẹ + Rim Light Cyan (#22D3EE) bám mép board (không bật shadowMap)
+  ambientLight = new THREE.HemisphereLight(0xf8fafc, 0x0e3a5c, 1.24);
   keyLight = new THREE.DirectionalLight(0xffffff, 1.85);
-  keyLight.position.set(3.8, 6.2, 4.2);
-  rimLight = new THREE.DirectionalLight(0x60a5fa, 0.95);
-  rimLight.position.set(-4.5, 2.8, -3.5);
-  scene.add(ambientLight, keyLight, rimLight);
+  keyLight.position.set(-2.6, 6.2, 3.8);
+  rimLight = new THREE.DirectionalLight(0x22d3ee, 1.80);
+  rimLight.position.set(-4.6, 2.0, -3.4);
+  rimFillLight = new THREE.DirectionalLight(0x22d3ee, 0.90);
+  rimFillLight.position.set(4.0, 1.3, -3.6);
+  scene.add(ambientLight, keyLight, rimLight, rimFillLight);
 
+  // Nhóm board STM32 Blue Pill
   boardGroup = new THREE.Group();
-  boardGroup.rotation.x = 0.24;
+  boardGroup.position.set(0, 0.08, 0);
+  boardGroup.rotation.set(0.21, -0.34, 0);
   scene.add(boardGroup);
 
   // -------------------------------------------------------------------------
-  // 1. Phôi mạch PCB xanh dương mờ bo góc + mặt lụa đường mạch
+  // 1. Phôi mạch PCB xanh lam đậm ngả teal bo góc + mặt lụa đường mạch
   // -------------------------------------------------------------------------
   const pcbShape = createRoundedRectShape(THREE, PCB_LEN - 0.028, PCB_WID - 0.028, PCB_RAD);
   const pcbGeo = new THREE.ExtrudeGeometry(pcbShape, {
@@ -436,54 +485,62 @@ async function ensureHeroScene() {
   pcbGeo.rotateX(-Math.PI / 2);
 
   pcbBodyMat = new THREE.MeshStandardMaterial({
-    color: 0x1557b0,
-    roughness: 0.62,
-    metalness: 0.08,
+    color: 0x0e3a5c,
+    emissive: 0x07263d,
+    emissiveIntensity: 0.24,
+    roughness: 0.44,
+    metalness: 0.16,
   });
   const pcbMesh = new THREE.Mesh(pcbGeo, pcbBodyMat);
   boardGroup.add(pcbMesh);
 
   const pcbTopTex = createPcbSilkscreenTexture(THREE);
-  const pcbTopMat = new THREE.MeshStandardMaterial({
+  pcbTopMat = new THREE.MeshStandardMaterial({
     map: pcbTopTex,
-    roughness: 0.58,
-    metalness: 0.06,
+    emissive: 0x062033,
+    emissiveIntensity: 0.20,
+    roughness: 0.48,
+    metalness: 0.10,
   });
   const pcbTopDecal = new THREE.Mesh(new THREE.PlaneGeometry(4.24, 1.80), pcbTopMat);
   pcbTopDecal.rotation.x = -Math.PI / 2;
   pcbTopDecal.position.y = PCB_TOP_Y;
   boardGroup.add(pcbTopDecal);
 
-  // Viền phát sáng quanh chu vi board khi hover chuột
+  // Viền rim light cyan (#22D3EE) mảnh ở mép board + lớp viền phát sáng rất nhẹ
   const rimPts2D = pcbShape.getPoints(10);
   const rimPosArr = new Float32Array(rimPts2D.length * 3);
+  const rimOuterPosArr = new Float32Array(rimPts2D.length * 3);
   for (let i = 0; i < rimPts2D.length; i++) {
-    rimPosArr[i * 3] = rimPts2D[i].x * 1.012;
-    rimPosArr[i * 3 + 1] = PCB_TOP_Y + 0.004;
-    rimPosArr[i * 3 + 2] = -rimPts2D[i].y * 1.012;
+    rimPosArr[i * 3] = rimPts2D[i].x * 1.007;
+    rimPosArr[i * 3 + 1] = PCB_TOP_Y + 0.002;
+    rimPosArr[i * 3 + 2] = -rimPts2D[i].y * 1.007;
+
+    rimOuterPosArr[i * 3] = rimPts2D[i].x * 1.022;
+    rimOuterPosArr[i * 3 + 1] = 0.004;
+    rimOuterPosArr[i * 3 + 2] = -rimPts2D[i].y * 1.022;
   }
   const rimGeo = new THREE.BufferGeometry();
   rimGeo.setAttribute('position', new THREE.BufferAttribute(rimPosArr, 3));
   rimGlowMat = new THREE.LineBasicMaterial({
-    color: 0x60a5fa,
+    color: 0x22d3ee,
     transparent: true,
-    opacity: 0.16,
+    opacity: 0.50,
   });
   const rimLoop = new THREE.LineLoop(rimGeo, rimGlowMat);
-  boardGroup.add(rimLoop);
 
-  const glowDotTex = createGlowSpriteTexture(THREE);
-  rimHaloMat = new THREE.MeshBasicMaterial({
-    color: 0x3b82f6,
-    map: glowDotTex,
+  const rimOuterGeo = new THREE.BufferGeometry();
+  rimOuterGeo.setAttribute('position', new THREE.BufferAttribute(rimOuterPosArr, 3));
+  rimOuterMat = new THREE.LineBasicMaterial({
+    color: 0x38bdf8,
     transparent: true,
-    opacity: 0.0,
-    depthWrite: false,
+    opacity: 0.24,
   });
-  const rimUnderHalo = new THREE.Mesh(new THREE.PlaneGeometry(5.3, 2.7), rimHaloMat);
-  rimUnderHalo.rotation.x = -Math.PI / 2;
-  rimUnderHalo.position.y = -0.10;
-  boardGroup.add(rimUnderHalo);
+  const rimOuterLoop = new THREE.LineLoop(rimOuterGeo, rimOuterMat);
+  boardGroup.add(rimLoop, rimOuterLoop);
+
+  // Texture chấm sáng dùng chung cho halo LED & hạt xung tín hiệu
+  const glowDotTex = createGlowSpriteTexture(THREE);
 
   // Vật liệu dùng chung
   const darkPlasticMat = new THREE.MeshStandardMaterial({
@@ -768,10 +825,10 @@ async function ensureHeroScene() {
     'position',
     new THREE.Float32BufferAttribute(traceLinePositions, 3)
   );
-  const traceLineMat = new THREE.LineBasicMaterial({
-    color: 0x93c5fd,
+  traceLineMat = new THREE.LineBasicMaterial({
+    color: 0x22d3ee,
     transparent: true,
-    opacity: 0.45,
+    opacity: 0.44,
   });
   boardGroup.add(new THREE.LineSegments(traceLineGeo, traceLineMat));
 
@@ -780,16 +837,16 @@ async function ensureHeroScene() {
   const pulsePos = new Float32Array(TOTAL_PULSE_POINTS * 3);
   const pulseColors = new Float32Array(TOTAL_PULSE_POINTS * 3);
   for (let i = 0; i < SIGNAL_TRACE_PATHS.length; i++) {
-    // Đầu xung trắng xanh rực + đuôi xung lam dịu
+    // Đầu xung cyan-trắng sáng + đuôi xung cyan dịu
     const headIdx = i * PULSE_PER_TRACE;
     const tailIdx = headIdx + 1;
-    pulseColors[headIdx * 3] = 0.68;
-    pulseColors[headIdx * 3 + 1] = 0.95;
+    pulseColors[headIdx * 3] = 0.78;
+    pulseColors[headIdx * 3 + 1] = 0.98;
     pulseColors[headIdx * 3 + 2] = 1.0;
 
-    pulseColors[tailIdx * 3] = 0.25;
-    pulseColors[tailIdx * 3 + 1] = 0.68;
-    pulseColors[tailIdx * 3 + 2] = 0.98;
+    pulseColors[tailIdx * 3] = 0.13;
+    pulseColors[tailIdx * 3 + 1] = 0.83;
+    pulseColors[tailIdx * 3 + 2] = 0.93;
   }
   pulseGeo.setAttribute('position', new THREE.BufferAttribute(pulsePos, 3));
   pulseGeo.setAttribute('color', new THREE.BufferAttribute(pulseColors, 3));
@@ -861,11 +918,24 @@ function shouldAnimateHero() {
   );
 }
 
+function syncBoardVisuals(hoverVal) {
+  const isDark = getCurrentTheme() === 'dark';
+
+  if (rimGlowMat) {
+    rimGlowMat.opacity = (isDark ? 0.50 : 0.62) + hoverVal * 0.44;
+  }
+  if (rimOuterMat) {
+    rimOuterMat.opacity = (isDark ? 0.22 : 0.34) + hoverVal * 0.40;
+  }
+}
+
 function renderStaticFrameOnce() {
   if (!renderer || !scene || !camera || !heroCanvas || !heroCanvas.isConnected) return;
   if (boardGroup) {
-    boardGroup.rotation.set(0.30, -0.34, 0.03);
+    boardGroup.position.set(0, 0.08, 0);
+    boardGroup.rotation.set(0.21, -0.34, 0);
   }
+  syncBoardVisuals(0);
   updatePulsePositions(0.42);
   resizeHeroRenderer();
   renderer.render(scene, camera);
@@ -884,8 +954,8 @@ function animateHeroFrame(nowMs) {
   lastFrameMs = nowMs;
   elapsedSec += dt;
 
-  // 1. Board tự xoay chậm quanh trục đứng (~30 giây/vòng, không nhấp nhô),
-  //    kết hợp nghiêng nhẹ theo con trỏ chuột (parallax) và phát sáng viền khi hover.
+  // 1. Board tự xoay chậm quanh trục đứng (~30 giây/vòng),
+  //    kết hợp nghiêng nhẹ theo con trỏ chuột (parallax <= 6 độ) và phát sáng viền cyan.
   smoothTiltX += (targetTiltX - smoothTiltX) * 0.08;
   smoothTiltY += (targetTiltY - smoothTiltY) * 0.08;
   const targetHover = isPointerHovering ? 1 : 0;
@@ -894,18 +964,13 @@ function animateHeroFrame(nowMs) {
   if (boardGroup) {
     const radPerSec = (Math.PI * 2) / 30;
     boardGroup.rotation.y = -0.34 + elapsedSec * radPerSec + smoothTiltY;
-    boardGroup.rotation.x = 0.28 + smoothTiltX;
+    boardGroup.rotation.x = 0.21 + smoothTiltX;
     boardGroup.rotation.z = 0;
-    boardGroup.position.y = 0;
+    boardGroup.position.y = 0.08;
   }
 
-  // 2. Viền board phát sáng nhẹ khi hover
-  if (rimGlowMat) {
-    rimGlowMat.opacity = 0.16 + smoothHoverGlow * 0.68;
-  }
-  if (rimHaloMat) {
-    rimHaloMat.opacity = smoothHoverGlow * 0.32;
-  }
+  // 2. Viền rim light cyan bám mép board
+  syncBoardVisuals(smoothHoverGlow);
 
   // 3. LED PC13 xanh nhấp nháy nhẹ ~1 Hz, LED nguồn đỏ sáng liên tục
   if (pc13LedMat && pc13HaloSprite) {
@@ -971,6 +1036,24 @@ function observeHeroViewport(heroEl) {
   viewportObserver.observe(heroEl);
 }
 
+function observeStageSize(stageEl) {
+  if (stageResizeObserver) {
+    stageResizeObserver.disconnect();
+    stageResizeObserver = null;
+  }
+  if (typeof window.ResizeObserver !== 'function' || !stageEl) return;
+
+  stageResizeObserver = new window.ResizeObserver(() => {
+    if (heroCanvas && heroCanvas.isConnected && isFxEnabled()) {
+      resizeHeroRenderer();
+      if (prefersReducedMotion()) {
+        renderStaticFrameOnce();
+      }
+    }
+  });
+  stageResizeObserver.observe(stageEl);
+}
+
 async function syncHeroLifecycle() {
   // Khi tắt "Hiệu ứng 3D": dừng ngay WebGL để CSS hiển thị ảnh tĩnh SVG thay thế
   if (
@@ -984,7 +1067,19 @@ async function syncHeroLifecycle() {
     return;
   }
 
-  const ok = await ensureHeroScene();
+  let ok = false;
+  try {
+    ok = await ensureHeroScene();
+  } catch (err) {
+    // Dựng scene lỗi giữa chừng: bỏ scene dở dang, hiện SVG tĩnh thay vì board thiếu linh kiện
+    console.warn('[LabApp 3D] Dựng board STM32 thất bại, dùng SVG tĩnh:', err);
+    if (renderer) renderer.dispose();
+    renderer = null;
+    scene = null;
+    heroCanvas = null;
+    webglFailed = true;
+    ok = false;
+  }
   if (!ok || !currentStageEl || !document.body.contains(currentStageEl)) {
     stopHeroLoop();
     if (currentStageEl && webglFailed) {
@@ -1027,9 +1122,19 @@ function bindGlobalLifecycleOnce() {
   window.addEventListener(
     'hashchange',
     () => {
-      if (!currentStageEl || !document.body.contains(currentStageEl)) {
-        stopHeroLoop();
-      }
+      window.setTimeout(() => {
+        if (!currentStageEl || !document.body.contains(currentStageEl)) {
+          stopHeroLoop();
+          if (viewportObserver) {
+            viewportObserver.disconnect();
+            viewportObserver = null;
+          }
+          if (stageResizeObserver) {
+            stageResizeObserver.disconnect();
+            stageResizeObserver = null;
+          }
+        }
+      }, 0);
     },
     { passive: true }
   );
@@ -1069,6 +1174,7 @@ export function mountLabHero3D(pageContainer) {
   currentStageEl = stageEl;
   isPointerHovering = false;
   observeHeroViewport(heroEl);
+  observeStageSize(stageEl);
 
   // Nghiêng nhẹ theo chuột (parallax) & kích hoạt phát sáng viền board khi hover
   heroEl.addEventListener(
