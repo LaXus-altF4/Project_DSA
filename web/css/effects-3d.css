@@ -289,8 +289,8 @@ html[data-fx="3d"] .clock-widget {
 html[data-fx="3d"] .dashboard-hero-3d {
   background: var(--fx-hero-bg);
   border-color: var(--fx-hero-border);
-  -webkit-backdrop-filter: blur(6px);
-  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(var(--fx-hero-blur));
+  backdrop-filter: blur(var(--fx-hero-blur));
   box-shadow: inset 0 1px 0 var(--glass-inset), var(--glass-shadow);
 }
 

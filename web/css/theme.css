@@ -247,11 +247,11 @@
   --flip-tile-shadow: 0 2px 5px -1px rgba(15, 23, 42, 0.10), inset 0 1px 0 rgba(255, 255, 255, 0.92);
 
   /* Hero STM32 */
-  --fx-hero-bg: rgba(255, 255, 255, 0.5);
+  --fx-hero-bg: rgba(255, 255, 255, 0.4);
   --fx-hero-bg-fallback: rgba(255, 255, 255, 0.7);
   --fx-hero-border: rgba(15, 23, 42, 0.08);
+  --fx-hero-blur: 2px;
   --fx-hero-stage-glow: radial-gradient(circle at 50% 54%, rgba(59, 130, 246, 0.14), rgba(34, 211, 238, 0.09) 46%, transparent 72%);
-  --fx-hero-stage-pad: transparent;
   --hero-hover-border: rgba(37, 99, 235, 0.50);
 
   /* Bóng đổ chế độ phẳng */
@@ -418,11 +418,11 @@
   --flip-tile-shadow: 0 3px 8px -2px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.08);
 
   /* Hero STM32 */
-  --fx-hero-bg: rgba(27, 35, 54, 0.3);
+  --fx-hero-bg: rgba(27, 35, 54, 0.16);
   --fx-hero-bg-fallback: rgba(27, 35, 54, 0.7);
   --fx-hero-border: rgba(255, 255, 255, 0.1);
+  --fx-hero-blur: 1px;
   --fx-hero-stage-glow: radial-gradient(circle at 50% 54%, rgba(59, 130, 246, 0.22), rgba(34, 211, 238, 0.12) 46%, transparent 72%);
-  --fx-hero-stage-pad: transparent;
   --hero-hover-border: rgba(34, 211, 238, 0.45);
 
   /* Bóng đổ chế độ phẳng */
