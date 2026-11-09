@@ -334,9 +334,9 @@ function renderRecordDevicesHtml(devices) {
     if (dev.deleted) {
       // Quy tắc M4: giữ mã thiết bị trong phiếu lịch sử, hiển thị "đã xoá"
       return `
-        <span class="record-device-chip is-deleted" title="Thiết bị ${id} đã bị xoá khỏi danh mục (Quy tắc M4)">
+        <span class="record-device-chip is-deleted" title="Thiết bị ${id} đã bị xoá khỏi danh mục">
           <code class="device-code-chip">${id}</code>
-          <span class="badge badge-maintenance record-deleted-badge"><i data-lucide="trash-2" class="badge-icon"></i><span>Đã xoá (M4)</span></span>
+          <span class="badge badge-maintenance record-deleted-badge"><i data-lucide="trash-2" class="badge-icon"></i><span>Đã xoá</span></span>
         </span>
       `;
     }
@@ -408,7 +408,7 @@ function renderRecordsRows(records) {
       dueOrReturnHtml = `
         <div class="record-time-cell">
           <span class="record-time-main tabular-nums">${escapeHtml(r.returnText || '—')}</span>
-          <span class="record-time-sub tabular-nums">Hạn: ${escapeHtml(r.dueText || '—')}</span>
+          <span class="record-time-sub tnum">Hạn: ${escapeHtml(r.dueText || '—')}</span>
         </div>
       `;
     }
@@ -418,14 +418,14 @@ function renderRecordsRows(records) {
     if (lateDays > 0) {
       const lateClass = isOpen ? 'badge-late-days' : 'badge-late-days badge-late-returned';
       lateDaysHtml = `
-        <span class="${lateClass} tabular-nums">
+        <span class="${lateClass} tnum">
           <i data-lucide="alert-triangle" class="record-mini-icon" aria-hidden="true"></i>
           Trễ ${lateDays} ngày
         </span>
       `;
     } else {
       lateDaysHtml = `
-        <span class="record-ontime-pill tabular-nums">
+        <span class="record-ontime-pill tnum">
           <i data-lucide="check-circle-2" class="record-mini-icon is-success" aria-hidden="true"></i>
           ${isOpen ? 'Trong hạn (0)' : 'Đúng hạn (0)'}
         </span>
@@ -470,7 +470,7 @@ function renderRecordsRows(records) {
         <td>
           <div class="record-student-cell">
             <span class="record-student-name">${escapeHtml(r.studentName)}</span>
-            <span class="record-student-id tabular-nums">MSSV: ${escapeHtml(r.studentId)}</span>
+            <span class="record-student-id tnum">MSSV: ${escapeHtml(r.studentId)}</span>
           </div>
         </td>
         <td>
@@ -595,7 +595,7 @@ function renderPaginationFooter({ page, pageSize, total, totalPages, countShown 
   }).join('');
 
   controlsEl.innerHTML = `
-    <span class="records-page-info tabular-nums">
+    <span class="records-page-info tnum">
       Trang <strong>${total > 0 ? safePage : 0}</strong> / ${total > 0 ? safeTotalPages : 0}
     </span>
     <button
@@ -846,7 +846,7 @@ export async function render(container) {
           <div class="records-footer-meta">
             <span id="records-range-summary" aria-live="polite">Đang tải danh sách phiếu mượn…</span>
             <span class="records-temp-note">
-              <strong>*</strong> Tiền phạt tạm tính theo đồng hồ giả lập hiện tại (chốt chính thức khi trả phiếu — Quy tắc M19).
+              <strong>*</strong> Tiền phạt tạm tính theo đồng hồ giả lập hiện tại (chốt chính thức khi trả phiếu).
             </span>
           </div>
 

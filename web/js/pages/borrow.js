@@ -246,7 +246,7 @@ function renderBasket() {
         <div class="borrow-atomic-warning" role="alert">
           <i data-lucide="alert-triangle"></i>
           <div>
-            <strong>Cảnh báo hết hàng (Quy tắc M6):</strong> Giỏ hàng đang chứa thiết bị không còn sẵn sàng. Phiếu mượn là nguyên tử — nếu còn món hết hàng thì <strong>toàn bộ phiếu sẽ thất bại</strong>. Hãy xóa món hết hàng hoặc đăng ký hàng đợi.
+            <strong>Cảnh báo hết hàng:</strong> Giỏ hàng đang chứa thiết bị không còn sẵn sàng. Phiếu mượn là nguyên tử — nếu còn món hết hàng thì <strong>toàn bộ phiếu sẽ thất bại</strong>. Hãy xóa món hết hàng hoặc đăng ký hàng đợi.
           </div>
         </div>
       `;
@@ -398,7 +398,7 @@ function renderSuggestions() {
                   <code class="device-code-chip">${escapeHtml(s.id)}</code>
                 </div>
                 <div class="borrow-item-meta-row">
-                  <span class="suggestion-badge-weight tabular-nums" title="Tổng trọng số cạnh trên đồ thị với các món trong giỏ">
+                  <span class="suggestion-badge-weight tnum" title="Tổng trọng số cạnh trên đồ thị với các món trong giỏ">
                     <i data-lucide="link"></i>
                     <span>Cùng giỏ: <strong>${s.weight}</strong> lần</span>
                   </span>
@@ -528,7 +528,7 @@ function renderDeviceList() {
                   ${buildStockStatusHtml(d)}
                   ${(d.queueLength || 0) > 0
                     ? `
-                      <span class="borrow-queue-chip tabular-nums">
+                      <span class="borrow-queue-chip tnum">
                         <i data-lucide="users"></i>
                         <span>${d.queueLength} người chờ</span>
                       </span>
@@ -608,7 +608,7 @@ function openRegisterQueueModal(deviceId, deviceName) {
         <span class="modal-static-val">${escapeHtml(deviceName)}</span>
         <code class="device-code-chip">${escapeHtml(deviceId)}</code>
       </div>
-      <div id="borrow-next-queue-pos" class="form-helper modal-highlight-note tabular-nums">
+      <div id="borrow-next-queue-pos" class="form-helper modal-highlight-note tnum">
         ${fallbackNextPos ? `Vị trí dự kiến trong hàng đợi: #${fallbackNextPos}` : 'Đang kiểm tra vị trí hàng đợi…'}
       </div>
     </div>
@@ -621,7 +621,7 @@ function openRegisterQueueModal(deviceId, deviceName) {
       <label class="form-label" for="borrow-queue-student-name">Họ và tên sinh viên <span class="borrow-required-mark">*</span>:</label>
       <input type="text" id="borrow-queue-student-name" class="form-input" placeholder="VD: Trần Văn An" value="${escapeHtml(inputStName)}" required>
       <div id="err-queue-student-name" class="form-error-inline" role="alert"></div>
-      <div class="form-helper">Không chứa dấu phẩy (,), gạch đứng (|) hoặc xuống dòng (M5).</div>
+      <div class="form-helper">Không chứa dấu phẩy (,), gạch đứng (|) hoặc xuống dòng.</div>
     </div>
     <div>
       <a href="#/reservations?id=${escapeHtml(deviceId)}" id="borrow-jump-reservation" class="borrow-modal-link">
@@ -742,7 +742,7 @@ function handleCheckout() {
   }
 
   if (!daysRaw || !Number.isInteger(days) || days < 1 || days > 30) {
-    setFieldError(currentContainer, 'borrow-days', 'err-borrow-days', 'Số ngày mượn hợp lệ từ 1 đến 30 ngày (Quy tắc M9).', !focusedFirst);
+    setFieldError(currentContainer, 'borrow-days', 'err-borrow-days', 'Số ngày mượn hợp lệ từ 1 đến 30 ngày.', !focusedFirst);
     focusedFirst = true;
     hasError = true;
   }
@@ -778,7 +778,7 @@ function handleCheckout() {
                 <strong>${escapeHtml(d.name)}</strong>
                 <code class="device-code-chip">${escapeHtml(d.id)}</code>
               </span>
-              <span class="tabular-nums">
+              <span class="tnum">
                 1 đơn vị
                 ${d.available === 0 ? '<span class="borrow-modal-item-out">(HẾT HÀNG)</span>' : ''}
               </span>
@@ -791,7 +791,7 @@ function handleCheckout() {
         <div class="borrow-atomic-warning" role="alert">
           <i data-lucide="alert-triangle"></i>
           <div>
-            <strong>Cảnh báo nguyên tử (M6):</strong> Có ${outOfStockItems.length} món hết hàng (${escapeHtml(outOfStockItems.map((d) => d.id).join(', '))}). Nếu tiếp tục, máy chủ sẽ <strong>từ chối toàn bộ phiếu</strong>!
+            <strong>Cảnh báo nguyên tử:</strong> Có ${outOfStockItems.length} món hết hàng (${escapeHtml(outOfStockItems.map((d) => d.id).join(', '))}). Nếu tiếp tục, máy chủ sẽ <strong>từ chối toàn bộ phiếu</strong>!
           </div>
         </div>
       ` : ''}
@@ -874,7 +874,7 @@ export async function render(container) {
           <h1 class="page-title">
             <i data-lucide="file-plus-2"></i> Lập Phiếu Mượn Thiết Bị
           </h1>
-          <div class="page-desc">Chọn thiết bị theo quy tắc phiếu nguyên tử (M6, M7), xem gợi ý mượn kèm theo giỏ hàng (M17) và xác nhận lập phiếu.</div>
+          <div class="page-desc">Chọn thiết bị theo quy tắc phiếu nguyên tử, xem gợi ý mượn kèm theo giỏ hàng và xác nhận lập phiếu.</div>
         </div>
         <div class="page-actions">
           <button id="btn-refresh-borrow-page" type="button" class="btn btn-secondary btn-sm" title="Làm mới danh mục thiết bị từ máy chủ">
@@ -974,7 +974,7 @@ export async function render(container) {
               </div>
               <span class="badge badge-onhold">
                 <i data-lucide="git-branch" class="badge-icon"></i>
-                <span>Đồ thị M17</span>
+                <span>Đồ thị</span>
               </span>
             </div>
             <div class="card-body borrow-card-body">
@@ -1038,7 +1038,7 @@ export async function render(container) {
                   required
                 >
                 <div id="err-borrow-days" class="form-error-inline" role="alert"></div>
-                <div class="form-helper">Mặc định: 7 ngày (Quy tắc M9). Hạn trả tính đến đúng giờ sau số ngày mượn.</div>
+                <div class="form-helper">Mặc định: 7 ngày. Hạn trả tính đến đúng giờ sau số ngày mượn.</div>
               </div>
 
               <div class="borrow-checkout-footer">
@@ -1048,7 +1048,7 @@ export async function render(container) {
                 </button>
                 <div class="borrow-rule-caption">
                   <i data-lucide="shield-check"></i>
-                  <span>Phiếu nguyên tử (M6): nếu có thiết bị hết hàng, toàn bộ phiếu sẽ không tạo và giữ nguyên đồ thị.</span>
+                  <span>Phiếu nguyên tử: nếu có thiết bị hết hàng, toàn bộ phiếu sẽ không tạo và giữ nguyên đồ thị.</span>
                 </div>
               </div>
             </div>

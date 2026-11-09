@@ -655,7 +655,7 @@ function renderContent(container, data, isUpdating = false) {
         </section>
 
         <!-- Hàng 3 · Cột 3–4: Bento rộng Hàng đợi nổi bật -->
-        <section class="bento-card bento-span-2 ${stagger(7)}" aria-label="Hàng đợi giữ chỗ 24h nổi bật">
+        <section class="bento-card bento-span-2 is-fit ${stagger(7)}" aria-label="Hàng đợi giữ chỗ 24h nổi bật">
           <div class="card-header">
             <div class="bento-card-title-wrap">
               <div class="card-title">
@@ -693,10 +693,10 @@ function renderContent(container, data, isUpdating = false) {
                             <span>${escapeHtml(item.deviceName)}</span>
                             <code class="device-code-chip">${escapeHtml(item.deviceId)}</code>
                           </div>
-                          <div class="expiring-student">
+                          <div class="expiring-student" title="SV: ${escapeHtml(item.studentName)} (${escapeHtml(item.studentId)})">
                             SV: <strong>${escapeHtml(item.studentName)}</strong> (${escapeHtml(item.studentId)})
                           </div>
-                          <div class="expiring-deadline">
+                          <div class="expiring-deadline" title="Hạn nhận: ${escapeHtml(item.holdUntilText || 'Đang cập nhật')} · Lỡ hạn: ${missCount}/2">
                             Hạn nhận: ${escapeHtml(item.holdUntilText || 'Đang cập nhật')} · Lỡ hạn: ${missCount}/2
                           </div>
                         </div>

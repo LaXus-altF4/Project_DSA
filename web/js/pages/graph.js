@@ -523,7 +523,7 @@ function renderAccessibleListHtml() {
           <span class="sr-only">và</span>
           <code class="device-code-chip">${escapeHtml(e.to)}</code>
           <span>${escapeHtml(nameById.get(e.to) || e.to)}</span>
-          <strong class="tabular-nums">mượn cùng ${Number(e.weight) || 0} lần</strong>
+          <strong class="tnum">mượn cùng ${Number(e.weight) || 0} lần</strong>
         </li>
       `).join('');
 
@@ -531,7 +531,7 @@ function renderAccessibleListHtml() {
     <summary class="graph-a11y-summary">
       <i data-lucide="list-tree" aria-hidden="true"></i>
       <span>Danh sách thiết bị và quan hệ mượn kèm (dùng bàn phím / trình đọc màn hình)</span>
-      <span class="badge badge-onhold tabular-nums">${nodes.length} đỉnh · ${visibleEdges.length} cạnh</span>
+      <span class="badge badge-onhold tnum">${nodes.length} đỉnh · ${visibleEdges.length} cạnh</span>
     </summary>
     <div class="graph-a11y-body">
       <div class="table-responsive graph-a11y-table-wrap">
@@ -787,7 +787,7 @@ function renderDetailPanel() {
               <div class="progress-segment segment-onhold" style="width: ${pHold}%;"></div>
               <div class="progress-segment segment-maintenance" style="width: ${pMaint}%;"></div>
             </div>
-            <div class="graph-stock-numbers tabular-nums">
+            <div class="graph-stock-numbers tnum">
               <span><i class="stock-dot dot-available" aria-hidden="true"></i> Sẵn: <strong>${dev.available}</strong></span>
               <span><i class="stock-dot dot-borrowed" aria-hidden="true"></i> Mượn: <strong>${dev.borrowed}</strong></span>
               <span><i class="stock-dot dot-onhold" aria-hidden="true"></i> Giữ: <strong>${dev.onHold}</strong></span>
@@ -843,7 +843,7 @@ function renderDetailPanel() {
                     <span>${escapeHtml(comp.name)}</span>
                     <code class="device-code-chip">${escapeHtml(comp.id)}</code>
                   </div>
-                  <div class="graph-companion-sub tabular-nums">
+                  <div class="graph-companion-sub tnum">
                     <span class="graph-weight-pill">w = ${comp.weight}</span>
                     <span aria-hidden="true">•</span>
                     ${comp.outOfStock
@@ -869,7 +869,7 @@ function renderDetailPanel() {
           <i data-lucide="clock-4"></i>
           <span>Xem hàng đợi <code class="mono">${escapeHtml(baseNode.id)}</code></span>
           ${queueLen !== null && queueLen > 0
-            ? `<span class="graph-queue-count tabular-nums">${queueLen} đang chờ</span>`
+            ? `<span class="graph-queue-count tnum">${queueLen} đang chờ</span>`
             : ''
           }
         </a>

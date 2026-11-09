@@ -569,7 +569,7 @@ function renderQueueList(animatedEvents = {}) {
             <div class="queue-waiting-box">
               <i data-lucide="hourglass" class="queue-waiting-icon" aria-hidden="true"></i>
               <div>
-                Đang chờ lượt giữ chỗ 24 giờ ngay khi có thiết bị được trả vào kho hoặc người trước hết hạn giữ (Quy tắc M11).
+                Đang chờ lượt giữ chỗ 24 giờ ngay khi có thiết bị được trả vào kho hoặc người trước hết hạn giữ.
               </div>
             </div>
           `}
@@ -670,7 +670,7 @@ function renderRegisterCard() {
       </div>
       <div class="card-body reservation-register-body">
         <div class="reservation-register-desc">
-          Đăng ký vị trí chờ nhận máy khi thiết bị hết hàng sẵn có trong kho (Quy tắc M12).
+          Đăng ký vị trí chờ nhận máy khi thiết bị hết hàng sẵn có trong kho.
         </div>
 
         <div class="reservation-alert-available" role="status">
@@ -678,7 +678,7 @@ function renderRegisterCard() {
           <div class="reservation-alert-content">
             <div><strong>Thiết bị hiện còn ${d.available} đơn vị sẵn sàng trong kho.</strong></div>
             <div>
-              Theo <strong>Quy tắc M12</strong>, sinh viên phải mượn trực tiếp và không được đặt trước khi thiết bị vẫn còn hàng.
+              Sinh viên phải mượn trực tiếp và không được đặt trước khi thiết bị vẫn còn hàng.
             </div>
             <div>
               <a href="#/borrow?id=${encodeURIComponent(d.id)}" class="btn-jump-borrow" title="Chuyển sang Lập phiếu mượn và thêm sẵn ${escapeHtml(d.name)} vào giỏ">
@@ -712,14 +712,14 @@ function renderRegisterCard() {
           <div class="form-group reservation-form-group">
             <label class="form-label" for="reg-student-id">Mã số sinh viên (MSSV) <span class="borrow-required-mark">*</span></label>
             <input type="text" id="reg-student-id" class="form-input mono" placeholder="VD: 25120188" maxlength="20" autocomplete="off" aria-describedby="err-reg-student-id hint-reg-student-id">
-            <div id="hint-reg-student-id" class="form-helper">Mỗi sinh viên chỉ được đứng 1 lần trong hàng đợi này (M12).</div>
+            <div id="hint-reg-student-id" class="form-helper">Mỗi sinh viên chỉ được đứng 1 lần trong hàng đợi này.</div>
             <div id="err-reg-student-id" class="form-error-inline" role="alert"></div>
           </div>
 
           <div class="form-group reservation-form-group">
             <label class="form-label" for="reg-student-name">Họ và tên sinh viên <span class="borrow-required-mark">*</span></label>
             <input type="text" id="reg-student-name" class="form-input" placeholder="VD: Hoàng Nhật Minh" maxlength="100" autocomplete="off" aria-describedby="err-reg-student-name hint-reg-student-name">
-            <div id="hint-reg-student-name" class="form-helper">Không chứa dấu phẩy, gạch đứng hoặc xuống dòng (M5).</div>
+            <div id="hint-reg-student-name" class="form-helper">Không chứa dấu phẩy, gạch đứng hoặc xuống dòng.</div>
             <div id="err-reg-student-name" class="form-error-inline" role="alert"></div>
           </div>
 
@@ -834,7 +834,7 @@ function openClaimModal(deviceId, studentId, studentName) {
     <div class="form-group">
       <label class="form-label" for="claim-days">Số ngày mượn (1 – 30 ngày)</label>
       <input type="number" id="claim-days" class="form-input mono" min="1" max="30" value="7" required autofocus aria-describedby="err-claim-days hint-claim-days">
-      <div id="hint-claim-days" class="form-helper">Mặc định: 7 ngày (Quy tắc M13). Hệ thống sẽ tạo phiếu mượn 1 thiết bị và hoàn tất lượt giữ hàng.</div>
+      <div id="hint-claim-days" class="form-helper">Mặc định: 7 ngày. Hệ thống sẽ tạo phiếu mượn 1 thiết bị và hoàn tất lượt giữ hàng.</div>
       <div id="err-claim-days" class="form-error-inline" role="alert"></div>
     </div>
   `;
@@ -898,7 +898,7 @@ function openCancelModal(deviceId, studentId, studentName, isHolding) {
         <div class="reservation-cancel-warning" role="alert">
           <i data-lucide="alert-triangle" aria-hidden="true"></i>
           <div>
-            <div class="reservation-cancel-warning-title">Lưu ý quan trọng (Quy tắc M16)</div>
+            <div class="reservation-cancel-warning-title">Lưu ý quan trọng</div>
             Sinh viên này hiện đang được giữ chỗ thiết bị. Khi huỷ đăng ký, quyền nhận thiết bị trong 24 giờ sẽ tự động được chuyển cho người kế tiếp trong hàng đợi.
           </div>
         </div>
@@ -923,7 +923,7 @@ function openCancelModal(deviceId, studentId, studentName, isHolding) {
           const notiRes = await api.get('/notifications');
           if (notiRes && Array.isArray(notiRes.notifications)) {
             notiRes.notifications.forEach(n => {
-              showToast(n.message, n.type === 'hold_granted' ? 'success' : 'info', 'Chuyển quyền giữ hàng (M16)', 6000);
+              showToast(n.message, n.type === 'hold_granted' ? 'success' : 'info', 'Chuyển quyền giữ hàng', 6000);
             });
           }
         } catch (_) {}
@@ -1164,7 +1164,7 @@ export async function render(container) {
             <i data-lucide="clock-4"></i> Hàng Đợi Đặt Trước
           </h1>
           <div class="page-desc">
-            Hàng đợi FIFO có thời hạn 24 giờ nhận thiết bị, tự động đẩy xuống cuối khi lỡ hẹn (Quy tắc M11 – M16).
+            Hàng đợi FIFO có thời hạn 24 giờ nhận thiết bị, tự động đẩy xuống cuối khi lỡ hẹn.
           </div>
         </div>
         <div class="page-actions">

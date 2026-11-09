@@ -794,11 +794,46 @@
   gap: 6px;
 }
 
+/* Sửa / Chuyển bảo trì / Trả bảo trì: luôn cùng một hàng */
 .side-panel-actions {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
   padding-top: 4px;
+}
+
+.side-panel-actions .btn {
+  min-width: 0;
+  padding-inline: 8px;
+  gap: 4px;
+  justify-content: center;
+  white-space: nowrap;
+}
+
+/* Vùng thao tác nguy hiểm cuối panel */
+.panel-danger-zone-title {
+  color: var(--color-danger-text);
+}
+
+.panel-danger-zone-body {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--color-danger-border);
+  border-radius: var(--radius-btn);
+}
+
+.panel-danger-zone-desc {
+  margin: 0;
+  font-size: var(--text-xs);
+  line-height: 1.45;
+  color: var(--color-text-secondary);
+}
+
+.panel-danger-zone-body .btn {
+  flex-shrink: 0;
 }
 
 /* Companion card trong panel */

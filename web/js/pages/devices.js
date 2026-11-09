@@ -532,7 +532,7 @@ function renderPanelContent(panel, data) {
             <code class="device-code-chip">${escapeHtml(dev.id)}</code>
             ${buildStatusBadgeHtml(dev.status)}
           </div>
-          <div class="panel-device-hero-sub tabular-nums">
+          <div class="panel-device-hero-sub tnum">
             Đã mượn tích luỹ: <strong>${dev.timesBorrowed || 0}</strong> lượt · Hàng chờ: <strong>${queue.length}</strong> người
           </div>
         </div>
@@ -566,7 +566,7 @@ function renderPanelContent(panel, data) {
             <div>Đang mượn: <strong class="tabular-nums stock-metric-borr is-nonzero">${borrowed}</strong> món</div>
             <div>Đang giữ 24h: <strong class="tabular-nums stock-metric-hold is-nonzero">${onHold}</strong> món</div>
             <div>Bảo trì: <strong class="tabular-nums stock-metric-maint is-nonzero">${maintenance}</strong> món</div>
-            <div class="panel-invariant-note tabular-nums">
+            <div class="panel-invariant-note tnum">
               Bất biến kho: ${available} + ${borrowed} + ${onHold} + ${maintenance} = ${total} đơn vị
             </div>
           </div>
@@ -592,9 +592,6 @@ function renderPanelContent(panel, data) {
               title="${maintenance === 0 ? 'Không có món đang bảo trì' : 'Hoàn tất bảo trì'}"
             >
               <i data-lucide="check-circle-2" class="btn-action-icon-sm"></i> Trả bảo trì
-            </button>
-            <button id="btn-panel-delete" type="button" class="btn btn-outline btn-sm panel-btn-danger-outline">
-              <i data-lucide="trash-2" class="btn-action-icon-sm"></i> Xoá
             </button>
           </div>
         </div>
@@ -744,6 +741,19 @@ function renderPanelContent(panel, data) {
           </div>
         `}
       </div>
+
+      <!-- 4. Vùng thao tác nguy hiểm (Xoá thiết bị) -->
+      <div class="side-panel-section panel-danger-zone">
+        <div class="side-panel-section-title panel-danger-zone-title">
+          <i data-lucide="alert-triangle"></i> Thao tác nguy hiểm
+        </div>
+        <div class="panel-danger-zone-body">
+          <p class="panel-danger-zone-desc">Xoá thiết bị khỏi danh mục. Chỉ xoá được khi không còn phiếu mượn đang mở và không còn người trong hàng đợi.</p>
+          <button id="btn-panel-delete" type="button" class="btn btn-outline btn-sm panel-btn-danger-outline">
+            <i data-lucide="trash-2" class="btn-action-icon-sm"></i> Xoá thiết bị
+          </button>
+        </div>
+      </div>
     </div>
   `;
 
@@ -823,7 +833,7 @@ function openCancelQueueFromPanelModal(deviceId, deviceName, studentId, studentN
         <div class="panel-alert-danger">
           <i data-lucide="alert-triangle" class="panel-alert-icon"></i>
           <div>
-            <strong>Quy tắc M16:</strong> Sinh viên này đang giữ chỗ 24h. Khi huỷ, quyền giữ hàng sẽ tự động chuyển cho người kế tiếp trong hàng đợi.
+            <strong>Lưu ý:</strong> Sinh viên này đang giữ chỗ 24h. Khi huỷ, quyền giữ hàng sẽ tự động chuyển cho người kế tiếp trong hàng đợi.
           </div>
         </div>
       ` : ''}
@@ -839,7 +849,7 @@ function openCancelQueueFromPanelModal(deviceId, deviceName, studentId, studentN
       try {
         await api.delete(`/reservations/${encodeURIComponent(deviceId)}/${encodeURIComponent(studentId)}`);
         showToast(`Đã huỷ đăng ký hàng đợi cho sinh viên ${studentName}.`, 'success');
-        await drainAndToastNotifications('Chuyển quyền giữ hàng (M16)');
+        await drainAndToastNotifications('Chuyển quyền giữ hàng');
         openDevicePanel(deviceId);
         loadDevices();
       } catch (err) {
@@ -866,7 +876,7 @@ function openAddDeviceModal() {
       <label class="form-label" for="add-device-id">Mã thiết bị (ID):</label>
       <input type="text" id="add-device-id" class="form-input mono" placeholder="VD: VR02, OSC02..." required autofocus>
       <div class="form-error-inline" id="err-add-device-id" role="alert"></div>
-      <div class="form-helper">Không chứa dấu phẩy (,), thanh đứng (|) hoặc ký tự xuống dòng (Quy tắc M5).</div>
+      <div class="form-helper">Không chứa dấu phẩy (,), thanh đứng (|) hoặc ký tự xuống dòng.</div>
     </div>
     <div class="form-group">
       <label class="form-label" for="add-device-name">Tên thiết bị:</label>
@@ -953,7 +963,7 @@ function openEditDeviceModal(dev) {
       <input type="number" id="edit-device-total" class="form-input tabular-nums" min="${minAllowed}" value="${dev.total}" required>
       <div class="form-error-inline" id="err-edit-device-total" role="alert"></div>
       <div class="form-helper">
-        Tối thiểu là <strong>${minAllowed}</strong> đơn vị (do đang có: ${dev.borrowed} mượn, ${dev.onHold} giữ, ${dev.maintenance} bảo trì — Quy tắc M3).
+        Tối thiểu là <strong>${minAllowed}</strong> đơn vị (do đang có: ${dev.borrowed} mượn, ${dev.onHold} giữ, ${dev.maintenance} bảo trì).
       </div>
     </div>
   `;
@@ -989,7 +999,7 @@ function openEditDeviceModal(dev) {
       try {
         await api.put(`/devices/${encodeURIComponent(dev.id)}`, { name: nameInput, total: totalInput });
         showToast(`Cập nhật thông tin ${dev.id} thành công!`, 'success');
-        await drainAndToastNotifications('Hàng đợi được phục vụ (M3)');
+        await drainAndToastNotifications('Hàng đợi được phục vụ');
         openDevicePanel(dev.id);
         loadDevices();
       } catch (err) {
@@ -1119,7 +1129,7 @@ function confirmDeleteDevice(dev) {
     <div class="panel-alert-danger modal-danger-note">
       <i data-lucide="alert-triangle" class="panel-alert-icon"></i>
       <div>
-        Chỉ xoá được khi không còn phiếu mượn đang mở và không còn người trong hàng đợi (Quy tắc M4). Đỉnh và các cạnh liên quan trong đồ thị sẽ bị xoá vĩnh viễn.
+        Chỉ xoá được khi không còn phiếu mượn đang mở và không còn người trong hàng đợi. Đỉnh và các cạnh liên quan trong đồ thị sẽ bị xoá vĩnh viễn.
       </div>
     </div>
   `;
@@ -1167,7 +1177,7 @@ function openRegisterQueueModal(deviceId, deviceName, nextQueuePosition = null) 
       <label class="form-label" for="queue-student-name">Họ và tên sinh viên:</label>
       <input type="text" id="queue-student-name" class="form-input" placeholder="VD: Trần Văn An" required>
       <div class="form-error-inline" id="err-queue-student-name" role="alert"></div>
-      <div class="form-helper">Không chứa dấu phẩy (,), gạch đứng (|) hoặc xuống dòng (M5).</div>
+      <div class="form-helper">Không chứa dấu phẩy (,), gạch đứng (|) hoặc xuống dòng.</div>
     </div>
   `;
 
@@ -1242,7 +1252,7 @@ function openClaimModal(deviceId, studentId, studentName) {
       <label class="form-label" for="claim-days">Số ngày mượn (1 – 30 ngày):</label>
       <input type="number" id="claim-days" class="form-input tabular-nums" min="1" max="30" value="7" required autofocus>
       <div class="form-error-inline" id="err-claim-days" role="alert"></div>
-      <div class="form-helper">Mặc định: 7 ngày (Quy tắc M13). Hệ thống sẽ tạo phiếu mượn 1 thiết bị.</div>
+      <div class="form-helper">Mặc định: 7 ngày. Hệ thống sẽ tạo phiếu mượn 1 thiết bị.</div>
     </div>
   `;
 
@@ -1322,7 +1332,7 @@ export async function render(container) {
           </div>
 
           <div class="devices-filter-field is-status">
-            <label class="devices-filter-label" for="select-device-status">Trạng thái (M1)</label>
+            <label class="devices-filter-label" for="select-device-status">Trạng thái</label>
             <select id="select-device-status" class="form-select">
               <option value="" selected>Tất cả trạng thái</option>
               <option value="available">Sẵn sàng</option>

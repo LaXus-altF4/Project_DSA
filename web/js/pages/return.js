@@ -185,7 +185,7 @@ function renderRecordsList(error = null) {
       overdueBadge.innerHTML = `
         <span class="return-overdue-summary is-danger">
           <i data-lucide="alert-triangle"></i>
-          <span class="tabular-nums">${overdueCount} quá hạn</span>
+          <span class="tnum">${overdueCount} quá hạn</span>
         </span>
       `;
     } else {
@@ -284,7 +284,7 @@ function renderRecordsList(error = null) {
 
     const badgeHtml = isOverdue
       ? `
-        <span class="badge badge-maintenance tabular-nums">
+        <span class="badge badge-maintenance tnum">
           <i data-lucide="alert-triangle" class="badge-icon"></i>
           <span>Trễ ${r.lateDays} ngày</span>
         </span>
@@ -319,7 +319,7 @@ function renderRecordsList(error = null) {
         </div>
         <div class="return-record-meta">
           <span class="tabular-nums">${deviceCount} thiết bị</span>
-          <span class="tabular-nums">Hạn trả: <strong>${escapeHtml(r.dueText)}</strong></span>
+          <span class="tnum">Hạn trả: <strong class="tabular-nums">${escapeHtml(r.dueText)}</strong></span>
         </div>
       </div>
     `;
@@ -430,7 +430,7 @@ function renderRecordDetail(error = null) {
     `;
   } else if (isOverdue) {
     statusBadgeHtml = `
-      <span class="badge badge-maintenance tabular-nums">
+      <span class="badge badge-maintenance tnum">
         <i data-lucide="alert-triangle" class="badge-icon"></i>
         <span>Quá hạn ${lateDaysFromApi} ngày</span>
       </span>
@@ -468,9 +468,9 @@ function renderRecordDetail(error = null) {
         <div class="return-penalty-formula">
           <div class="return-formula-heading">
             <i data-lucide="info"></i>
-            <span>Công thức giải thích (Quy tắc M19):</span>
+            <span>Công thức giải thích:</span>
           </div>
-          <div class="tabular-nums">
+          <div class="tnum">
             <code>${lateDaysFromApi} ngày trễ</code> &times; <code>${devices.length} thiết bị</code> &times; <code>36.000\u00A0đ</code> = <strong>${formatCurrency(fineFromApi)}</strong>
           </div>
           <div class="return-formula-note">
@@ -516,7 +516,7 @@ function renderRecordDetail(error = null) {
         </button>
         <div class="return-rule-hint">
           <i data-lucide="shield-alert"></i>
-          <span><strong>Quy tắc M8:</strong> Thu hồi toàn bộ thiết bị trong phiếu cùng một lần. Sau khi hoàn tất, hệ thống tự động giữ chỗ 24h cho sinh viên đầu hàng đợi (nếu có).</span>
+          <span><strong>Lưu ý:</strong> Thu hồi toàn bộ thiết bị trong phiếu cùng một lần. Sau khi hoàn tất, hệ thống tự động giữ chỗ 24h cho sinh viên đầu hàng đợi (nếu có).</span>
         </div>
       </div>
     `;
@@ -578,7 +578,7 @@ function renderRecordDetail(error = null) {
       <div class="return-devices-section">
         <div class="return-section-title">
           <i data-lucide="package"></i>
-          <span>Danh sách thiết bị cần thu hồi (<span class="tabular-nums">${devices.length}</span> món — M7, M8):</span>
+          <span>Danh sách thiết bị cần thu hồi (<span class="tabular-nums">${devices.length}</span> món):</span>
         </div>
         <div class="return-device-list">
           ${devices.map((dev) => `
@@ -592,7 +592,7 @@ function renderRecordDetail(error = null) {
                     ? `
                       <span class="badge badge-maintenance">
                         <i data-lucide="trash-2" class="badge-icon"></i>
-                        <span>Đã xoá (M4)</span>
+                        <span>Đã xoá</span>
                       </span>
                     `
                     : ''}
@@ -797,7 +797,7 @@ export async function render(container) {
             <i data-lucide="rotate-ccw"></i> Trả Thiết Bị
           </h1>
           <div class="page-desc">
-            Thu hồi toàn bộ thiết bị theo phiếu mượn (M8), xem trước số ngày quá hạn và tiền phạt tạm tính từ hệ thống (M19).
+            Thu hồi toàn bộ thiết bị theo phiếu mượn, xem trước số ngày quá hạn và tiền phạt tạm tính từ hệ thống.
           </div>
         </div>
         <div class="page-actions">
