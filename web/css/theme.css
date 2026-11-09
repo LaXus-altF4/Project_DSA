@@ -205,6 +205,21 @@
   --scrollbar-thumb: rgba(15, 23, 42, 0.22);
   --scrollbar-thumb-hover: rgba(15, 23, 42, 0.38);
 
+  /* Đợt 7 — Icon thiết bị & minh hoạ SVG */
+  --di-top: #F8FAFC;
+  --di-left: #CBD5E1;
+  --di-right: #94A3B8;
+  --di-accent: #06B6D4;
+  --di-screen: #1E293B;
+  --di-b-top: #60A5FA;
+  --di-b-left: #3B82F6;
+  --di-b-right: #1D4ED8;
+  --di-g-top: #2DD4BF;
+  --di-g-left: #14B8A6;
+  --di-g-right: #0F766E;
+  --illus-floor: rgba(59, 130, 246, 0.10);
+  --illus-shadow: rgba(15, 23, 42, 0.14);
+
   /* Nền Dark-tech Grid + 3 Radial Orbs + Đường mạch Cyan */
   --bg-grid-line: rgba(15, 23, 42, 0.045);
   --bg-orb-blue: rgba(59, 130, 246, 0.12);
@@ -376,6 +391,21 @@
   --focus-ring: 0 0 0 2px #0B1220, 0 0 0 4px #22D3EE;
   --scrollbar-thumb: rgba(148, 163, 184, 0.25);
   --scrollbar-thumb-hover: rgba(148, 163, 184, 0.42);
+
+  /* Đợt 7 — Icon thiết bị & minh hoạ SVG */
+  --di-top: #94A3B8;
+  --di-left: #64748B;
+  --di-right: #475569;
+  --di-accent: #22D3EE;
+  --di-screen: #0B1220;
+  --di-b-top: #3B82F6;
+  --di-b-left: #2563EB;
+  --di-b-right: #1E40AF;
+  --di-g-top: #14B8A6;
+  --di-g-left: #0D9488;
+  --di-g-right: #115E59;
+  --illus-floor: rgba(34, 211, 238, 0.08);
+  --illus-shadow: rgba(0, 0, 0, 0.35);
 
   /* Nền Dark-tech Grid + 3 Radial Orbs + Đường mạch Cyan */
   --bg-grid-line: rgba(148, 163, 184, 0.06);

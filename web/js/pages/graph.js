@@ -18,6 +18,7 @@ import { api } from '../api.js';
 import { createGraphRenderer, makeUndirectedEdgeKey } from '../ui/graph-renderer.js';
 import { showToast } from '../ui/toast.js';
 import { openModal } from '../ui/modal.js';
+import { deviceIconHtml, illustrationHtml as illusSvgHtml } from '../ui/device-images.js';
 
 let currentContainer = null;
 let graphRenderer = null;
@@ -206,14 +207,15 @@ function renderStatusBadge(status) {
  * Khung ảnh thiết bị chừa sẵn (Đợt 7 sẽ thay icon bằng SVG theo mã thiết bị)
  */
 function deviceThumbHtml(deviceId, sizeClass = '') {
-  return `<div class="graph-device-thumb ${sizeClass}" data-device-id="${escapeHtml(deviceId)}" aria-hidden="true"><i data-lucide="cpu"></i></div>`;
+  return `<div class="graph-device-thumb ${sizeClass}" data-device-id="${escapeHtml(deviceId)}" aria-hidden="true">${deviceIconHtml(deviceId, { size: sizeClass.includes('is-sm') ? 30 : 52 })}</div>`;
 }
 
 /**
  * Khung minh hoạ trạng thái chừa sẵn (Đợt 7 gắn SVG theo data-illustration)
  */
 function illustrationHtml(name, iconName, extraClass = '') {
-  return `<div class="empty-illustration ${extraClass}" data-illustration="${name}" aria-hidden="true"><i data-lucide="${iconName}"></i></div>`;
+  const svg = illusSvgHtml(name);
+  return `<div class="empty-illustration ${extraClass}${svg ? ' has-svg' : ''}" data-illustration="${name}" aria-hidden="true">${svg || `<i data-lucide="${iconName}"></i>`}</div>`;
 }
 
 /**
@@ -355,7 +357,7 @@ function renderEmptyDevicesState(container) {
 
       <section class="bento-card bento-table-card graph-canvas-panel graph-state-panel" aria-label="Chưa có thiết bị trên đồ thị">
         <div class="empty-state">
-          ${illustrationHtml('no-results', 'share-2')}
+          ${illustrationHtml('empty-data', 'share-2')}
           <div class="empty-state-title">Chưa có thiết bị nào trên đồ thị</div>
           <div class="empty-state-desc">
             Danh mục phòng Lab hiện đang trống. Hãy thêm thiết bị và tạo phiếu mượn nhiều món để hình thành mạng lưới liên kết.
@@ -587,7 +589,7 @@ async function openAllNeighborsModal(dev) {
           ${list.map((c) => `
             <div class="companion-card" data-glow="${escapeHtml(c.status || 'available')}">
               <div class="companion-left">
-                <div class="companion-thumb" aria-hidden="true"><i data-lucide="cpu"></i></div>
+                <div class="companion-thumb" aria-hidden="true">${deviceIconHtml(c.id, { size: 36 })}</div>
                 <div class="companion-info">
                   <div class="companion-name">
                     ${escapeHtml(c.name)} <code class="device-code-chip">${escapeHtml(c.id)}</code>

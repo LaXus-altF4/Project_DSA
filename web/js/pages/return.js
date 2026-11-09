@@ -16,6 +16,7 @@ import { api } from '../api.js';
 import { showToast } from '../ui/toast.js';
 import { openModal } from '../ui/modal.js';
 import { triggerRedPulse } from '../ui/motion.js';
+import { deviceIconHtml, illustrationHtml } from '../ui/device-images.js';
 
 let currentContainer = null;
 let openRecords = [];
@@ -213,7 +214,7 @@ function renderRecordsList(error = null) {
   if (error) {
     container.innerHTML = `
       <div class="error-state">
-        <i data-lucide="wifi-off" class="error-state-icon"></i>
+        ${illustrationHtml('connection-error')}
         <div class="error-state-title">Không thể tải phiếu mượn</div>
         <div class="error-state-desc">${escapeHtml(error.message || 'Lỗi kết nối máy chủ')}</div>
         <button id="btn-retry-open-records" type="button" class="btn btn-primary btn-sm">
@@ -233,7 +234,7 @@ function renderRecordsList(error = null) {
     if (searchQuery.trim() !== '') {
       container.innerHTML = `
         <div class="empty-state">
-          <i data-lucide="search-x" class="empty-state-icon"></i>
+          ${illustrationHtml('no-results')}
           <div class="empty-state-title">Không tìm thấy phiếu khớp</div>
           <div class="empty-state-desc">Không có phiếu đang mở nào chứa từ khóa "${escapeHtml(searchQuery)}".</div>
           <button id="btn-clear-search-return" type="button" class="btn btn-secondary btn-sm">
@@ -256,7 +257,7 @@ function renderRecordsList(error = null) {
     } else if (filterOnlyOverdue) {
       container.innerHTML = `
         <div class="empty-state">
-          <i data-lucide="check-circle-2" class="empty-state-icon is-success"></i>
+          ${illustrationHtml('no-overdue')}
           <div class="empty-state-title">Không có phiếu quá hạn</div>
           <div class="empty-state-desc">Tất cả các phiếu mượn hiện tại đều đang trong hạn quy định.</div>
         </div>
@@ -376,7 +377,7 @@ function renderRecordDetail(error = null) {
     container.innerHTML = `
       <div class="return-detail-card bento-card bento-table-card">
         <div class="error-state">
-          <i data-lucide="wifi-off" class="error-state-icon"></i>
+          ${illustrationHtml('connection-error')}
           <div class="error-state-title">Không thể nạp thông tin phiếu mượn</div>
           <div class="error-state-desc">${escapeHtml(error.message || 'Lỗi tra cứu phiếu')}</div>
           <button id="btn-retry-detail" type="button" class="btn btn-primary btn-sm">
@@ -583,9 +584,7 @@ function renderRecordDetail(error = null) {
           ${devices.map((dev) => `
             <div class="return-device-item bento-subcard">
               <div class="return-device-meta">
-                <div class="return-device-thumb" aria-hidden="true">
-                  <i data-lucide="cpu"></i>
-                </div>
+                <div class="return-device-thumb" aria-hidden="true">${deviceIconHtml(dev.id, { size: 36 })}</div>
                 <div class="return-device-text">
                   <span class="return-device-name">${escapeHtml(dev.name || dev.id)}</span>
                   <code class="device-code-chip">${escapeHtml(dev.id)}</code>

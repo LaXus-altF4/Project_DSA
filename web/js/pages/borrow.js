@@ -15,6 +15,7 @@ import { api } from '../api.js';
 import { showToast } from '../ui/toast.js';
 import { openModal, closeModal } from '../ui/modal.js';
 import { launchSuccessConfetti } from '../ui/confetti.js';
+import { deviceIconHtml, illustrationHtml } from '../ui/device-images.js';
 
 let currentContainer = null;
 let allDevices = [];
@@ -147,7 +148,7 @@ async function loadAllDevices() {
     if (container) {
       container.innerHTML = `
         <div class="error-state">
-          <i data-lucide="wifi-off" class="error-state-icon"></i>
+          ${illustrationHtml('connection-error')}
           <div class="error-state-title">Không thể nạp danh sách thiết bị</div>
           <div class="error-state-desc">${escapeHtml(err.message || 'Lỗi kết nối')}</div>
           <button id="btn-retry-devices" type="button" class="btn btn-primary btn-sm">
@@ -261,7 +262,7 @@ function renderBasket() {
   if (basket.length === 0) {
     container.innerHTML = `
       <div class="empty-state">
-        <i data-lucide="shopping-cart" class="empty-state-icon"></i>
+        ${illustrationHtml('empty-basket')}
         <div class="empty-state-title">Giỏ mượn đang trống</div>
         <div class="empty-state-desc">Chọn thiết bị từ danh mục phòng Lab hoặc từ khu vực gợi ý mượn kèm để thêm vào phiếu (tối đa 1 đơn vị mỗi mã).</div>
       </div>
@@ -277,9 +278,7 @@ function renderBasket() {
         return `
           <div class="basket-item ${isUnavailable ? 'is-unavailable' : 'bento-subcard'}">
             <div class="borrow-item-main">
-              <div class="borrow-item-thumb ${isUnavailable ? 'is-danger' : ''}" aria-hidden="true">
-                <i data-lucide="cpu"></i>
-              </div>
+              <div class="borrow-item-thumb ${isUnavailable ? 'is-danger' : ''}" aria-hidden="true">${deviceIconHtml(d.id, { size: 36 })}</div>
               <div class="borrow-item-info">
                 <div class="borrow-item-title-row">
                   <span class="borrow-item-name">${escapeHtml(d.name)}</span>
@@ -392,9 +391,7 @@ function renderSuggestions() {
         return `
           <div class="suggestion-card suggestion-popin" data-glow="${isOutOfStock ? 'borrowed' : 'available'}">
             <div class="borrow-item-main">
-              <div class="borrow-item-thumb ${isOutOfStock ? 'is-danger' : ''}" aria-hidden="true">
-                <i data-lucide="cpu"></i>
-              </div>
+              <div class="borrow-item-thumb ${isOutOfStock ? 'is-danger' : ''}" aria-hidden="true">${deviceIconHtml(s.id, { size: 36 })}</div>
               <div class="borrow-item-info">
                 <div class="borrow-item-title-row">
                   <span class="borrow-item-name">${escapeHtml(s.name)}</span>
@@ -499,7 +496,7 @@ function renderDeviceList() {
   if (filtered.length === 0) {
     container.innerHTML = `
       <div class="empty-state">
-        <i data-lucide="search-x" class="empty-state-icon"></i>
+        ${illustrationHtml('no-results')}
         <div class="empty-state-title">Không tìm thấy thiết bị</div>
         <div class="empty-state-desc">Thử tìm kiếm với từ khóa khác hoặc chuyển sang tab lọc "Tất cả".</div>
       </div>
@@ -521,9 +518,7 @@ function renderDeviceList() {
             data-glow="${escapeHtml(glowStatus)}"
           >
             <div class="borrow-item-main">
-              <div class="borrow-device-thumb ${isOutOfStock ? 'is-danger' : ''}" aria-hidden="true">
-                <i data-lucide="cpu"></i>
-              </div>
+              <div class="borrow-device-thumb ${isOutOfStock ? 'is-danger' : ''}" aria-hidden="true">${deviceIconHtml(d.id, { size: 40 })}</div>
               <div class="borrow-item-info">
                 <div class="borrow-item-title-row">
                   <span class="borrow-item-name">${escapeHtml(d.name)}</span>

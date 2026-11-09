@@ -11,6 +11,7 @@ import { animateCountUp, triggerRedPulse } from '../ui/motion.js';
 import { isHeroCollapsed, mountLabHero3D } from '../ui/lab-hero-3d.js';
 import { showToast } from '../ui/toast.js';
 import { navigateTo } from '../router.js';
+import { deviceIconHtml, illustrationHtml } from '../ui/device-images.js';
 
 const RING_RADIUS = 48;
 const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
@@ -633,6 +634,7 @@ function renderContent(container, data, isUpdating = false) {
                       <div class="css-bar-header">
                         <div class="css-bar-title-group">
                           <span class="css-bar-rank ${idx === 0 ? 'is-top-1' : ''}">#${idx + 1}</span>
+                          ${deviceIconHtml(item.id, { size: 28 })}
                           <span class="css-bar-name" title="${escapeHtml(item.name)}">${escapeHtml(item.name)}</span>
                           <code class="device-code-chip">${escapeHtml(item.id)}</code>
                         </div>
@@ -670,10 +672,7 @@ function renderContent(container, data, isUpdating = false) {
           <div class="card-body">
             ${featuredHolds.length === 0 ? `
               <div class="empty-state">
-                <svg class="empty-state-icon is-success svg-draw-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                  <polyline points="22 4 12 14.01 9 11.01"></polyline>
-                </svg>
+                ${illustrationHtml('empty-queue')}
                 <div class="empty-state-title">Chưa có lượt giữ 24h đang hoạt động</div>
                 <div class="empty-state-desc">Khi có thiết bị được trả cho sinh viên trong hàng đợi, đồng hồ giữ chỗ 24 giờ sẽ hiển thị tại đây.</div>
               </div>

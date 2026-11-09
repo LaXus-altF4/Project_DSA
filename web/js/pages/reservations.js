@@ -23,6 +23,7 @@ import { openModal } from '../ui/modal.js';
 import { triggerRedPulse } from '../ui/motion.js';
 import { isMotionAllowed, prefersReducedMotion } from '../ui/fx.js';
 import { launchSuccessConfetti } from '../ui/confetti.js';
+import { deviceIconHtml, illustrationHtml as illusSvgHtml } from '../ui/device-images.js';
 
 let currentContainer = null;
 let allDevices = [];
@@ -109,14 +110,15 @@ function bindClearErrorsOnInput(root, pairs) {
  * Khung ảnh thiết bị chừa sẵn (Đợt 7 sẽ thay icon bằng SVG theo mã thiết bị)
  */
 function deviceThumbHtml(deviceId) {
-  return `<div class="reservation-device-thumb" data-device-id="${escapeHtml(deviceId)}" aria-hidden="true"><i data-lucide="cpu"></i></div>`;
+  return `<div class="reservation-device-thumb" data-device-id="${escapeHtml(deviceId)}" aria-hidden="true">${deviceIconHtml(deviceId, { size: 52 })}</div>`;
 }
 
 /**
  * Khung minh hoạ trạng thái chừa sẵn (Đợt 7 sẽ gắn SVG theo data-illustration)
  */
 function illustrationHtml(name, iconName, extraClass = '') {
-  return `<div class="empty-illustration ${extraClass}" data-illustration="${name}" aria-hidden="true"><i data-lucide="${iconName}"></i></div>`;
+  const svg = illusSvgHtml(name);
+  return `<div class="empty-illustration ${extraClass}${svg ? ' has-svg' : ''}" data-illustration="${name}" aria-hidden="true">${svg || `<i data-lucide="${iconName}"></i>`}</div>`;
 }
 
 /**
@@ -1109,7 +1111,7 @@ function renderEmptyAllDevices() {
   showStateView(`
     <section class="bento-card stagger-item">
       <div class="empty-state reservation-empty-state">
-        ${illustrationHtml('no-results', 'package')}
+        ${illustrationHtml('empty-data', 'package')}
         <div class="empty-state-title">Chưa có thiết bị nào trong hệ thống</div>
         <div class="empty-state-desc">Vui lòng sang màn hình Danh mục Thiết bị để thêm mới thiết bị vào phòng thực hành.</div>
         <a href="#/devices" class="btn btn-primary">

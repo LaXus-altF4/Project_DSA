@@ -11,6 +11,7 @@
 import { api } from '../api.js';
 import { showToast } from '../ui/toast.js';
 import { openModal } from '../ui/modal.js';
+import { deviceIconHtml, illustrationHtml } from '../ui/device-images.js';
 
 let currentContainer = null;
 let currentQuery = '';
@@ -153,7 +154,7 @@ function renderTableError(errorMsg) {
     <tr>
       <td colspan="7">
         <div class="error-state">
-          <i data-lucide="wifi-off" class="error-state-icon"></i>
+          ${illustrationHtml('connection-error')}
           <div class="error-state-title">Lỗi tải danh sách thiết bị</div>
           <div class="error-state-desc">${escapeHtml(errorMsg)}</div>
           <button id="btn-devices-retry" type="button" class="btn btn-primary btn-sm">
@@ -208,7 +209,7 @@ function renderDevicesList(devices) {
       <tr>
         <td colspan="7">
           <div class="empty-state">
-            <i data-lucide="search-x" class="empty-state-icon"></i>
+            ${illustrationHtml('no-results')}
             <div class="empty-state-title">Không tìm thấy thiết bị nào</div>
             <div class="empty-state-desc">Thử tìm kiếm với từ khóa khác hoặc điều chỉnh bộ lọc trạng thái.</div>
           </div>
@@ -249,9 +250,7 @@ function renderDevicesList(devices) {
         </td>
         <td class="devices-col-name">
           <div class="device-name-cell">
-            <div class="device-row-thumb" aria-hidden="true">
-              <i data-lucide="cpu"></i>
-            </div>
+            <div class="device-row-thumb" aria-hidden="true">${deviceIconHtml(d.id, { size: 40 })}</div>
             <div class="device-name-clamp" title="${escapeHtml(d.name)}">
               ${escapeHtml(d.name)}
             </div>
@@ -392,7 +391,7 @@ export async function openDevicePanel(deviceId) {
       </div>
       <div class="side-panel-body">
         <div class="error-state">
-          <i data-lucide="wifi-off" class="error-state-icon"></i>
+          ${illustrationHtml('connection-error')}
           <div class="error-state-title">Không thể tải thông tin thiết bị</div>
           <div class="error-state-desc">${escapeHtml(err.message || 'Lỗi kết nối')}</div>
           <button id="btn-panel-retry" type="button" class="btn btn-primary btn-sm">
@@ -457,9 +456,7 @@ async function openAllCompanionsModal(dev) {
           ${list.map((c) => `
             <div class="companion-card" data-glow="${escapeHtml(c.status || 'available')}">
               <div class="companion-left">
-                <div class="companion-thumb" aria-hidden="true">
-                  <i data-lucide="cpu"></i>
-                </div>
+                <div class="companion-thumb" aria-hidden="true">${deviceIconHtml(c.id, { size: 36 })}</div>
                 <div class="companion-info">
                   <div class="companion-name">
                     ${escapeHtml(c.name)} <code class="device-code-chip">${escapeHtml(c.id)}</code>
@@ -527,7 +524,7 @@ function renderPanelContent(panel, data) {
       <!-- 0. Khối nhận diện thiết bị trong Panel -->
       <div class="panel-device-hero">
         <div class="panel-device-thumb" aria-hidden="true">
-          <i data-lucide="cpu" class="panel-device-thumb-icon"></i>
+          ${deviceIconHtml(dev.id, { size: 72 })}
         </div>
         <div class="panel-device-hero-meta">
           <div class="panel-device-hero-name">${escapeHtml(dev.name)}</div>
@@ -629,9 +626,7 @@ function renderPanelContent(panel, data) {
             ${suggestions.map((s) => `
               <div class="companion-card" data-glow="${s.outOfStock ? 'borrowed' : 'available'}">
                 <div class="companion-left">
-                  <div class="companion-thumb" aria-hidden="true">
-                    <i data-lucide="cpu"></i>
-                  </div>
+                  <div class="companion-thumb" aria-hidden="true">${deviceIconHtml(s.id, { size: 36 })}</div>
                   <div class="companion-info">
                     <div class="companion-name">
                       ${escapeHtml(s.name)} <code class="device-code-chip">${escapeHtml(s.id)}</code>

@@ -810,43 +810,43 @@ Mọi chuyển động tuân thủ **4 nguyên tắc cứng**:
   > `3D isometric soft clay render icon of a single piece of lab hardware on a pure solid flat white background (#FFFFFF) with no cast floor shadow, soft matte clay and anodized metal texture, clean top-left studio lighting, subtle electric blue (#3B82F6) and cyan (#22D3EE) technical accents, rounded friendly industrial design, minimal details, NO text, NO letters, NO numbers, NO logos, NO brand marks, centered framing.`
   *(Với 5 ảnh trạng thái: bố cục cảnh isometric 4:3 sạch không nền rối, cùng bảng màu blue/cyan/emerald/amber/coral).*
 - **Module ánh xạ:** `web/js/ui/device-images.js`
-  - Thiết bị không có ảnh riêng (hoặc ID lạ trong `mock.js` như `CAB01`, `ROB01`, hoặc thiết bị mới người dùng thêm) tự động ánh xạ sang `assets/devices/generic.webp` và gài fallback `onerror`.
+  - Thiết bị không có ảnh riêng (hoặc ID lạ trong `mock.js` như `CAB01`, `ROB01`, hoặc thiết bị mới người dùng thêm) tự động ánh xạ sang `assets/devices/generic.svg` (danh sách mã có icon cứng trong `device-images.js`, vì `<use>` không có `onerror`).
   - Mọi `<img>` khai báo rõ `width`, `height`, `loading="lazy"`, `decoding="async"` và `alt` tiếng Việt rõ nghĩa.
 
-#### A. Ảnh Thiết bị (`web/assets/devices/<MÃ>.webp` — `256×256px`, nền trong suốt RGBA, `≤ 40 KB`)
+#### A. Ảnh Thiết bị (`web/assets/devices/<MÃ>.svg` — SVG vẽ tay `viewBox 0 0 64 64`, `≤ 4 KB`)
 
 | STT | Mã (`data/devices.csv`) | Đường dẫn file | Đối tượng minh hoạ 3D |
 |---|---|---|---|
-| 1 | `ARD01` | `web/assets/devices/ARD01.webp` | Bo vi điều khiển xanh dương bo mạch tối giản (không chữ/logo) |
-| 2 | `BK01` | `web/assets/devices/BK01.webp` | Cuốn sách khoa học máy tính bìa cứng xanh chàm gáy dày, ruy-băng cyan |
-| 3 | `BRD01` | `web/assets/devices/BRD01.webp` | Bảng cắm test mạch trắng ngà có 2 dải nguồn xanh dương – đỏ |
-| 4 | `CAM01` | `web/assets/devices/CAM01.webp` | Mô-đun camera nhỏ gọn thấu kính xanh ngọc gắn cáp dẹt xanh dương |
-| 5 | `DMM01` | `web/assets/devices/DMM01.webp` | Đồng hồ vạn năng cầm tay vỏ xám-xanh lam, núm xoay tròn & 2 que đo |
-| 6 | `ESP01` | `web/assets/devices/ESP01.webp` | Bo phát triển Wi-Fi IoT mạch đen-lam kèm lồng kim loại trắng và anten PCB |
-| 7 | `JMP01` | `web/assets/devices/JMP01.webp` | Bó dây cắm test nhiều màu (lam, ngọc, hổ phách, trắng) đầu kim nhựa |
-| 8 | `LAP01` | `web/assets/devices/LAP01.webp` | Laptop kỹ thuật mở hé góc 110°, vỏ nhôm xám bạc & màn hình sóng cyan |
-| 9 | `OSC01` | `web/assets/devices/OSC01.webp` | Máy hiện sóng để bàn nhỏ gọn, màn hình hiển thị sóng sin cyan, 4 núm vặn |
-| 10 | `PRB01` | `web/assets/devices/PRB01.webp` | Đầu dò máy hiện sóng kèm dây BNC cuộn tròn và kẹp móc xám-lam |
-| 11 | `PRJ01` | `web/assets/devices/PRJ01.webp` | Máy chiếu mini hình khối bo tròn trắng-xám, thấu kính phát tia sáng xanh ngọc |
-| 12 | `PSU01` | `web/assets/devices/PSU01.webp` | Bộ nguồn DC điều chỉnh để bàn có 2 màn hiển thị khối lam/ngọc, 2 núm chỉnh & cọc đỏ/đen |
-| 13 | `RPI01` | `web/assets/devices/RPI01.webp` | Máy tính nhúng bo xanh ngọc-lam có các cổng kết nối bạc & chip tản nhiệt vuông |
-| 14 | `SDC01` | `web/assets/devices/SDC01.webp` | Thẻ nhớ microSD tối giản tông xám than viền nhấn xanh cyan |
-| 15 | `SEN01` | `web/assets/devices/SEN01.webp` | Hộp khay chia ngăn đựng bộ mô-đun cảm biến nhỏ (siêu âm, ánh sáng, nhiệt) |
-| 16 | `SLD01` | `web/assets/devices/SLD01.webp` | Trạm hàn & tay hàn thiếc kèm giá đỡ lò xo, dây nguồn cuộn và đầu mũi đồng |
-| 17 | `TC01` | `web/assets/devices/TC01.webp` | Cặp tay cầm điều khiển thực tế ảo công thái học vòng sáng cyan mềm |
-| 18 | `VR01` | `web/assets/devices/VR01.webp` | Kính thực tế ảo bo tròn trắng-xám mặt kính bóng xanh dương/ngọc |
-| 19 | *(Mặc định)* | `web/assets/devices/generic.webp` | Hộp mô-đun phần cứng Lab đa năng gắn vi mạch cyan (fallback mọi mã lạ) |
+| 1 | `ARD01` | `web/assets/devices/ARD01.svg` | Bo vi điều khiển xanh dương bo mạch tối giản (không chữ/logo) |
+| 2 | `BK01` | `web/assets/devices/BK01.svg` | Cuốn sách khoa học máy tính bìa cứng xanh chàm gáy dày, ruy-băng cyan |
+| 3 | `BRD01` | `web/assets/devices/BRD01.svg` | Bảng cắm test mạch trắng ngà có 2 dải nguồn xanh dương – đỏ |
+| 4 | `CAM01` | `web/assets/devices/CAM01.svg` | Mô-đun camera nhỏ gọn thấu kính xanh ngọc gắn cáp dẹt xanh dương |
+| 5 | `DMM01` | `web/assets/devices/DMM01.svg` | Đồng hồ vạn năng cầm tay vỏ xám-xanh lam, núm xoay tròn & 2 que đo |
+| 6 | `ESP01` | `web/assets/devices/ESP01.svg` | Bo phát triển Wi-Fi IoT mạch đen-lam kèm lồng kim loại trắng và anten PCB |
+| 7 | `JMP01` | `web/assets/devices/JMP01.svg` | Bó dây cắm test nhiều màu (lam, ngọc, hổ phách, trắng) đầu kim nhựa |
+| 8 | `LAP01` | `web/assets/devices/LAP01.svg` | Laptop kỹ thuật mở hé góc 110°, vỏ nhôm xám bạc & màn hình sóng cyan |
+| 9 | `OSC01` | `web/assets/devices/OSC01.svg` | Máy hiện sóng để bàn nhỏ gọn, màn hình hiển thị sóng sin cyan, 4 núm vặn |
+| 10 | `PRB01` | `web/assets/devices/PRB01.svg` | Đầu dò máy hiện sóng kèm dây BNC cuộn tròn và kẹp móc xám-lam |
+| 11 | `PRJ01` | `web/assets/devices/PRJ01.svg` | Máy chiếu mini hình khối bo tròn trắng-xám, thấu kính phát tia sáng xanh ngọc |
+| 12 | `PSU01` | `web/assets/devices/PSU01.svg` | Bộ nguồn DC điều chỉnh để bàn có 2 màn hiển thị khối lam/ngọc, 2 núm chỉnh & cọc đỏ/đen |
+| 13 | `RPI01` | `web/assets/devices/RPI01.svg` | Máy tính nhúng bo xanh ngọc-lam có các cổng kết nối bạc & chip tản nhiệt vuông |
+| 14 | `SDC01` | `web/assets/devices/SDC01.svg` | Thẻ nhớ microSD tối giản tông xám than viền nhấn xanh cyan |
+| 15 | `SEN01` | `web/assets/devices/SEN01.svg` | Hộp khay chia ngăn đựng bộ mô-đun cảm biến nhỏ (siêu âm, ánh sáng, nhiệt) |
+| 16 | `SLD01` | `web/assets/devices/SLD01.svg` | Trạm hàn & tay hàn thiếc kèm giá đỡ lò xo, dây nguồn cuộn và đầu mũi đồng |
+| 17 | `TC01` | `web/assets/devices/TC01.svg` | Cặp tay cầm điều khiển thực tế ảo công thái học vòng sáng cyan mềm |
+| 18 | `VR01` | `web/assets/devices/VR01.svg` | Kính thực tế ảo bo tròn trắng-xám mặt kính bóng xanh dương/ngọc |
+| 19 | *(Mặc định)* | `web/assets/devices/generic.svg` | Hộp mô-đun phần cứng Lab đa năng gắn vi mạch cyan (fallback mọi mã lạ) |
 
-#### B. Ảnh Minh hoạ Trạng thái (`web/assets/illustrations/<tên>.webp` — `400×300px`, nền trong suốt RGBA, `≤ 60 KB`)
+#### B. Ảnh Minh hoạ Trạng thái (`web/assets/illustrations/<tên>.svg` — SVG vẽ tay `viewBox 0 0 240 160`, `≤ 10 KB`)
 
 | File | Màn hình sử dụng | Mô tả trực quan |
 |---|---|---|
-| `empty-basket.webp` | Mượn (`#/borrow`) khi giỏ trống | Khay/giỏ thiết bị phòng Lab trống lơ lửng kèm chip nổi ánh sáng cyan dịu |
-| `empty-queue.webp` | Hàng đợi (`#/reservations`) & Bento hàng đợi khi trống | Dãy cột/ghế chờ phòng Lab trống gọn gàng với biểu tượng đồng hồ cát trong suốt |
-| `no-overdue.webp` | Quá hạn & Lịch sử (`#/records`), Trả (`#/return`) khi không có trễ hạn | Bảng kiểm tra & khiên/huy hiệu xác nhận màu xanh ngọc phát sáng dịu |
-| `no-results.webp` | Bộ lọc Thiết bị, Phiếu mượn, Lịch sử không ra kết quả | Kính lúp 3D soft-clay rọi trên thẻ mạch trống |
-| `connection-error.webp` | Trạng thái lỗi API ở mọi màn hình | Cáp kết nối hai đầu tách rời kèm tia cảnh báo hổ phách/đỏ mềm |
+| `empty-basket.svg` | Mượn (`#/borrow`) khi giỏ trống | Khay/giỏ thiết bị phòng Lab trống lơ lửng kèm chip nổi ánh sáng cyan dịu |
+| `empty-queue.svg` | Hàng đợi (`#/reservations`) & Bento hàng đợi khi trống | Dãy cột/ghế chờ phòng Lab trống gọn gàng với biểu tượng đồng hồ cát trong suốt |
+| `no-overdue.svg` | Quá hạn & Lịch sử (`#/records`), Trả (`#/return`) khi không có trễ hạn | Bảng kiểm tra & khiên/huy hiệu xác nhận màu xanh ngọc phát sáng dịu |
+| `no-results.svg` | Bộ lọc Thiết bị, Phiếu mượn, Lịch sử không ra kết quả | Kính lúp 3D soft-clay rọi trên thẻ mạch trống |
+| `connection-error.svg` | Trạng thái lỗi API ở mọi màn hình | Cáp kết nối hai đầu tách rời kèm tia cảnh báo hổ phách/đỏ mềm |
 
 - **Ngân sách dung lượng:** Hiện tại `web/assets/` nặng `~561 KB`. 19 ảnh thiết bị (`≤ 40 KB`) + 5 ảnh trạng thái (`≤ 60 KB`) có trần tối đa lý thuyết `1.06 MB` (thực tế nén WebP RGBA khoảng `380–650 KB`), tổng tăng trưởng **thấp hơn nhiều** so với giới hạn `~2 MB`.
-- **Ghi nhận nguồn AI (ở Đợt 7):** Ghi `"Ảnh minh hoạ tạo bằng AI (Gemini)"` vào `web/vendor/README.md` và mục `## Phần có AI hỗ trợ` trong `README.md`.
+- **Cách nhúng (Đợt 7):** icon và minh hoạ là SVG vẽ tay (không ảnh bitmap, không AI tạo ảnh), nhúng bằng `<svg><use href="…svg#i"/></svg>` qua `web/js/ui/device-images.js` để đổi màu theo theme bằng token `--di-*` / `--illus-*` trong `theme.css`.
 

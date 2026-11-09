@@ -5578,3 +5578,47 @@ html[data-fx="flat"] .bento-queue-ring-card {
 .graph-list-empty {
   color: var(--color-muted-fg);
 }
+
+/* --------------------------------------------------------------------------
+   Đợt 7 — Icon thiết bị & minh hoạ trạng thái (SVG vẽ tay, assets/)
+   Kích thước cố định để không giật bố cục; màu theo token --di-* / --illus-*
+   -------------------------------------------------------------------------- */
+.device-icon {
+  display: block;
+  flex-shrink: 0;
+  color: var(--color-primary-text);
+}
+
+.empty-illus {
+  display: block;
+  width: min(240px, 100%);
+  height: auto;
+  aspect-ratio: 3 / 2;
+  flex-shrink: 0;
+  color: var(--color-primary-text);
+}
+
+.empty-state > .empty-illus,
+.error-state > .empty-illus {
+  margin-bottom: 4px;
+}
+
+/* Khung minh hoạ của reservations/records/graph: bỏ nền gạch đứt khi đã có SVG */
+.empty-illustration.has-svg,
+.empty-illustration.has-svg.is-error,
+.empty-illustration.has-svg.is-success {
+  width: 240px;
+  height: 160px;
+  background: none;
+  border: 0;
+  color: var(--color-primary-text);
+}
+
+.empty-illustration.has-svg .empty-illus {
+  width: 240px;
+  height: 160px;
+}
+
+.css-bar-title-group .device-icon {
+  margin-right: -2px;
+}

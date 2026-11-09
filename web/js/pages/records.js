@@ -15,6 +15,7 @@
 import { api } from '../api.js';
 import { navigateTo } from '../router.js';
 import { showToast } from '../ui/toast.js';
+import { deviceIconHtml, illustrationHtml as illusSvgHtml } from '../ui/device-images.js';
 
 const VALID_STATUSES = ['all', 'overdue', 'open', 'returned'];
 const PAGE_SIZE = 20;
@@ -97,7 +98,8 @@ function syncUrlHash() {
  * Khung ảnh minh hoạ trạng thái chừa sẵn (Đợt 7 gắn SVG theo data-illustration)
  */
 function illustrationHtml(name, iconName, extraClass = '') {
-  return `<div class="empty-illustration ${extraClass}" data-illustration="${name}" aria-hidden="true"><i data-lucide="${iconName}"></i></div>`;
+  const svg = illusSvgHtml(name);
+  return `<div class="empty-illustration ${extraClass}${svg ? ' has-svg' : ''}" data-illustration="${name}" aria-hidden="true">${svg || `<i data-lucide="${iconName}"></i>`}</div>`;
 }
 
 /**
@@ -308,7 +310,7 @@ function renderEmptyState() {
     <tr>
       <td colspan="7">
         <div class="empty-state">
-          ${illustrationHtml('no-results', 'inbox')}
+          ${illustrationHtml('empty-data', 'inbox')}
           <div class="empty-state-title">${escapeHtml(emptyTitle)}</div>
           <div class="empty-state-desc">${escapeHtml(emptyDesc)}</div>
         </div>
@@ -342,7 +344,7 @@ function renderRecordDevicesHtml(devices) {
     const name = escapeHtml(dev.name || '');
     return `
       <span class="record-device-chip" title="${name ? `${name} (${id})` : id}">
-        <span class="record-device-thumb" data-device-id="${id}" aria-hidden="true"><i data-lucide="cpu"></i></span>
+        <span class="record-device-thumb" data-device-id="${id}" aria-hidden="true">${deviceIconHtml(id, { size: 20 })}</span>
         <code class="device-code-chip">${id}</code>
         ${name ? `<span class="record-device-chip-name">${name}</span>` : ''}
       </span>
