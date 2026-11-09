@@ -37,10 +37,12 @@
   <link rel="stylesheet" href="css/effects-3d.css">
 
   <!-- Thư viện Vendor cục bộ (100% Offline) -->
-  <script src="vendor/lucide.min.js"></script>
-  <script src="vendor/vis-network.min.js"></script>
+  <!-- lucide: defer chạy trước module main.js (theo thứ tự tài liệu). vis-network chỉ nạp khi vào #/graph. -->
+  <script defer src="vendor/lucide.min.js"></script>
 </head>
 <body>
+  <a class="skip-link" href="#page-container">Bỏ qua tới nội dung chính</a>
+
   <!-- Lớp nền Dark-tech: Lưới mảnh + 3 quầng radial + Đường mạch cyan + Three.js -->
   <div id="ambient-bg-root" aria-hidden="true">
     <div class="bg-tech-grid"></div>
@@ -206,7 +208,7 @@
       </header>
 
       <!-- Vùng hiển thị nội dung từng màn hình -->
-      <main id="page-container" role="main"></main>
+      <main id="page-container" role="main" tabindex="-1"></main>
     </div>
   </div>
 
@@ -227,7 +229,7 @@
 
   <!-- Vùng chứa Panel trượt bên phải (Slide-over Drawer) -->
   <div id="side-panel-backdrop"></div>
-  <aside id="side-panel" role="dialog" aria-modal="true" aria-hidden="true" aria-label="Chi tiết thiết bị"></aside>
+  <aside id="side-panel" role="dialog" aria-modal="true" aria-hidden="true" aria-label="Chi tiết thiết bị" inert></aside>
 
   <!-- Mã nguồn SPA chính (ES Modules) -->
   <script type="module" src="js/main.js"></script>

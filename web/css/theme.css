@@ -155,13 +155,13 @@
   --status-available-bg: rgba(16, 185, 129, 0.12);
   --status-available-border: rgba(5, 150, 105, 0.34);
   --status-available-text: #047857;
-  --status-available-bar: #10B981;
+  --status-available-bar: #059669;
   --status-available-glow: rgba(16, 185, 129, 0.24);
 
   --status-borrowed-bg: rgba(245, 158, 11, 0.14);
   --status-borrowed-border: rgba(217, 119, 6, 0.34);
   --status-borrowed-text: #B45309;
-  --status-borrowed-bar: #F59E0B;
+  --status-borrowed-bar: #D97706;
   --status-borrowed-glow: rgba(245, 158, 11, 0.24);
 
   --status-onhold-bg: rgba(14, 165, 233, 0.12);
@@ -199,7 +199,9 @@
   --color-warning-glow: rgba(245, 158, 11, 0.24);
 
   /* Focus ring & Controls */
-  --focus-ring: 0 0 0 3px rgba(37, 99, 235, 0.32);
+  /* Vòng kép: viền trong = nền thẻ, viền ngoài = màu focus ≥ 3:1 (WCAG 1.4.11) */
+  --color-focus-border: #1D4ED8;
+  --focus-ring: 0 0 0 2px #FFFFFF, 0 0 0 4px #1D4ED8;
   --scrollbar-thumb: rgba(15, 23, 42, 0.22);
   --scrollbar-thumb-hover: rgba(15, 23, 42, 0.38);
 
@@ -370,7 +372,8 @@
   --color-warning-glow: rgba(245, 158, 11, 0.30);
 
   /* Focus ring & Controls */
-  --focus-ring: 0 0 0 3px rgba(34, 211, 238, 0.42);
+  --color-focus-border: #22D3EE;
+  --focus-ring: 0 0 0 2px #0B1220, 0 0 0 4px #22D3EE;
   --scrollbar-thumb: rgba(148, 163, 184, 0.25);
   --scrollbar-thumb-hover: rgba(148, 163, 184, 0.42);
 

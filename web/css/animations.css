@@ -406,7 +406,8 @@ html[data-fx="flat"] :where(
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
-    transform: none !important;
+    /* Không đặt transform: none đại trà: nhiều phần tử dùng transform để ĐỊNH VỊ
+       (panel trượt #side-panel, tooltip, nút căn giữa) chứ không chỉ để chuyển động. */
   }
 
   .stagger-item,

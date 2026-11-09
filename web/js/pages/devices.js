@@ -18,6 +18,7 @@ let currentStatus = '';
 let searchTimeout = null;
 let activeDeviceId = null;
 let globalPanelListenersBound = false;
+let panelOpenerEl = null; // Phần tử đã mở panel chi tiết (để trả focus khi đóng)
 
 function escapeHtml(str) {
   return String(str || '').replace(/[&<>"']/g, (c) => ({
@@ -337,10 +338,18 @@ export async function openDevicePanel(deviceId) {
   const backdrop = document.getElementById('side-panel-backdrop');
   if (!panel || !backdrop) return;
 
+  // Nhớ phần tử đã mở panel để trả focus khi đóng (không ghi đè khi đổi sang thiết bị khác)
+  if (!panel.classList.contains('open')) {
+    panelOpenerEl = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  }
+
   backdrop.classList.add('active');
   panel.classList.add('open');
+  panel.inert = false;
   panel.setAttribute('aria-hidden', 'false');
   document.body.style.overflow = 'hidden';
+  const appEl = document.getElementById('app');
+  if (appEl) appEl.inert = true;
 
   panel.innerHTML = `
     <div class="side-panel-header">
@@ -360,11 +369,16 @@ export async function openDevicePanel(deviceId) {
   `;
   if (window.lucide) window.lucide.createIcons();
 
-  panel.querySelector('#btn-close-panel').addEventListener('click', closeDevicePanel);
+  const firstCloseBtn = panel.querySelector('#btn-close-panel');
+  firstCloseBtn.addEventListener('click', closeDevicePanel);
+  firstCloseBtn.focus();
 
   try {
     const res = await api.get(`/devices/${encodeURIComponent(deviceId)}`);
     renderPanelContent(panel, res);
+    // Nội dung panel vừa được thay: đưa focus lại vào nút đóng để không bị rơi ra ngoài
+    const closeBtnAfter = panel.querySelector('#btn-close-panel');
+    if (closeBtnAfter && !panel.contains(document.activeElement)) closeBtnAfter.focus();
   } catch (err) {
     panel.innerHTML = `
       <div class="side-panel-header">
@@ -405,12 +419,21 @@ export function closeDevicePanel() {
   if (panel) {
     panel.classList.remove('open');
     panel.setAttribute('aria-hidden', 'true');
+    panel.inert = true; // Panel đã đóng không được nhận focus / đọc màn hình
   }
   if (backdrop) {
     backdrop.classList.remove('active');
   }
   document.body.style.overflow = '';
+  const appEl = document.getElementById('app');
+  if (appEl) appEl.inert = false;
   activeDeviceId = null;
+
+  // Trả focus về phần tử đã mở panel
+  if (panelOpenerEl && document.contains(panelOpenerEl)) {
+    panelOpenerEl.focus();
+  }
+  panelOpenerEl = null;
 }
 
 /**
@@ -1406,7 +1429,9 @@ export async function render(container) {
     }
 
     document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && activeDeviceId) {
+      // Nếu modal đang mở phía trên panel thì Escape chỉ đóng modal
+      const modalOpen = document.getElementById('modal-backdrop')?.classList.contains('active');
+      if (e.key === 'Escape' && activeDeviceId && !modalOpen) {
         closeDevicePanel();
       }
     });

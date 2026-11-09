@@ -35,6 +35,8 @@ export function showToast(message, type = 'info', title = '', duration = 4000) {
 
   const toast = document.createElement('div');
   toast.className = `toast toast-${type}`;
+  // Lỗi / cảnh báo đọc ngay (assertive); thông tin thường đọc lịch sự
+  toast.setAttribute('role', type === 'error' || type === 'warning' ? 'alert' : 'status');
 
   const iconHtml = ICONS[type] || ICONS.info;
 
@@ -50,12 +52,12 @@ export function showToast(message, type = 'info', title = '', duration = 4000) {
   ` : '';
 
   toast.innerHTML = `
-    <div class="toast-icon">${iconHtml}</div>
+    <div class="toast-icon" aria-hidden="true">${iconHtml}</div>
     <div class="toast-content">
       ${titleHtml}
       <div>${escapeHtml(message)}</div>
     </div>
-    <button class="toast-close" aria-label="Đóng">&times;</button>
+    <button class="toast-close" type="button" aria-label="Đóng thông báo" title="Đóng">&times;</button>
     ${progressHtml}
   `;
 

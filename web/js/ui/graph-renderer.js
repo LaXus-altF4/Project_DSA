@@ -35,7 +35,7 @@ function getThemePalette(theme) {
       textSecondary: '#CBD5E1',
       textDimmed: 'rgba(148, 163, 184, 0.22)',
       labelStroke: 'rgba(15, 23, 42, 0.92)',
-      edgeDefault: '#475569',
+      edgeDefault: '#64748B',
       edgeHover: '#60A5FA',
       edgeHoverGlowRgb: '96, 165, 250',
       edgeConnected: '#60A5FA',
@@ -95,7 +95,7 @@ function getThemePalette(theme) {
     textSecondary: '#334155',
     textDimmed: 'rgba(100, 116, 139, 0.26)',
     labelStroke: 'rgba(255, 255, 255, 0.94)',
-    edgeDefault: '#94A3B8',
+    edgeDefault: '#64748B',
     edgeHover: '#2563EB',
     edgeHoverGlowRgb: '37, 99, 235',
     edgeConnected: '#2563EB',
@@ -342,6 +342,18 @@ export function createGraphRenderer(containerEl, callbacks = {}) {
 
   const canAnimate = () => !isDestroyed && isMotionAllowed() && isTabVisible();
 
+  // Nhịp nền của đỉnh đang mượn / bảo trì chỉ ~15fps và tạm dừng khi khung vẽ ra ngoài màn hình
+  const AMBIENT_FRAME_MS = 66;
+  let isInViewport = true;
+  const viewportObserver = typeof window.IntersectionObserver === 'function'
+    ? new window.IntersectionObserver((entries) => {
+        const entry = entries[entries.length - 1];
+        isInViewport = Boolean(entry && entry.isIntersecting);
+        if (isInViewport && !isDestroyed) ensureAnimLoop();
+      })
+    : null;
+  if (viewportObserver) viewportObserver.observe(containerEl);
+
   const nodesDataSet = new visLib.DataSet();
   const edgesDataSet = new visLib.DataSet();
 
@@ -382,7 +394,7 @@ export function createGraphRenderer(containerEl, callbacks = {}) {
       },
       font: {
         face: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
-        size: 11,
+        size: 12,
         align: 'middle'
       }
     },
@@ -850,7 +862,7 @@ export function createGraphRenderer(containerEl, callbacks = {}) {
         },
         font: {
           color: 'rgba(0, 0, 0, 0)',
-          size: 11,
+          size: 12,
           strokeWidth: 0,
           strokeColor: 'rgba(0, 0, 0, 0)'
         }
@@ -1011,7 +1023,7 @@ export function createGraphRenderer(containerEl, callbacks = {}) {
           if (mid) {
             const lblAlpha = clamp01((eased - 0.75) / 0.25);
             ctx.globalAlpha = lblAlpha;
-            ctx.font = '600 11px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace';
+            ctx.font = '600 12px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.lineWidth = 3;
@@ -1312,7 +1324,7 @@ export function createGraphRenderer(containerEl, callbacks = {}) {
           ctx.stroke();
 
           if (popProg > 0.35) {
-            ctx.font = `700 ${Math.max(9, Math.round(10.5 * Math.min(1.05, popScale)))}px 'Be Vietnam Pro', sans-serif`;
+            ctx.font = `700 ${Math.max(12, Math.round(12 * Math.min(1.05, popScale)))}px 'Be Vietnam Pro', sans-serif`;
             ctx.fillStyle = palette.rankBadgeText;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
@@ -1344,7 +1356,7 @@ export function createGraphRenderer(containerEl, callbacks = {}) {
       isSelectionAnimRunning(nowMs) ||
       fadingOutEdges.size > 0 ||
       flashingEdges.size > 0 ||
-      hasPulsingStatusNodes
+      (hasPulsingStatusNodes && isInViewport)
     );
   }
 
@@ -1411,7 +1423,7 @@ export function createGraphRenderer(containerEl, callbacks = {}) {
     if (!isDragging) {
       if (hasHighFrequencyAnimations(nowMs)) {
         network.redraw();
-      } else if (hasPulsingStatusNodes && nowMs - lastAmbientDrawMs >= 42) {
+      } else if (hasPulsingStatusNodes && isInViewport && nowMs - lastAmbientDrawMs >= AMBIENT_FRAME_MS) {
         lastAmbientDrawMs = nowMs;
         network.redraw();
       }
@@ -1593,10 +1605,10 @@ export function createGraphRenderer(containerEl, callbacks = {}) {
       showTooltip(`
         <div class="graph-tip-header">
           <code class="mono graph-tip-code">${escapeHtml(edge.from)}</code>
-          <span style="color: var(--color-text-muted);">↔</span>
+          <span class="graph-tip-sep" aria-hidden="true">↔</span>
           <code class="mono graph-tip-code">${escapeHtml(edge.to)}</code>
         </div>
-        <div class="graph-tip-title" style="font-size: 12px;">
+        <div class="graph-tip-title is-compact">
           ${escapeHtml(fromNode ? fromNode.name : edge.from)} + ${escapeHtml(toNode ? toNode.name : edge.to)}
         </div>
         <div class="graph-tip-meta tabular-nums">
@@ -2121,6 +2133,7 @@ export function createGraphRenderer(containerEl, callbacks = {}) {
       physicsTimer = null;
     }
     unsubscribeFx();
+    if (viewportObserver) viewportObserver.disconnect();
     fadingOutEdges.clear();
     flashingEdges.clear();
     nodeDimStart.clear();

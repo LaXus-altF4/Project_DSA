@@ -4,6 +4,27 @@
  */
 
 let modalBackdrop = null;
+let lastFocusedEl = null; // Phần tử đang focus trước khi mở modal, để trả focus khi đóng
+
+const FOCUSABLE_SELECTOR =
+  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+function getFocusable(root) {
+  return Array.from(root.querySelectorAll(FOCUSABLE_SELECTOR)).filter(
+    (el) => el.offsetParent !== null || el === document.activeElement
+  );
+}
+
+/**
+ * Khoá nền: phần ứng dụng (#app) không nhận focus / đọc màn hình khi modal đang mở
+ */
+function setBackgroundInert(isInert) {
+  const appEl = document.getElementById('app');
+  if (!appEl) return;
+  // Panel chi tiết thiết bị đang mở phía dưới modal thì nền vẫn phải bị khoá
+  const sidePanelOpen = document.getElementById('side-panel')?.classList.contains('open');
+  appEl.inert = isInert || Boolean(sidePanelOpen);
+}
 
 function ensureModal() {
   modalBackdrop = document.getElementById('modal-backdrop');
@@ -18,10 +39,10 @@ function ensureModal() {
       !modalBackdrop.querySelector('#modal-body') || 
       !modalBackdrop.querySelector('#modal-footer')) {
     modalBackdrop.innerHTML = `
-      <div class="modal-dialog" role="dialog" aria-modal="true">
+      <div class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="modal-title">
         <div class="modal-header">
           <h3 class="modal-title" id="modal-title">Tiêu đề</h3>
-          <button class="btn-icon" id="modal-btn-close" aria-label="Đóng">&times;</button>
+          <button class="btn-icon" type="button" id="modal-btn-close" aria-label="Đóng" title="Đóng">&times;</button>
         </div>
         <div class="modal-body" id="modal-body"></div>
         <div class="modal-footer" id="modal-footer"></div>
@@ -38,8 +59,33 @@ function ensureModal() {
     });
 
     document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && modalBackdrop.classList.contains('active')) {
+      if (!modalBackdrop.classList.contains('active')) return;
+
+      if (e.key === 'Escape') {
         closeModal();
+        return;
+      }
+
+      // Giữ Tab / Shift+Tab xoay vòng trong hộp thoại
+      if (e.key === 'Tab') {
+        const dialogEl = modalBackdrop.querySelector('.modal-dialog');
+        if (!dialogEl) return;
+        const items = getFocusable(dialogEl);
+        if (items.length === 0) {
+          e.preventDefault();
+          dialogEl.focus();
+          return;
+        }
+        const first = items[0];
+        const last = items[items.length - 1];
+        const current = document.activeElement;
+        if (e.shiftKey && (current === first || !dialogEl.contains(current))) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && (current === last || !dialogEl.contains(current))) {
+          e.preventDefault();
+          first.focus();
+        }
       }
     });
 
@@ -106,8 +152,25 @@ export function openModal({ title, content, confirmText = '', cancelText = 'Đó
     footerEl.appendChild(confirmBtn);
   }
 
+  // Nhớ phần tử đang focus (nếu modal đang mở sẵn thì giữ phần tử gốc), khoá nền, chuyển focus vào hộp
+  if (!backdrop.classList.contains('active')) {
+    lastFocusedEl = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  }
   backdrop.classList.add('active');
   document.body.style.overflow = 'hidden';
+  setBackgroundInert(true);
+
+  const dialogEl = backdrop.querySelector('.modal-dialog');
+  if (dialogEl) {
+    dialogEl.setAttribute('tabindex', '-1');
+    // Ưu tiên ô nhập (autofocus) hoặc nút đầu tiên trong nội dung; không thì focus vào chính hộp thoại
+    const preferred =
+      bodyEl.querySelector('[autofocus]') ||
+      getFocusable(bodyEl)[0] ||
+      footerEl.querySelector('.btn-primary') ||
+      dialogEl;
+    window.requestAnimationFrame(() => preferred.focus());
+  }
 }
 
 /**
@@ -117,5 +180,11 @@ export function closeModal() {
   if (modalBackdrop) {
     modalBackdrop.classList.remove('active');
     document.body.style.overflow = '';
+    setBackgroundInert(false);
+    // Trả focus về phần tử đã mở modal (nếu còn nằm trong tài liệu)
+    if (lastFocusedEl && document.contains(lastFocusedEl)) {
+      lastFocusedEl.focus();
+    }
+    lastFocusedEl = null;
   }
 }

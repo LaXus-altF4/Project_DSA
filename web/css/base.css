@@ -68,6 +68,47 @@ html, body {
   box-shadow: var(--focus-ring);
 }
 
+/* Placeholder đủ tương phản ≥ 4.5:1 ở cả 2 theme */
+::placeholder {
+  color: var(--color-muted-fg);
+  opacity: 1;
+}
+
+/* Ẩn khỏi mắt nhưng vẫn đọc được bằng trình đọc màn hình */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Skip link: chỉ hiện khi nhận focus bàn phím */
+.skip-link {
+  position: absolute;
+  left: var(--space-3);
+  top: -64px;
+  z-index: 10000;
+  min-height: var(--tap-min);
+  display: inline-flex;
+  align-items: center;
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-btn);
+  background-color: var(--color-primary-solid);
+  color: var(--color-on-primary);
+  font-weight: 600;
+  font-size: var(--text-sm);
+  text-decoration: none;
+}
+
+.skip-link:focus-visible {
+  top: var(--space-3);
+}
+
 /* Thanh cuộn tinh gọn đồng bộ Sáng / Tối */
 * {
   scrollbar-width: thin;
